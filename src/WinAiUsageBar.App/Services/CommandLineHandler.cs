@@ -14,12 +14,21 @@ public static class CommandLineHandler
         Func<CancellationToken, Task<string>> diagnosticsExport,
         Func<CancellationToken, Task<string>> healthReport,
         Func<string> providerCatalog,
+        Func<string, CancellationToken, Task<CommandLineActionResult>> validateConfigBackup,
         Func<AppInfo> appInfoProvider,
         CancellationToken cancellationToken)
     {
         if (args.Count == 0)
         {
             return new CommandLineHandleResult(Handled: false, ExitCode: 0);
+        }
+
+        if (args.Count == 2
+            && string.Equals(args[0].Trim(), "--validate-config-backup", StringComparison.OrdinalIgnoreCase))
+        {
+            var result = await validateConfigBackup(args[1], cancellationToken).ConfigureAwait(false);
+            await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, result.ExitCode);
         }
 
         if (args.Count != 1)
@@ -72,6 +81,15 @@ public static class CommandLineHandler
             return new CommandLineHandleResult(Handled: true, ExitCode: 0);
         }
 
+        if (string.Equals(command, "--validate-config-backup", StringComparison.OrdinalIgnoreCase))
+        {
+            await error.WriteLineAsync(
+                "Missing path for --validate-config-backup.".AsMemory(),
+                cancellationToken).ConfigureAwait(false);
+            await error.WriteLineAsync(CreateHelpText().AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+        }
+
         await WriteUnknownArgumentsAsync(args, error, cancellationToken).ConfigureAwait(false);
         return new CommandLineHandleResult(Handled: true, ExitCode: 2);
     }
@@ -83,6 +101,7 @@ public static class CommandLineHandler
 
         Usage:
           WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--health-report|--provider-catalog]
+          WinAiUsageBar.App.exe --validate-config-backup <path>
 
         Options:
           --help                Show this help text without launching the app.
@@ -91,6 +110,8 @@ public static class CommandLineHandler
           --export-diagnostics  Write a redacted diagnostics export without launching UI.
           --health-report       Print local config, cache, and history health without launching UI.
           --provider-catalog    Print supported provider descriptors without launching UI.
+          --validate-config-backup <path>
+                                Validate a config backup without applying it.
         """;
     }
 

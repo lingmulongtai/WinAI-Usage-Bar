@@ -36,4 +36,19 @@ public static class CommandLineActions
     {
         return CommandLineProviderCatalogFormatter.Format(ProviderDescriptors.All);
     }
+
+    public static async Task<CommandLineActionResult> ValidateConfigBackupAsync(
+        string path,
+        CancellationToken cancellationToken)
+    {
+        var service = new ConfigBackupValidationService();
+        var result = await service.ValidateAsync(path, cancellationToken).ConfigureAwait(false);
+        return new CommandLineActionResult(
+            CommandLineConfigBackupValidationFormatter.Format(result),
+            result.IsValid ? 0 : 1);
+    }
 }
+
+public sealed record CommandLineActionResult(
+    string Output,
+    int ExitCode);

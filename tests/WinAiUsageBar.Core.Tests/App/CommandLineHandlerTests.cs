@@ -15,6 +15,7 @@ public sealed class CommandLineHandlerTests
             ExportDiagnostics,
             HealthReport,
             ProviderCatalog,
+            ValidateConfigBackup,
             AppInfo,
             CancellationToken.None);
 
@@ -39,6 +40,7 @@ public sealed class CommandLineHandlerTests
             ExportDiagnostics,
             HealthReport,
             ProviderCatalog,
+            ValidateConfigBackup,
             AppInfo,
             CancellationToken.None);
 
@@ -46,6 +48,7 @@ public sealed class CommandLineHandlerTests
         Assert.Equal(0, result.ExitCode);
         Assert.Contains("--version", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--provider-catalog", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--validate-config-backup", output.ToString(), StringComparison.Ordinal);
         Assert.Equal(string.Empty, error.ToString());
     }
 
@@ -62,6 +65,7 @@ public sealed class CommandLineHandlerTests
             ExportDiagnostics,
             HealthReport,
             ProviderCatalog,
+            ValidateConfigBackup,
             AppInfo,
             CancellationToken.None);
 
@@ -87,6 +91,7 @@ public sealed class CommandLineHandlerTests
             ExportDiagnostics,
             HealthReport,
             ProviderCatalog,
+            ValidateConfigBackup,
             AppInfo,
             CancellationToken.None);
 
@@ -113,6 +118,7 @@ public sealed class CommandLineHandlerTests
             },
             HealthReport,
             ProviderCatalog,
+            ValidateConfigBackup,
             AppInfo,
             CancellationToken.None);
 
@@ -140,6 +146,7 @@ public sealed class CommandLineHandlerTests
                 return Task.FromResult("health report body");
             },
             ProviderCatalog,
+            ValidateConfigBackup,
             AppInfo,
             CancellationToken.None);
 
@@ -167,6 +174,7 @@ public sealed class CommandLineHandlerTests
                 providerCatalogCount++;
                 return "provider catalog body";
             },
+            ValidateConfigBackup,
             AppInfo,
             CancellationToken.None);
 
@@ -174,6 +182,79 @@ public sealed class CommandLineHandlerTests
         Assert.Equal(0, result.ExitCode);
         Assert.Equal(1, providerCatalogCount);
         Assert.Contains("provider catalog body", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ValidatesConfigBackup()
+    {
+        using var output = new StringWriter();
+        var validatedPath = string.Empty;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--validate-config-backup", @"C:\Temp\config-backup.json"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            (path, cancellationToken) =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                validatedPath = path;
+                return Task.FromResult(new CommandLineActionResult("backup valid", 0));
+            },
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(@"C:\Temp\config-backup.json", validatedPath);
+        Assert.Contains("backup valid", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ReturnsValidationExitCode()
+    {
+        using var output = new StringWriter();
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--validate-config-backup", @"C:\Temp\missing.json"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            (_, _) => Task.FromResult(new CommandLineActionResult("backup invalid", 1)),
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("backup invalid", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ReturnsErrorWhenValidateConfigBackupPathIsMissing()
+    {
+        using var error = new StringWriter();
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--validate-config-backup"],
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains("Missing path", error.ToString(), StringComparison.Ordinal);
     }
 
     [Theory]
@@ -191,6 +272,7 @@ public sealed class CommandLineHandlerTests
             ExportDiagnostics,
             HealthReport,
             ProviderCatalog,
+            ValidateConfigBackup,
             AppInfo,
             CancellationToken.None);
 
@@ -220,5 +302,13 @@ public sealed class CommandLineHandlerTests
     private static string ProviderCatalog()
     {
         return "provider catalog";
+    }
+
+    private static Task<CommandLineActionResult> ValidateConfigBackup(
+        string path,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(new CommandLineActionResult($"validated {path}", 0));
     }
 }
