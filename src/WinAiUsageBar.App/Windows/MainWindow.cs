@@ -240,9 +240,24 @@ public sealed class MainWindow : Window
 
         stack.Children.Add(manualGrid);
 
+        TextBox? apiKeySecretNameBox = null;
         TextBox? gitHubOrganizationBox = null;
         TextBox? gitHubEnterpriseBox = null;
         TextBox? gitHubPatSecretNameBox = null;
+
+        if (provider.HasApiKeySettings)
+        {
+            apiKeySecretNameBox = TextBox("API key secret name", provider.ApiKeySecretNameText);
+            stack.Children.Add(apiKeySecretNameBox);
+
+            stack.Children.Add(new InfoBar
+            {
+                Severity = InfoBarSeverity.Informational,
+                IsOpen = true,
+                IsClosable = false,
+                Message = provider.ApiKeyStatusText
+            });
+        }
 
         if (provider.HasGitHubCopilotSettings)
         {
@@ -289,6 +304,7 @@ public sealed class MainWindow : Window
             creditsBox,
             costBox,
             notesBox,
+            apiKeySecretNameBox,
             gitHubOrganizationBox,
             gitHubEnterpriseBox,
             gitHubPatSecretNameBox);
@@ -457,6 +473,7 @@ public sealed class MainWindow : Window
         TextBox CreditsBox,
         TextBox CostBox,
         TextBox NotesBox,
+        TextBox? ApiKeySecretNameBox,
         TextBox? GitHubOrganizationBox,
         TextBox? GitHubEnterpriseBox,
         TextBox? GitHubPatSecretNameBox)
@@ -471,6 +488,7 @@ public sealed class MainWindow : Window
             ViewModel.CreditBalanceText = CreditsBox.Text;
             ViewModel.MonthToDateCostText = CostBox.Text;
             ViewModel.NotesText = NotesBox.Text;
+            ViewModel.ApiKeySecretNameText = ApiKeySecretNameBox?.Text ?? string.Empty;
             ViewModel.GitHubOrganizationText = GitHubOrganizationBox?.Text ?? string.Empty;
             ViewModel.GitHubEnterpriseSlugText = GitHubEnterpriseBox?.Text ?? string.Empty;
             ViewModel.GitHubPatSecretNameText = GitHubPatSecretNameBox?.Text ?? string.Empty;

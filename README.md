@@ -13,6 +13,7 @@ WinAI Usage Bar is a personal Windows notification-area app for watching AI prov
 - Mock and Manual provider modes are implemented.
 - Codex/ChatGPT app-server probing is isolated behind safe abstractions.
 - Claude, Claude Code, Gemini, OpenCode Zen, and GitHub Copilot have MVP-safe descriptors and manual mode support.
+- Gemini and OpenCode Zen expose API key secret-name fields without storing API key values in config.
 - JSON config, snapshot cache, and history are stored under `%AppData%\WinAiUsageBar`.
 
 ## Build And Run
@@ -47,8 +48,8 @@ The app starts in the tray. Use the tray icon to open the compact panel or setti
 - Manual: implemented for every provider.
 - Codex / ChatGPT: safe best-effort `codex app-server` JSON-RPC client and parser are implemented; failures return visible provider errors.
 - Claude / Claude Code: CLI presence probe only; no private file scraping.
-- Gemini: API key placeholder; no unofficial usage endpoint.
-- OpenCode Zen: manual balance mode and documented TODO for future official balance API.
+- Gemini: API key secret-name setting; no unofficial usage endpoint.
+- OpenCode Zen: API key secret-name setting, manual balance mode, and documented TODO for future official balance API.
 - GitHub Copilot: manual mode plus organization/enterprise settings placeholder.
 
 ## Roadmap

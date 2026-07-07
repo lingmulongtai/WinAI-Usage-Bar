@@ -61,6 +61,7 @@ public sealed class ProviderSettingsEditorViewModel(
     private string creditBalanceText = provider.Manual.CreditBalance?.ToString("0.##") ?? string.Empty;
     private string monthToDateCostText = provider.Manual.MonthToDateCost?.ToString("0.##") ?? string.Empty;
     private string notesText = provider.Manual.Notes ?? string.Empty;
+    private string apiKeySecretNameText = provider.ApiKey.SecretName ?? string.Empty;
     private string gitHubOrganizationText = provider.GitHubCopilot.Organization ?? string.Empty;
     private string gitHubEnterpriseSlugText = provider.GitHubCopilot.EnterpriseSlug ?? string.Empty;
     private string gitHubPatSecretNameText = provider.GitHubCopilot.PatSecretName ?? string.Empty;
@@ -76,6 +77,23 @@ public sealed class ProviderSettingsEditorViewModel(
         .ToList();
 
     public bool HasGitHubCopilotSettings => descriptor.Id == ProviderId.GitHubCopilot;
+
+    public bool HasApiKeySettings => descriptor.Id is ProviderId.Gemini or ProviderId.OpenCodeZen;
+
+    public string ApiKeyStatusText
+    {
+        get
+        {
+            if (!HasApiKeySettings)
+            {
+                return string.Empty;
+            }
+
+            return SourceKindText == DataSourceKind.OfficialApi.ToString()
+                ? "Store the API key through the secret store and enter only its secret name here. Usage retrieval remains a provider TODO until an official endpoint is selected."
+                : "Manual mode can track balance and reset details without storing an API key reference.";
+        }
+    }
 
     public string GitHubCopilotStatusText
     {
@@ -105,6 +123,7 @@ public sealed class ProviderSettingsEditorViewModel(
         {
             if (SetProperty(ref sourceKindText, value))
             {
+                OnPropertyChanged(nameof(ApiKeyStatusText));
                 OnPropertyChanged(nameof(GitHubCopilotStatusText));
             }
         }
@@ -146,6 +165,12 @@ public sealed class ProviderSettingsEditorViewModel(
         set => SetProperty(ref notesText, value);
     }
 
+    public string ApiKeySecretNameText
+    {
+        get => apiKeySecretNameText;
+        set => SetProperty(ref apiKeySecretNameText, value);
+    }
+
     public string GitHubOrganizationText
     {
         get => gitHubOrganizationText;
@@ -178,6 +203,7 @@ public sealed class ProviderSettingsEditorViewModel(
         var errors = manualResult.Errors.ToList();
 
         var sourceKind = ParseSourceKind(errors);
+        ValidateApiKeySettings(sourceKind, errors);
         ValidateGitHubCopilotSettings(sourceKind, errors);
         return new ProviderSettingsEditorValidationResult(
             this,
@@ -197,6 +223,7 @@ public sealed class ProviderSettingsEditorViewModel(
         provider.IsEnabled = IsEnabled;
         provider.SourceKind = validation.SourceKind.Value;
         provider.Manual = validation.ManualSettings;
+        provider.ApiKey.SecretName = TrimToNull(ApiKeySecretNameText);
         provider.GitHubCopilot.Organization = TrimToNull(GitHubOrganizationText);
         provider.GitHubCopilot.EnterpriseSlug = TrimToNull(GitHubEnterpriseSlugText);
         provider.GitHubCopilot.PatSecretName = TrimToNull(GitHubPatSecretNameText);
@@ -212,6 +239,21 @@ public sealed class ProviderSettingsEditorViewModel(
         }
 
         return sourceKind;
+    }
+
+    private void ValidateApiKeySettings(
+        DataSourceKind? sourceKind,
+        ICollection<string> errors)
+    {
+        if (!HasApiKeySettings || sourceKind != DataSourceKind.OfficialApi)
+        {
+            return;
+        }
+
+        if (TrimToNull(ApiKeySecretNameText) is null)
+        {
+            errors.Add("API key secret name is required for API mode; store the key in the secret store and keep only the secret name in config.");
+        }
     }
 
     private void ValidateGitHubCopilotSettings(

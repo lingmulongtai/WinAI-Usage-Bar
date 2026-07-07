@@ -71,6 +71,67 @@ public sealed class ProviderSettingsPageViewModelTests
         Assert.NotEqual(DataSourceKind.LocalAppServer, provider.SourceKind);
     }
 
+    [Theory]
+    [InlineData(ProviderId.Gemini)]
+    [InlineData(ProviderId.OpenCodeZen)]
+    public void TryApply_AllowsApiKeyProvidersToStayManualWithoutSecretReference(ProviderId providerId)
+    {
+        var config = AppConfig.CreateDefault();
+        var descriptor = ProviderDescriptors.Get(providerId);
+        var provider = config.GetOrCreateProvider(descriptor);
+        var viewModel = new ProviderSettingsPageViewModel(config, [descriptor]);
+        var editor = viewModel.Editors.Single();
+        editor.SourceKindText = DataSourceKind.Manual.ToString();
+        editor.ApiKeySecretNameText = "   ";
+
+        var result = viewModel.TryApply();
+
+        Assert.True(result.IsValid);
+        Assert.Equal(DataSourceKind.Manual, provider.SourceKind);
+        Assert.Null(provider.ApiKey.SecretName);
+    }
+
+    [Theory]
+    [InlineData(ProviderId.Gemini)]
+    [InlineData(ProviderId.OpenCodeZen)]
+    public void TryApply_RequiresApiKeySecretReferenceForApiMode(ProviderId providerId)
+    {
+        var config = AppConfig.CreateDefault();
+        var descriptor = ProviderDescriptors.Get(providerId);
+        var provider = config.GetOrCreateProvider(descriptor);
+        var viewModel = new ProviderSettingsPageViewModel(config, [descriptor]);
+        var editor = viewModel.Editors.Single();
+        editor.SourceKindText = DataSourceKind.OfficialApi.ToString();
+
+        var result = viewModel.TryApply();
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, error => error.Contains("API key secret name is required", StringComparison.Ordinal));
+        Assert.NotEqual(DataSourceKind.OfficialApi, provider.SourceKind);
+    }
+
+    [Theory]
+    [InlineData(ProviderId.Gemini, "gemini-api-key")]
+    [InlineData(ProviderId.OpenCodeZen, "opencode-zen-api-key")]
+    public void TryApply_AppliesApiKeyProviderSecretReferenceOnly(
+        ProviderId providerId,
+        string secretName)
+    {
+        var config = AppConfig.CreateDefault();
+        var descriptor = ProviderDescriptors.Get(providerId);
+        var provider = config.GetOrCreateProvider(descriptor);
+        var viewModel = new ProviderSettingsPageViewModel(config, [descriptor]);
+        var editor = viewModel.Editors.Single();
+        editor.SourceKindText = DataSourceKind.OfficialApi.ToString();
+        editor.ApiKeySecretNameText = $"  {secretName}  ";
+
+        var result = viewModel.TryApply();
+
+        Assert.True(result.IsValid);
+        Assert.Equal(DataSourceKind.OfficialApi, provider.SourceKind);
+        Assert.Equal(secretName, provider.ApiKey.SecretName);
+    }
+
     [Fact]
     public void TryApply_AllowsGitHubCopilotManualModeWithoutOrganizationMetrics()
     {

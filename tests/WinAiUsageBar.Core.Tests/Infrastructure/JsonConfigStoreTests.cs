@@ -16,17 +16,23 @@ public sealed class JsonConfigStoreTests
 
         var config = await store.LoadAsync(CancellationToken.None);
         var codex = config.Providers.Single(provider => provider.ProviderId == ProviderId.Codex);
+        var gemini = config.Providers.Single(provider => provider.ProviderId == ProviderId.Gemini);
         codex.IsEnabled = true;
         codex.SourceKind = DataSourceKind.Manual;
         codex.Manual.RemainingPercent = 52;
+        gemini.SourceKind = DataSourceKind.OfficialApi;
+        gemini.ApiKey.SecretName = "gemini-api-key";
 
         await store.SaveAsync(config, CancellationToken.None);
         var reloaded = await store.LoadAsync(CancellationToken.None);
         var reloadedCodex = reloaded.Providers.Single(provider => provider.ProviderId == ProviderId.Codex);
+        var reloadedGemini = reloaded.Providers.Single(provider => provider.ProviderId == ProviderId.Gemini);
 
         Assert.True(reloadedCodex.IsEnabled);
         Assert.Equal(DataSourceKind.Manual, reloadedCodex.SourceKind);
         Assert.Equal(52, reloadedCodex.Manual.RemainingPercent);
+        Assert.Equal(DataSourceKind.OfficialApi, reloadedGemini.SourceKind);
+        Assert.Equal("gemini-api-key", reloadedGemini.ApiKey.SecretName);
 
         Directory.Delete(root, recursive: true);
     }
