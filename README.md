@@ -53,6 +53,16 @@ Create a local self-contained build:
 
 The default output is `artifacts\publish\WinAIUsageBar-win-x64`. Run `WinAiUsageBar.App.exe` from that folder. Pushes to `main` also upload a `WinAIUsageBar-win-x64` artifact from GitHub Actions.
 
+Create a zip package and SHA256 checksum from the published output:
+
+```powershell
+.\scripts\package.ps1
+Get-Content .\artifacts\packages\WinAIUsageBar-win-x64.zip.sha256
+Get-FileHash .\artifacts\packages\WinAIUsageBar-win-x64.zip -Algorithm SHA256
+```
+
+Pushes to `main` upload both the publish directory and a `WinAIUsageBar-win-x64-package` artifact containing the zip and `.sha256` file.
+
 Run the published-app smoke test without opening UI:
 
 ```powershell

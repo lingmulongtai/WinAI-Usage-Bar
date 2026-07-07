@@ -35,9 +35,22 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --smoke-test
 
+      - name: Package app
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: .\scripts\package.ps1 -PublishPath .\artifacts\publish\WinAIUsageBar-win-x64 -OutputDirectory .\artifacts\packages -PackageName WinAIUsageBar-win-x64
+
       - name: Upload app artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v7
         with:
           name: WinAIUsageBar-win-x64
           path: .\artifacts\publish\WinAIUsageBar-win-x64
+
+      - name: Upload packaged app artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: WinAIUsageBar-win-x64-package
+          path: |
+            .\artifacts\packages\WinAIUsageBar-win-x64.zip
+            .\artifacts\packages\WinAIUsageBar-win-x64.zip.sha256
