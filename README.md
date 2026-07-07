@@ -41,6 +41,8 @@ dotnet test .\tests\WinAiUsageBar.Core.Tests\WinAiUsageBar.Core.Tests.csproj -p:
 dotnet run --project .\src\WinAiUsageBar.App\WinAiUsageBar.App.csproj -p:Platform=x64
 ```
 
+If NuGet restore is flaky, use `.\scripts\restore.ps1` for bounded restore retries.
+
 The app starts in the tray. Use the tray icon to open the compact panel or settings.
 
 ## Publish

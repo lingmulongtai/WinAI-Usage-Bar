@@ -22,7 +22,7 @@ jobs:
           dotnet-version: 8.0.x
 
       - name: Restore
-        run: dotnet restore .\WinAIUsageBar.sln
+        run: .\scripts\restore.ps1 -SolutionPath .\WinAIUsageBar.sln
 
       - name: Build
         run: dotnet build .\WinAIUsageBar.sln --configuration Release -p:Platform=x64 --no-restore

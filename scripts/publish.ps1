@@ -1,7 +1,8 @@
 param(
     [string]$Configuration = "Release",
     [string]$Runtime = "win-x64",
-    [string]$OutputPath = ""
+    [string]$OutputPath = "",
+    [switch]$EnableNuGetAudit
 )
 
 $ErrorActionPreference = "Stop"
@@ -18,12 +19,25 @@ if (Test-Path -LiteralPath $OutputPath) {
     Remove-Item -LiteralPath $OutputPath -Recurse -Force
 }
 
-dotnet publish $projectPath `
-    --configuration $Configuration `
-    --runtime $Runtime `
-    --self-contained true `
-    -p:Platform=x64 `
-    -o $OutputPath
+$publishArgs = @(
+    "publish",
+    $projectPath,
+    "--configuration",
+    $Configuration,
+    "--runtime",
+    $Runtime,
+    "--self-contained",
+    "true",
+    "-p:Platform=x64",
+    "-o",
+    $OutputPath
+)
+
+if (-not $EnableNuGetAudit) {
+    $publishArgs += "-p:NuGetAudit=false"
+}
+
+dotnet @publishArgs
 
 if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed with exit code $LASTEXITCODE"
