@@ -1,0 +1,68 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{E1769584-761C-411B-A4E5-496ED4192917}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinAiUsageBar.Core", "src\WinAiUsageBar.Core\WinAiUsageBar.Core.csproj", "{64AE2796-478E-40EF-ADA3-FDE79D90BB9E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinAiUsageBar.Infrastructure", "src\WinAiUsageBar.Infrastructure\WinAiUsageBar.Infrastructure.csproj", "{DF84C5B8-7511-4D8A-9623-41AE91CF5341}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinAiUsageBar.App", "src\WinAiUsageBar.App\WinAiUsageBar.App.csproj", "{0B456D42-745B-4CB5-8C3D-9EC8E3C0863E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{50983249-B767-4E45-B220-4FED69CB6176}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinAiUsageBar.Core.Tests", "tests\WinAiUsageBar.Core.Tests\WinAiUsageBar.Core.Tests.csproj", "{9013CD39-0C3A-4715-BC5C-640F3CBD5107}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{64AE2796-478E-40EF-ADA3-FDE79D90BB9E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{64AE2796-478E-40EF-ADA3-FDE79D90BB9E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{64AE2796-478E-40EF-ADA3-FDE79D90BB9E}.Debug|x64.ActiveCfg = Debug|x64
+		{64AE2796-478E-40EF-ADA3-FDE79D90BB9E}.Debug|x64.Build.0 = Debug|x64
+		{64AE2796-478E-40EF-ADA3-FDE79D90BB9E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{64AE2796-478E-40EF-ADA3-FDE79D90BB9E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{64AE2796-478E-40EF-ADA3-FDE79D90BB9E}.Release|x64.ActiveCfg = Release|x64
+		{64AE2796-478E-40EF-ADA3-FDE79D90BB9E}.Release|x64.Build.0 = Release|x64
+		{DF84C5B8-7511-4D8A-9623-41AE91CF5341}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DF84C5B8-7511-4D8A-9623-41AE91CF5341}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DF84C5B8-7511-4D8A-9623-41AE91CF5341}.Debug|x64.ActiveCfg = Debug|x64
+		{DF84C5B8-7511-4D8A-9623-41AE91CF5341}.Debug|x64.Build.0 = Debug|x64
+		{DF84C5B8-7511-4D8A-9623-41AE91CF5341}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DF84C5B8-7511-4D8A-9623-41AE91CF5341}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DF84C5B8-7511-4D8A-9623-41AE91CF5341}.Release|x64.ActiveCfg = Release|x64
+		{DF84C5B8-7511-4D8A-9623-41AE91CF5341}.Release|x64.Build.0 = Release|x64
+		{0B456D42-745B-4CB5-8C3D-9EC8E3C0863E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0B456D42-745B-4CB5-8C3D-9EC8E3C0863E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0B456D42-745B-4CB5-8C3D-9EC8E3C0863E}.Debug|x64.ActiveCfg = Debug|x64
+		{0B456D42-745B-4CB5-8C3D-9EC8E3C0863E}.Debug|x64.Build.0 = Debug|x64
+		{0B456D42-745B-4CB5-8C3D-9EC8E3C0863E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0B456D42-745B-4CB5-8C3D-9EC8E3C0863E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0B456D42-745B-4CB5-8C3D-9EC8E3C0863E}.Release|x64.ActiveCfg = Release|x64
+		{0B456D42-745B-4CB5-8C3D-9EC8E3C0863E}.Release|x64.Build.0 = Release|x64
+		{9013CD39-0C3A-4715-BC5C-640F3CBD5107}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9013CD39-0C3A-4715-BC5C-640F3CBD5107}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9013CD39-0C3A-4715-BC5C-640F3CBD5107}.Debug|x64.ActiveCfg = Debug|x64
+		{9013CD39-0C3A-4715-BC5C-640F3CBD5107}.Debug|x64.Build.0 = Debug|x64
+		{9013CD39-0C3A-4715-BC5C-640F3CBD5107}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9013CD39-0C3A-4715-BC5C-640F3CBD5107}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9013CD39-0C3A-4715-BC5C-640F3CBD5107}.Release|x64.ActiveCfg = Release|x64
+		{9013CD39-0C3A-4715-BC5C-640F3CBD5107}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{64AE2796-478E-40EF-ADA3-FDE79D90BB9E} = {E1769584-761C-411B-A4E5-496ED4192917}
+		{DF84C5B8-7511-4D8A-9623-41AE91CF5341} = {E1769584-761C-411B-A4E5-496ED4192917}
+		{0B456D42-745B-4CB5-8C3D-9EC8E3C0863E} = {E1769584-761C-411B-A4E5-496ED4192917}
+		{9013CD39-0C3A-4715-BC5C-640F3CBD5107} = {50983249-B767-4E45-B220-4FED69CB6176}
+	EndGlobalSection
+EndGlobal

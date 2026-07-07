@@ -1,0 +1,19 @@
+bin/
+obj/
+.vs/
+.vscode/
+TestResults/
+*.user
+*.suo
+*.nupkg
+*.snupkg
+
+# Local app data snapshots should never be committed.
+config.json
+snapshots.json
+history.ndjson
+secrets/
+
+# WinUI packaging output
+AppPackages/
+BundleArtifacts/

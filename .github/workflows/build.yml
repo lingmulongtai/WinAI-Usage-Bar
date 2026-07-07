@@ -1,0 +1,28 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore .\WinAIUsageBar.sln
+
+      - name: Build
+        run: dotnet build .\WinAIUsageBar.sln --configuration Release -p:Platform=x64 --no-restore
+
+      - name: Test
+        run: dotnet test .\tests\WinAiUsageBar.Core.Tests\WinAiUsageBar.Core.Tests.csproj --configuration Release -p:Platform=x64 --no-build --verbosity normal
