@@ -19,6 +19,7 @@ public static class Program
             CommandLineActions.CreateHealthReportAsync,
             CommandLineActions.CreateProviderCatalog,
             CommandLineActions.ValidateConfigBackupAsync,
+            CommandLineActions.RestoreConfigBackupAsync,
             AppInfoProvider.Get,
             CancellationToken.None)
             .GetAwaiter()

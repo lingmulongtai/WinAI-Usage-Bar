@@ -16,6 +16,7 @@ public sealed class CommandLineHandlerTests
             HealthReport,
             ProviderCatalog,
             ValidateConfigBackup,
+            RestoreConfigBackup,
             AppInfo,
             CancellationToken.None);
 
@@ -41,6 +42,7 @@ public sealed class CommandLineHandlerTests
             HealthReport,
             ProviderCatalog,
             ValidateConfigBackup,
+            RestoreConfigBackup,
             AppInfo,
             CancellationToken.None);
 
@@ -49,6 +51,7 @@ public sealed class CommandLineHandlerTests
         Assert.Contains("--version", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--provider-catalog", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--validate-config-backup", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--restore-config-backup", output.ToString(), StringComparison.Ordinal);
         Assert.Equal(string.Empty, error.ToString());
     }
 
@@ -66,6 +69,7 @@ public sealed class CommandLineHandlerTests
             HealthReport,
             ProviderCatalog,
             ValidateConfigBackup,
+            RestoreConfigBackup,
             AppInfo,
             CancellationToken.None);
 
@@ -92,6 +96,7 @@ public sealed class CommandLineHandlerTests
             HealthReport,
             ProviderCatalog,
             ValidateConfigBackup,
+            RestoreConfigBackup,
             AppInfo,
             CancellationToken.None);
 
@@ -119,6 +124,7 @@ public sealed class CommandLineHandlerTests
             HealthReport,
             ProviderCatalog,
             ValidateConfigBackup,
+            RestoreConfigBackup,
             AppInfo,
             CancellationToken.None);
 
@@ -147,6 +153,7 @@ public sealed class CommandLineHandlerTests
             },
             ProviderCatalog,
             ValidateConfigBackup,
+            RestoreConfigBackup,
             AppInfo,
             CancellationToken.None);
 
@@ -175,6 +182,7 @@ public sealed class CommandLineHandlerTests
                 return "provider catalog body";
             },
             ValidateConfigBackup,
+            RestoreConfigBackup,
             AppInfo,
             CancellationToken.None);
 
@@ -204,6 +212,7 @@ public sealed class CommandLineHandlerTests
                 validatedPath = path;
                 return Task.FromResult(new CommandLineActionResult("backup valid", 0));
             },
+            RestoreConfigBackup,
             AppInfo,
             CancellationToken.None);
 
@@ -227,6 +236,7 @@ public sealed class CommandLineHandlerTests
             HealthReport,
             ProviderCatalog,
             (_, _) => Task.FromResult(new CommandLineActionResult("backup invalid", 1)),
+            RestoreConfigBackup,
             AppInfo,
             CancellationToken.None);
 
@@ -249,12 +259,99 @@ public sealed class CommandLineHandlerTests
             HealthReport,
             ProviderCatalog,
             ValidateConfigBackup,
+            RestoreConfigBackup,
             AppInfo,
             CancellationToken.None);
 
         Assert.True(result.Handled);
         Assert.Equal(2, result.ExitCode);
         Assert.Contains("Missing path", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_RestoresConfigBackupWhenConfirmed()
+    {
+        using var output = new StringWriter();
+        var restoredPath = string.Empty;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--restore-config-backup", @"C:\Temp\config-backup.json", "--confirm"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            (path, cancellationToken) =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                restoredPath = path;
+                return Task.FromResult(new CommandLineActionResult("restore ok", 0));
+            },
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(@"C:\Temp\config-backup.json", restoredPath);
+        Assert.Contains("restore ok", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ReturnsRestoreExitCode()
+    {
+        using var output = new StringWriter();
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--restore-config-backup", @"C:\Temp\missing.json", "--confirm"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            (_, _) => Task.FromResult(new CommandLineActionResult("restore failed", 1)),
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("restore failed", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("--restore-config-backup")]
+    [InlineData("--restore-config-backup", @"C:\Temp\config-backup.json")]
+    [InlineData("--restore-config-backup", @"C:\Temp\config-backup.json", "--force")]
+    public async Task TryHandleAsync_RequiresConfirmForRestoreConfigBackup(params string[] args)
+    {
+        using var error = new StringWriter();
+        var restoreCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            args,
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            (_, _) =>
+            {
+                restoreCount++;
+                return Task.FromResult(new CommandLineActionResult("should not run", 0));
+            },
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Equal(0, restoreCount);
+        Assert.Contains("requires", error.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--confirm", error.ToString(), StringComparison.Ordinal);
     }
 
     [Theory]
@@ -273,6 +370,7 @@ public sealed class CommandLineHandlerTests
             HealthReport,
             ProviderCatalog,
             ValidateConfigBackup,
+            RestoreConfigBackup,
             AppInfo,
             CancellationToken.None);
 
@@ -310,5 +408,13 @@ public sealed class CommandLineHandlerTests
     {
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(new CommandLineActionResult($"validated {path}", 0));
+    }
+
+    private static Task<CommandLineActionResult> RestoreConfigBackup(
+        string path,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(new CommandLineActionResult($"restored {path}", 0));
     }
 }

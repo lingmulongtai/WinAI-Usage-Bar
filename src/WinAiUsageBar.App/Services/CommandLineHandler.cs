@@ -15,6 +15,7 @@ public static class CommandLineHandler
         Func<CancellationToken, Task<string>> healthReport,
         Func<string> providerCatalog,
         Func<string, CancellationToken, Task<CommandLineActionResult>> validateConfigBackup,
+        Func<string, CancellationToken, Task<CommandLineActionResult>> restoreConfigBackup,
         Func<AppInfo> appInfoProvider,
         CancellationToken cancellationToken)
     {
@@ -29,6 +30,25 @@ public static class CommandLineHandler
             var result = await validateConfigBackup(args[1], cancellationToken).ConfigureAwait(false);
             await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
             return new CommandLineHandleResult(Handled: true, result.ExitCode);
+        }
+
+        if (args.Count == 3
+            && string.Equals(args[0].Trim(), "--restore-config-backup", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(args[2].Trim(), "--confirm", StringComparison.OrdinalIgnoreCase))
+        {
+            var result = await restoreConfigBackup(args[1], cancellationToken).ConfigureAwait(false);
+            await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, result.ExitCode);
+        }
+
+        if (args.Count >= 1
+            && string.Equals(args[0].Trim(), "--restore-config-backup", StringComparison.OrdinalIgnoreCase))
+        {
+            await error.WriteLineAsync(
+                "Restoring a config backup requires: --restore-config-backup <path> --confirm".AsMemory(),
+                cancellationToken).ConfigureAwait(false);
+            await error.WriteLineAsync(CreateHelpText().AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, ExitCode: 2);
         }
 
         if (args.Count != 1)
@@ -102,6 +122,7 @@ public static class CommandLineHandler
         Usage:
           WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--health-report|--provider-catalog]
           WinAiUsageBar.App.exe --validate-config-backup <path>
+          WinAiUsageBar.App.exe --restore-config-backup <path> --confirm
 
         Options:
           --help                Show this help text without launching the app.
@@ -112,6 +133,8 @@ public static class CommandLineHandler
           --provider-catalog    Print supported provider descriptors without launching UI.
           --validate-config-backup <path>
                                 Validate a config backup without applying it.
+          --restore-config-backup <path> --confirm
+                                Restore a config backup after creating a rollback backup.
         """;
     }
 

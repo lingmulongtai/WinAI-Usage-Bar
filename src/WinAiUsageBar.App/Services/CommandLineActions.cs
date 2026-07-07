@@ -47,6 +47,19 @@ public static class CommandLineActions
             CommandLineConfigBackupValidationFormatter.Format(result),
             result.IsValid ? 0 : 1);
     }
+
+    public static async Task<CommandLineActionResult> RestoreConfigBackupAsync(
+        string path,
+        CancellationToken cancellationToken)
+    {
+        var paths = AppDataPaths.CreateDefault();
+        var configStore = new JsonAppConfigStore(paths);
+        var service = new ConfigBackupRestoreService(paths, configStore);
+        var result = await service.RestoreAsync(path, cancellationToken).ConfigureAwait(false);
+        return new CommandLineActionResult(
+            CommandLineConfigBackupRestoreFormatter.Format(result),
+            result.Restored ? 0 : 1);
+    }
 }
 
 public sealed record CommandLineActionResult(

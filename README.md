@@ -86,9 +86,10 @@ Published builds also support lightweight command-line checks:
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --health-report
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --provider-catalog
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --validate-config-backup .\config-backup.json
+.\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --restore-config-backup .\config-backup.json --confirm
 ```
 
-Use `--export-diagnostics` when you want a redacted support bundle on disk. Use `--health-report` when you want a quick non-secret summary printed to the console. Use `--provider-catalog` to inspect the built-in provider descriptors without reading local config. Use `--validate-config-backup` to check a backup file before restore tooling is added.
+Use `--export-diagnostics` when you want a redacted support bundle on disk. Use `--health-report` when you want a quick non-secret summary printed to the console. Use `--provider-catalog` to inspect the built-in provider descriptors without reading local config. Use `--validate-config-backup` to check a backup file before applying it. Use `--restore-config-backup <path> --confirm` to validate and restore a config backup after creating a rollback copy of the current `config.json`.
 
 ## Release
 
@@ -118,6 +119,7 @@ The release workflow builds, tests, publishes, smoke-tests, packages the app, an
 - Secret values can be saved or deleted by secret name from Privacy & Data; values are never displayed back.
 - Snapshot cache and retained history can be cleared from Privacy & Data; `config.json` and `secrets/` are left untouched.
 - `config.json` can be backed up from Privacy & Data; backup files include non-secret settings only and do not copy `secrets/`.
+- Config backups can be restored from the CLI only with an explicit `--confirm`; restore creates a rollback backup first and does not copy or modify files under `secrets/`.
 - Browser cookie scraping is intentionally not implemented in this MVP.
 - Codex integration never reads or displays `auth.json` contents.
 
