@@ -71,6 +71,14 @@ Run the published-app smoke test without opening UI:
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --smoke-test
 ```
 
+Published builds also support lightweight command-line checks:
+
+```powershell
+.\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --help
+.\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --version
+.\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --smoke-test
+```
+
 ## Release
 
 Release notes are tracked in [CHANGELOG.md](CHANGELOG.md).

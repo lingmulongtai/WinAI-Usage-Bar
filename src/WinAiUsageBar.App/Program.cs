@@ -10,11 +10,19 @@ public static class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        if (args.Contains("--smoke-test", StringComparer.OrdinalIgnoreCase))
+        var commandLineResult = CommandLineHandler.TryHandleAsync(
+            args,
+            Console.Out,
+            Console.Error,
+            SmokeTestRunner.RunAsync,
+            AppInfoProvider.Get,
+            CancellationToken.None)
+            .GetAwaiter()
+            .GetResult();
+
+        if (commandLineResult.Handled)
         {
-            Environment.ExitCode = SmokeTestRunner.RunAsync(CancellationToken.None)
-                .GetAwaiter()
-                .GetResult();
+            Environment.ExitCode = commandLineResult.ExitCode;
             return;
         }
 
