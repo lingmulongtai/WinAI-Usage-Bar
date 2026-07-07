@@ -35,6 +35,16 @@ dotnet run --project .\src\WinAiUsageBar.App\WinAiUsageBar.App.csproj -p:Platfor
 
 The app starts in the tray. Use the tray icon to open the compact panel or settings.
 
+## Publish
+
+Create a local self-contained build:
+
+```powershell
+.\scripts\publish.ps1
+```
+
+The default output is `artifacts\publish\WinAIUsageBar-win-x64`. Run `WinAiUsageBar.App.exe` from that folder. Pushes to `main` also upload a `WinAIUsageBar-win-x64` artifact from GitHub Actions.
+
 ## Privacy
 
 - API keys, tokens, cookies, and auth file contents are not stored in plain text.

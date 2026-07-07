@@ -26,3 +26,14 @@ jobs:
 
       - name: Test
         run: dotnet test .\tests\WinAiUsageBar.Core.Tests\WinAiUsageBar.Core.Tests.csproj --configuration Release -p:Platform=x64 --no-build --verbosity normal
+
+      - name: Publish app
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: .\scripts\publish.ps1 -Configuration Release -Runtime win-x64 -OutputPath .\artifacts\publish\WinAIUsageBar-win-x64
+
+      - name: Upload app artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: WinAIUsageBar-win-x64
+          path: .\artifacts\publish\WinAIUsageBar-win-x64
