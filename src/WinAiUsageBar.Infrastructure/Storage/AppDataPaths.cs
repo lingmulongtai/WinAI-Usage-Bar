@@ -8,6 +8,7 @@ public sealed class AppDataPaths
         ConfigPath = Path.Combine(rootDirectory, "config.json");
         SnapshotsPath = Path.Combine(rootDirectory, "snapshots.json");
         HistoryPath = Path.Combine(rootDirectory, "history.ndjson");
+        DiagnosticsLogPath = Path.Combine(rootDirectory, "diagnostics.log");
         SecretsDirectory = Path.Combine(rootDirectory, "secrets");
     }
 
@@ -18,6 +19,8 @@ public sealed class AppDataPaths
     public string SnapshotsPath { get; }
 
     public string HistoryPath { get; }
+
+    public string DiagnosticsLogPath { get; }
 
     public string SecretsDirectory { get; }
 

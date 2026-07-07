@@ -5,6 +5,7 @@ using WinAiUsageBar.App.Windows;
 using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Core.Models;
 using WinAiUsageBar.Core.Providers;
+using WinAiUsageBar.Infrastructure.Diagnostics;
 using WinAiUsageBar.Infrastructure.Notifications;
 using WinAiUsageBar.Infrastructure.Process;
 using WinAiUsageBar.Infrastructure.Scheduling;
@@ -30,7 +31,8 @@ public sealed class AppHost : IAsyncDisposable
         IAppConfigStore configStore,
         UsageRefreshService refreshService,
         WidgetPlacementStore widgetPlacementStore,
-        TrayIconService trayIconService)
+        TrayIconService trayIconService,
+        IAppDiagnosticsLog diagnosticsLog)
     {
         this.dispatcherQueue = dispatcherQueue;
         Paths = paths;
@@ -38,6 +40,7 @@ public sealed class AppHost : IAsyncDisposable
         this.refreshService = refreshService;
         this.widgetPlacementStore = widgetPlacementStore;
         this.trayIconService = trayIconService;
+        DiagnosticsLog = diagnosticsLog;
     }
 
     public ShellViewModel ViewModel { get; } = new();
@@ -46,9 +49,14 @@ public sealed class AppHost : IAsyncDisposable
 
     public IAppConfigStore ConfigStore { get; }
 
+    public IAppDiagnosticsLog DiagnosticsLog { get; }
+
     public static async Task<AppHost> CreateAsync(DispatcherQueue dispatcherQueue, CancellationToken cancellationToken)
     {
         var paths = AppDataPaths.CreateDefault();
+        var diagnosticsLog = new FileAppDiagnosticsLog(paths);
+        await diagnosticsLog.InfoAsync("Starting WinAI Usage Bar.", cancellationToken).ConfigureAwait(false);
+
         var configStore = new JsonAppConfigStore(paths);
         var snapshotStore = new JsonSnapshotStore(paths);
         var commandProbe = new CliCommandProbe();
@@ -65,7 +73,8 @@ public sealed class AppHost : IAsyncDisposable
             configStore,
             refreshService,
             widgetPlacementStore,
-            tray);
+            tray,
+            diagnosticsLog);
 
         await host.InitializeAsync(cancellationToken).ConfigureAwait(false);
         return host;
@@ -74,7 +83,9 @@ public sealed class AppHost : IAsyncDisposable
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         await refreshService.StartAsync(cancellationToken).ConfigureAwait(false);
-        _ = RefreshNowAsync(CancellationToken.None);
+        RunLoggedInBackground(
+            () => RefreshNowAsync(CancellationToken.None),
+            "Initial refresh failed.");
 
         var config = await ConfigStore.LoadAsync(cancellationToken).ConfigureAwait(false);
         if (config.Widget.ShowOnStartup)
@@ -95,25 +106,63 @@ public sealed class AppHost : IAsyncDisposable
 
     public async Task RefreshNowAsync(CancellationToken cancellationToken)
     {
-        await refreshService.RefreshNowAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await refreshService.RefreshNowAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await DiagnosticsLog.ErrorAsync("Refresh failed.", ex, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
     }
 
     public void ShowCompactPanel()
     {
-        compactUsageWindow ??= new CompactUsageWindow(this);
-        compactUsageWindow.Activate();
+        try
+        {
+            compactUsageWindow ??= new CompactUsageWindow(this);
+            compactUsageWindow.Activate();
+        }
+        catch (Exception ex)
+        {
+            RunLoggedInBackground(
+                () => DiagnosticsLog.ErrorAsync("Compact panel failed to open.", ex, CancellationToken.None),
+                "Diagnostic logging failed.");
+            throw;
+        }
     }
 
     public void ShowSettings()
     {
-        mainWindow ??= new MainWindow(this);
-        mainWindow.Activate();
+        try
+        {
+            mainWindow ??= new MainWindow(this);
+            mainWindow.Activate();
+        }
+        catch (Exception ex)
+        {
+            RunLoggedInBackground(
+                () => DiagnosticsLog.ErrorAsync("Settings window failed to open.", ex, CancellationToken.None),
+                "Diagnostic logging failed.");
+            throw;
+        }
     }
 
     public void ShowWidget()
     {
-        widgetWindow ??= new WidgetWindow(this, widgetPlacementStore);
-        widgetWindow.Activate();
+        try
+        {
+            widgetWindow ??= new WidgetWindow(this, widgetPlacementStore);
+            widgetWindow.Activate();
+        }
+        catch (Exception ex)
+        {
+            RunLoggedInBackground(
+                () => DiagnosticsLog.ErrorAsync("Widget window failed to open.", ex, CancellationToken.None),
+                "Diagnostic logging failed.");
+            throw;
+        }
     }
 
     internal void OnSettingsClosed()
@@ -143,11 +192,14 @@ public sealed class AppHost : IAsyncDisposable
         trayIconService.ShowRequested += (_, _) => dispatcherQueue.TryEnqueue(ShowCompactPanel);
         trayIconService.ShowWidgetRequested += (_, _) => dispatcherQueue.TryEnqueue(ShowWidget);
         trayIconService.SettingsRequested += (_, _) => dispatcherQueue.TryEnqueue(ShowSettings);
-        trayIconService.RefreshNowRequested += (_, _) => _ = RefreshNowAsync(CancellationToken.None);
+        trayIconService.RefreshNowRequested += (_, _) => RunLoggedInBackground(
+            () => RefreshNowAsync(CancellationToken.None),
+            "Tray refresh command failed.");
         trayIconService.ExitRequested += (_, _) => dispatcherQueue.TryEnqueue(() => Application.Current.Exit());
 
         await refreshService.InitializeAsync(cancellationToken).ConfigureAwait(false);
         ApplySnapshots(refreshService.CurrentSnapshots);
+        await DiagnosticsLog.InfoAsync("WinAI Usage Bar initialized.", cancellationToken).ConfigureAwait(false);
     }
 
     private void OnSnapshotsChanged(object? sender, IReadOnlyList<UsageSnapshot> snapshots)
@@ -159,5 +211,20 @@ public sealed class AppHost : IAsyncDisposable
     {
         ViewModel.ApplySnapshots(snapshots);
         trayIconService.UpdateTooltip(ViewModel.BuildTrayTooltip());
+    }
+
+    private void RunLoggedInBackground(Func<Task> action, string failureMessage)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await action().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                await DiagnosticsLog.ErrorAsync(failureMessage, ex, CancellationToken.None).ConfigureAwait(false);
+            }
+        });
     }
 }
