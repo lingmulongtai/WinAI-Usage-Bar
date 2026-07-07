@@ -1,6 +1,7 @@
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using WinAiUsageBar.App.Services;
+using WinAiUsageBar.Infrastructure.Windows;
 
 namespace WinAiUsageBar.App;
 
@@ -14,6 +15,12 @@ public static class Program
             Environment.ExitCode = SmokeTestRunner.RunAsync(CancellationToken.None)
                 .GetAwaiter()
                 .GetResult();
+            return;
+        }
+
+        using var singleInstance = new SingleInstanceGuard("Local\\WinAIUsageBar");
+        if (!singleInstance.TryAcquire())
+        {
             return;
         }
 

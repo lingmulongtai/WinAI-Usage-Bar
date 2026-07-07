@@ -27,6 +27,7 @@ Gemini and OpenCode Zen support provider-specific API settings for future integr
 ## UI
 
 - App starts minimized to tray.
+- App uses a single-instance guard so launching it twice does not create duplicate tray icons or refresh loops.
 - Tray left-click opens a compact panel.
 - Tray right-click menu includes Show, Show Widget, Refresh Now, Settings, Exit.
 - Main settings window contains Overview, Providers, Appearance, Widget, Refresh, Privacy & Data, and About pages.
