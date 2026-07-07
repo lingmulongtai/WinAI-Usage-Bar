@@ -101,7 +101,13 @@ To create a draft GitHub Release:
 
 1. Update the app version in `src\WinAiUsageBar.App\WinAiUsageBar.App.csproj`.
 2. Commit the version change.
-3. Create and push a version tag:
+3. Verify release metadata:
+
+```powershell
+.\scripts\verify-release.ps1 -TagName v0.1.0
+```
+
+4. Create and push a version tag:
 
 ```powershell
 git tag v0.1.0

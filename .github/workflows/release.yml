@@ -21,6 +21,9 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
+      - name: Verify release metadata
+        run: .\scripts\verify-release.ps1 -TagName $env:GITHUB_REF_NAME
+
       - name: Restore
         run: .\scripts\restore.ps1 -SolutionPath .\WinAIUsageBar.sln
 
