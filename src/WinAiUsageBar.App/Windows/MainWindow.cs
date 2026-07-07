@@ -844,6 +844,27 @@ public sealed class MainWindow : Window
             }
         };
         maintenanceActions.Children.Add(clearHistoryButton);
+
+        var backupConfigButton = new Button { Content = "Export Config Backup" };
+        backupConfigButton.Click += async (_, _) =>
+        {
+            try
+            {
+                var result = await host.ExportConfigBackupAsync(CancellationToken.None);
+                maintenanceInfo.Severity = InfoBarSeverity.Success;
+                maintenanceInfo.Title = "Config backup exported";
+                maintenanceInfo.Message = result.Path;
+                maintenanceInfo.IsOpen = true;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                maintenanceInfo.Severity = InfoBarSeverity.Error;
+                maintenanceInfo.Title = "Config backup export failed";
+                maintenanceInfo.Message = ex.Message;
+                maintenanceInfo.IsOpen = true;
+            }
+        };
+        maintenanceActions.Children.Add(backupConfigButton);
         panel.Children.Add(maintenanceActions);
 
         var exportInfo = new InfoBar

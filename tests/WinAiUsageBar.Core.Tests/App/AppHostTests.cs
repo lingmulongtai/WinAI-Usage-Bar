@@ -247,13 +247,17 @@ public sealed class AppHostTests
 
         var snapshotsResult = await host.ClearSnapshotsAsync(CancellationToken.None);
         var historyResult = await host.ClearHistoryAsync(CancellationToken.None);
+        var backupResult = await host.ExportConfigBackupAsync(CancellationToken.None);
 
         Assert.Equal(1, maintenance.ClearSnapshotsCount);
         Assert.Equal(1, maintenance.ClearHistoryCount);
+        Assert.Equal(1, maintenance.ExportConfigBackupCount);
         Assert.Equal(paths.SnapshotsPath, snapshotsResult.Path);
         Assert.Equal(paths.HistoryPath, historyResult.Path);
+        Assert.Equal(Path.Combine(paths.ConfigBackupsDirectory, "config-backup.json"), backupResult.Path);
         Assert.Contains("Snapshot cache cleared.", diagnostics.InfoMessages);
         Assert.Contains("History file cleared.", diagnostics.InfoMessages);
+        Assert.Contains(diagnostics.InfoMessages, message => message.StartsWith("Config backup exported to ", StringComparison.Ordinal));
     }
 
     private static UsageSnapshot Snapshot(ProviderId providerId, string displayName, double remainingPercent)
@@ -518,6 +522,8 @@ public sealed class AppHostTests
 
         public int ClearHistoryCount { get; private set; }
 
+        public int ExportConfigBackupCount { get; private set; }
+
         public Task<DataMaintenanceResult> ClearSnapshotsAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -535,6 +541,15 @@ public sealed class AppHostTests
             return Task.FromResult(new DataMaintenanceResult(
                 paths.HistoryPath,
                 true,
+                DateTimeOffset.Now));
+        }
+
+        public Task<ConfigBackupResult> ExportConfigBackupAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ExportConfigBackupCount++;
+            return Task.FromResult(new ConfigBackupResult(
+                Path.Combine(paths.ConfigBackupsDirectory, "config-backup.json"),
                 DateTimeOffset.Now));
         }
     }

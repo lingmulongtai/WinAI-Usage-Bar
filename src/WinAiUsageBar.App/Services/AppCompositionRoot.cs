@@ -44,7 +44,7 @@ public static class AppCompositionRoot
         var diagnosticsExportService = new DiagnosticsExportService(paths);
         var diagnosticsSummaryService = new DiagnosticsSummaryService(paths, configStore, snapshotStore);
         var historySummaryService = new HistorySummaryService(paths);
-        var dataMaintenanceService = new DataMaintenanceService(paths);
+        var dataMaintenanceService = new DataMaintenanceService(paths, configStore);
         var refreshService = new UsageRefreshService(
             configStore,
             snapshotStore,

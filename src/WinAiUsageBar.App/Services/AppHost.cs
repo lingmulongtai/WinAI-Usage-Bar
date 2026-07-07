@@ -151,6 +151,21 @@ public sealed class AppHost : IAsyncDisposable
         return result;
     }
 
+    public async Task<ConfigBackupResult> ExportConfigBackupAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await dataMaintenanceService.ExportConfigBackupAsync(cancellationToken).ConfigureAwait(false);
+            await DiagnosticsLog.InfoAsync($"Config backup exported to {result.Path}.", cancellationToken).ConfigureAwait(false);
+            return result;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await DiagnosticsLog.ErrorAsync("Config backup export failed.", ex, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
+    }
+
     public async Task<bool> HasSecretAsync(string name, CancellationToken cancellationToken)
     {
         return await secretStore.HasSecretAsync(RequireSecretName(name), cancellationToken).ConfigureAwait(false);

@@ -5,6 +5,8 @@ public interface IDataMaintenanceService
     Task<DataMaintenanceResult> ClearSnapshotsAsync(CancellationToken cancellationToken);
 
     Task<DataMaintenanceResult> ClearHistoryAsync(CancellationToken cancellationToken);
+
+    Task<ConfigBackupResult> ExportConfigBackupAsync(CancellationToken cancellationToken);
 }
 
 public sealed record DataMaintenanceResult(
@@ -12,8 +14,13 @@ public sealed record DataMaintenanceResult(
     bool Deleted,
     DateTimeOffset ClearedAt);
 
+public sealed record ConfigBackupResult(
+    string Path,
+    DateTimeOffset CreatedAt);
+
 public sealed class DataMaintenanceService(
     AppDataPaths paths,
+    IAppConfigStore configStore,
     Func<DateTimeOffset>? nowProvider = null) : IDataMaintenanceService
 {
     private readonly Func<DateTimeOffset> nowProvider = nowProvider ?? (() => DateTimeOffset.Now);
@@ -26,6 +33,29 @@ public sealed class DataMaintenanceService(
     public Task<DataMaintenanceResult> ClearHistoryAsync(CancellationToken cancellationToken)
     {
         return DeleteKnownFileAsync(paths.HistoryPath, cancellationToken);
+    }
+
+    public async Task<ConfigBackupResult> ExportConfigBackupAsync(CancellationToken cancellationToken)
+    {
+        paths.EnsureCreated();
+        var createdAt = nowProvider();
+        var config = await configStore.LoadAsync(cancellationToken).ConfigureAwait(false);
+        var exportPath = Path.Combine(
+            paths.ConfigBackupsDirectory,
+            $"config-backup-{createdAt:yyyyMMdd-HHmmss}.json");
+
+        var tempPath = $"{exportPath}.tmp";
+        await using (var stream = File.Create(tempPath))
+        {
+            await System.Text.Json.JsonSerializer.SerializeAsync(
+                stream,
+                config,
+                JsonInfrastructureOptions.CreateIndented(),
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        File.Move(tempPath, exportPath, overwrite: true);
+        return new ConfigBackupResult(exportPath, createdAt);
     }
 
     private Task<DataMaintenanceResult> DeleteKnownFileAsync(

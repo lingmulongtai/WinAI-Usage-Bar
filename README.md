@@ -21,6 +21,7 @@ For a strict status check, see [docs/current-state-audit.md](docs/current-state-
 - Appearance settings apply System, Light, or Dark theme to app windows.
 - Privacy & Data shows a diagnostics summary with local file paths, config version, cached snapshot count, latest update time, and tracked file sizes.
 - Privacy & Data can clear cached snapshots and retained history without deleting config or saved secrets.
+- Privacy & Data can export a timestamped `config.json` backup without copying secret values.
 - Mock and Manual provider modes are implemented.
 - Manual mode can track used/remaining percentage, reset datetime/description, credits, currency/unit, month cost, last-31-day tokens, and notes.
 - Codex/ChatGPT app-server probing is isolated behind safe abstractions.
@@ -115,6 +116,7 @@ The release workflow builds, tests, publishes, smoke-tests, packages the app, an
 - Diagnostics can be exported from Privacy & Data; exports redact common secret shapes and never include files under `secrets/`.
 - Secret values can be saved or deleted by secret name from Privacy & Data; values are never displayed back.
 - Snapshot cache and retained history can be cleared from Privacy & Data; `config.json` and `secrets/` are left untouched.
+- `config.json` can be backed up from Privacy & Data; backup files include non-secret settings only and do not copy `secrets/`.
 - Browser cookie scraping is intentionally not implemented in this MVP.
 - Codex integration never reads or displays `auth.json` contents.
 

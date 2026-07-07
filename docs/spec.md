@@ -62,6 +62,7 @@ Files are stored under `%AppData%\WinAiUsageBar`:
 - `config.json`
 - `snapshots.json`
 - `history.ndjson`
+- `config-backups/`
 - `secrets/`
 
 Secrets must go through `ISecretStore`; the DPAPI implementation protects values for the current Windows user.
@@ -71,6 +72,8 @@ The Privacy & Data page provides secret management by secret name. Users can sav
 The Privacy & Data page also shows a non-secret diagnostics summary with app data paths, config version, enabled provider count, refresh/notification state, cached snapshot count, latest snapshot update time, history retention settings, and tracked file sizes. The summary must not include secret values or configured secret reference names.
 
 The Privacy & Data page can clear `snapshots.json` and `history.ndjson` as local maintenance actions. These actions must not delete `config.json`, diagnostics exports, or files under `secrets/`.
+
+The Privacy & Data page can export a timestamped `config.json` backup under `config-backups/`. Backups contain configuration settings only. They must not copy secret store files or secret values; configured secret names may remain as non-secret references so users can reconnect existing local secrets after restore tooling is added.
 
 ## Refresh
 
