@@ -42,6 +42,7 @@ public static class AppCompositionRoot
             gitHubCopilotClient);
         var notifications = new WindowsAppNotificationService(new WindowsAppNotificationTransport());
         var diagnosticsExportService = new DiagnosticsExportService(paths);
+        var diagnosticsSummaryService = new DiagnosticsSummaryService(paths, configStore, snapshotStore);
         var refreshService = new UsageRefreshService(
             configStore,
             snapshotStore,
@@ -63,6 +64,7 @@ public static class AppCompositionRoot
             tray,
             diagnosticsLog,
             diagnosticsExportService,
+            diagnosticsSummaryService,
             secretStore,
             startupRegistrationService,
             windowActivator,
@@ -77,6 +79,7 @@ public sealed record AppHostServices(
     ITrayIconService TrayIconService,
     IAppDiagnosticsLog DiagnosticsLog,
     IDiagnosticsExportService DiagnosticsExportService,
+    IDiagnosticsSummaryService DiagnosticsSummaryService,
     ISecretStore SecretStore,
     IStartupRegistrationService StartupRegistrationService,
     IAppWindowActivator WindowActivator,

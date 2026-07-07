@@ -17,6 +17,7 @@ public sealed class AppHost : IAsyncDisposable
     private readonly ITrayIconService trayIconService;
     private readonly IUsageRefreshService refreshService;
     private readonly IDiagnosticsExportService diagnosticsExportService;
+    private readonly IDiagnosticsSummaryService diagnosticsSummaryService;
     private readonly ISecretStore secretStore;
     private readonly IStartupRegistrationService startupRegistrationService;
     private readonly IAppWindowActivator windowActivator;
@@ -31,6 +32,7 @@ public sealed class AppHost : IAsyncDisposable
         trayIconService = services.TrayIconService;
         DiagnosticsLog = services.DiagnosticsLog;
         diagnosticsExportService = services.DiagnosticsExportService;
+        diagnosticsSummaryService = services.DiagnosticsSummaryService;
         secretStore = services.SecretStore;
         startupRegistrationService = services.StartupRegistrationService;
         windowActivator = services.WindowActivator;
@@ -119,6 +121,11 @@ public sealed class AppHost : IAsyncDisposable
             await DiagnosticsLog.ErrorAsync("Diagnostics export failed.", ex, CancellationToken.None).ConfigureAwait(false);
             throw;
         }
+    }
+
+    public async Task<DiagnosticsSummary> GetDiagnosticsSummaryAsync(CancellationToken cancellationToken)
+    {
+        return await diagnosticsSummaryService.GetSummaryAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<bool> HasSecretAsync(string name, CancellationToken cancellationToken)

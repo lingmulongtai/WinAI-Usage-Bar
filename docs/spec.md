@@ -65,6 +65,8 @@ Secrets must go through `ISecretStore`; the DPAPI implementation protects values
 
 The Privacy & Data page provides secret management by secret name. Users can save, check, and delete secret values. Secret values are never displayed back to the user, written to config, logged, or included in diagnostics exports.
 
+The Privacy & Data page also shows a non-secret diagnostics summary with app data paths, config version, enabled provider count, refresh/notification state, cached snapshot count, latest snapshot update time, history retention settings, and tracked file sizes. The summary must not include secret values or configured secret reference names.
+
 ## Refresh
 
 Supported intervals:
@@ -105,6 +107,8 @@ Manual provider values are validated before saving:
 ## Diagnostics Export
 
 The Privacy & Data page can create a diagnostics export under `%AppData%\WinAiUsageBar\diagnostics-exports`. The export may include `config.json`, `snapshots.json`, `history.ndjson`, and `diagnostics.log`, but it must redact common secret shapes at export time and must never include files from `secrets/`.
+
+Diagnostics summary is separate from diagnostics export: the summary is for quick on-screen troubleshooting, while the export creates a redacted text bundle for deeper inspection.
 
 ## Startup
 

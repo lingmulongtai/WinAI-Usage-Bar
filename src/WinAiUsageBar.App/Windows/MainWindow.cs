@@ -83,7 +83,7 @@ public sealed class MainWindow : Window
             "Appearance" => await BuildAppearancePageAsync(),
             "Widget" => await BuildWidgetPageAsync(),
             "Refresh" => await BuildRefreshPageAsync(),
-            "Privacy & Data" => BuildPrivacyPage(),
+            "Privacy & Data" => await BuildPrivacyPageAsync(),
             "About" => BuildAboutPage(),
             _ => BuildOverviewPage()
         };
@@ -558,8 +558,10 @@ public sealed class MainWindow : Window
         return Wrap(panel);
     }
 
-    private UIElement BuildPrivacyPage()
+    private async Task<UIElement> BuildPrivacyPageAsync()
     {
+        var diagnosticsSummary = new DiagnosticsSummaryViewModel(
+            await host.GetDiagnosticsSummaryAsync(CancellationToken.None));
         var panel = PageStack("Privacy & Data");
         panel.Children.Add(new InfoBar
         {
@@ -567,8 +569,20 @@ public sealed class MainWindow : Window
             IsOpen = true,
             IsClosable = false,
             Title = "Local storage",
-            Message = host.Paths.RootDirectory
+            Message = diagnosticsSummary.RootDirectory
         });
+
+        panel.Children.Add(UiFactory.Text("Diagnostics summary", 16, FontWeights.SemiBold));
+        foreach (var line in diagnosticsSummary.OverviewLines)
+        {
+            panel.Children.Add(UiFactory.Text(line, 12));
+        }
+
+        panel.Children.Add(UiFactory.Text("Tracked files", 16, FontWeights.SemiBold));
+        foreach (var file in diagnosticsSummary.Files)
+        {
+            panel.Children.Add(UiFactory.Text($"{file.Label}: {file.StatusText}", 12));
+        }
 
         panel.Children.Add(UiFactory.Text("Secrets are stored through the secret store abstraction and are not written to config.json.", 14));
         panel.Children.Add(UiFactory.Text("Browser cookie scraping is not implemented in this MVP.", 14));

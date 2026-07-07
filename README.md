@@ -16,6 +16,7 @@ Current app version: `0.1.0`.
 - Provider cards show health, usage percentage, reset text, credits/costs, source, update time, and errors.
 - Refresh settings include interval, notification enablement, and history retention limits.
 - Appearance settings apply System, Light, or Dark theme to app windows.
+- Privacy & Data shows a diagnostics summary with local file paths, config version, cached snapshot count, latest update time, and tracked file sizes.
 - Mock and Manual provider modes are implemented.
 - Codex/ChatGPT app-server probing is isolated behind safe abstractions.
 - Claude, Claude Code, Gemini, OpenCode Zen, and GitHub Copilot have MVP-safe descriptors and manual mode support.
@@ -61,6 +62,7 @@ Run the published-app smoke test without opening UI:
 - `config.json` stores non-secret settings only.
 - `DpapiSecretStore` stores secrets in protected files under `%AppData%\WinAiUsageBar\secrets`.
 - Diagnostics pass through redaction before being stored or surfaced.
+- Privacy & Data shows non-secret diagnostics metadata only; it does not list secret names or values.
 - Diagnostics can be exported from Privacy & Data; exports redact common secret shapes and never include files under `secrets/`.
 - Secret values can be saved or deleted by secret name from Privacy & Data; values are never displayed back.
 - Browser cookie scraping is intentionally not implemented in this MVP.

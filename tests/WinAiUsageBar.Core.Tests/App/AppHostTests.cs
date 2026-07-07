@@ -31,6 +31,7 @@ public sealed class AppHostTests
                 tray,
                 diagnostics,
                 new FakeDiagnosticsExportService(paths),
+                new FakeDiagnosticsSummaryService(paths),
                 new FakeSecretStore(),
                 new FakeStartupRegistrationService(),
                 windowActivator,
@@ -71,6 +72,7 @@ public sealed class AppHostTests
                 tray,
                 new RecordingDiagnosticsLog(),
                 new FakeDiagnosticsExportService(paths),
+                new FakeDiagnosticsSummaryService(paths),
                 new FakeSecretStore(),
                 new FakeStartupRegistrationService(),
                 windowActivator,
@@ -106,6 +108,7 @@ public sealed class AppHostTests
                 tray,
                 new RecordingDiagnosticsLog(),
                 new FakeDiagnosticsExportService(paths),
+                new FakeDiagnosticsSummaryService(paths),
                 new FakeSecretStore(),
                 new FakeStartupRegistrationService(),
                 new FakeWindowActivator(),
@@ -134,6 +137,7 @@ public sealed class AppHostTests
                 new FakeTrayIconService(),
                 new RecordingDiagnosticsLog(),
                 new FakeDiagnosticsExportService(paths),
+                new FakeDiagnosticsSummaryService(paths),
                 new FakeSecretStore(),
                 new FakeStartupRegistrationService(),
                 new FakeWindowActivator(),
@@ -161,6 +165,7 @@ public sealed class AppHostTests
                 new FakeTrayIconService(),
                 new RecordingDiagnosticsLog(),
                 new FakeDiagnosticsExportService(paths),
+                new FakeDiagnosticsSummaryService(paths),
                 new FakeSecretStore(),
                 startup,
                 new FakeWindowActivator(),
@@ -187,6 +192,7 @@ public sealed class AppHostTests
                 new FakeTrayIconService(),
                 diagnostics,
                 new FakeDiagnosticsExportService(paths),
+                new FakeDiagnosticsSummaryService(paths),
                 secrets,
                 new FakeStartupRegistrationService(),
                 new FakeWindowActivator(),
@@ -414,6 +420,34 @@ public sealed class AppHostTests
                 Path.Combine(paths.RootDirectory, "diagnostics-export.txt"),
                 DateTimeOffset.Now,
                 ["test"]));
+        }
+    }
+
+    private sealed class FakeDiagnosticsSummaryService(AppDataPaths paths) : IDiagnosticsSummaryService
+    {
+        public Task<DiagnosticsSummary> GetSummaryAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(new DiagnosticsSummary(
+                paths.RootDirectory,
+                paths.ConfigPath,
+                paths.SnapshotsPath,
+                paths.HistoryPath,
+                paths.DiagnosticsLogPath,
+                paths.DiagnosticsExportsDirectory,
+                ConfigVersion: 1,
+                ConfiguredProviderCount: 7,
+                EnabledProviderCount: 2,
+                RefreshIntervalKind.FiveMinutes,
+                NotificationsEnabled: true,
+                CachedSnapshotCount: 0,
+                LatestSnapshotUpdatedAt: null,
+                HistoryRetentionMaxDays: 30,
+                HistoryRetentionMaxBytes: 5_000_000,
+                new DiagnosticsFileSummary(paths.ConfigPath, Exists: false, SizeBytes: 0, LastWriteTime: null),
+                new DiagnosticsFileSummary(paths.SnapshotsPath, Exists: false, SizeBytes: 0, LastWriteTime: null),
+                new DiagnosticsFileSummary(paths.HistoryPath, Exists: false, SizeBytes: 0, LastWriteTime: null),
+                new DiagnosticsFileSummary(paths.DiagnosticsLogPath, Exists: false, SizeBytes: 0, LastWriteTime: null)));
         }
     }
 
