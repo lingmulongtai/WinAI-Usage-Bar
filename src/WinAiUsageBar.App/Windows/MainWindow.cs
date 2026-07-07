@@ -393,6 +393,34 @@ public sealed class MainWindow : Window
         panel.Children.Add(UiFactory.Text("Secrets are stored through the secret store abstraction and are not written to config.json.", 14));
         panel.Children.Add(UiFactory.Text("Browser cookie scraping is not implemented in this MVP.", 14));
 
+        var exportInfo = new InfoBar
+        {
+            IsOpen = false,
+            IsClosable = true
+        };
+        panel.Children.Add(exportInfo);
+
+        var exportButton = new Button { Content = "Export Diagnostics" };
+        exportButton.Click += async (_, _) =>
+        {
+            try
+            {
+                var result = await host.ExportDiagnosticsAsync(CancellationToken.None);
+                exportInfo.Severity = InfoBarSeverity.Success;
+                exportInfo.Title = "Diagnostics exported";
+                exportInfo.Message = result.Path;
+                exportInfo.IsOpen = true;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                exportInfo.Severity = InfoBarSeverity.Error;
+                exportInfo.Title = "Diagnostics export failed";
+                exportInfo.Message = ex.Message;
+                exportInfo.IsOpen = true;
+            }
+        };
+        panel.Children.Add(exportButton);
+
         var openButton = new Button { Content = "Open Data Folder" };
         openButton.Click += (_, _) =>
         {

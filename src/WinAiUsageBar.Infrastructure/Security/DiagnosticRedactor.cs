@@ -26,7 +26,7 @@ public static partial class DiagnosticRedactor
     [GeneratedRegex(@"(?i)(authorization\s*[:=]\s*bearer\s+)[^\s,;]+")]
     private static partial Regex AuthorizationRegex();
 
-    [GeneratedRegex(@"(?i)((?:""?(?:api[_-]?key|access[_-]?token|refresh[_-]?token|token|secret|cookie)""?)\s*[:=]\s*""?)[^""\s,;}]+")]
+    [GeneratedRegex(@"(?i)((?:""?(?:api[_-]?key|access[_-]?token|refresh[_-]?token|token|secret(?:[_-]?name)?|pat[_-]?secret(?:[_-]?name)?|cookie)""?)\s*[:=]\s*""?)[^""\s,;}]+")]
     private static partial Regex KeyValueSecretRegex();
 
     [GeneratedRegex(@"sk-[A-Za-z0-9_\-]{8,}")]

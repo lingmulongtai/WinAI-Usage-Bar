@@ -39,6 +39,7 @@ The app starts in the tray. Use the tray icon to open the compact panel or setti
 - `config.json` stores non-secret settings only.
 - `DpapiSecretStore` stores secrets in protected files under `%AppData%\WinAiUsageBar\secrets`.
 - Diagnostics pass through redaction before being stored or surfaced.
+- Diagnostics can be exported from Privacy & Data; exports redact common secret shapes and never include files under `secrets/`.
 - Browser cookie scraping is intentionally not implemented in this MVP.
 - Codex integration never reads or displays `auth.json` contents.
 

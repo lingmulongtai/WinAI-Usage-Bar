@@ -33,6 +33,7 @@ public static class AppCompositionRoot
         var codexClient = new CodexAppServerClient();
         var registry = new ProviderRegistry(commandProbe, codexClient);
         var notifications = new WindowsAppNotificationService(new WindowsAppNotificationTransport());
+        var diagnosticsExportService = new DiagnosticsExportService(paths);
         var refreshService = new UsageRefreshService(configStore, snapshotStore, registry, paths, notifications);
         var widgetPlacementStore = new WidgetPlacementStore(configStore);
         var compactPlacementService = new CompactPanelPlacementService();
@@ -46,6 +47,7 @@ public static class AppCompositionRoot
             refreshService,
             tray,
             diagnosticsLog,
+            diagnosticsExportService,
             windowActivator,
             exitService);
     }
@@ -57,6 +59,7 @@ public sealed record AppHostServices(
     IUsageRefreshService RefreshService,
     ITrayIconService TrayIconService,
     IAppDiagnosticsLog DiagnosticsLog,
+    IDiagnosticsExportService DiagnosticsExportService,
     IAppWindowActivator WindowActivator,
     IApplicationExitService ExitService);
 

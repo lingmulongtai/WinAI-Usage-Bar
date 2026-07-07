@@ -9,6 +9,7 @@ public sealed class AppDataPaths
         SnapshotsPath = Path.Combine(rootDirectory, "snapshots.json");
         HistoryPath = Path.Combine(rootDirectory, "history.ndjson");
         DiagnosticsLogPath = Path.Combine(rootDirectory, "diagnostics.log");
+        DiagnosticsExportsDirectory = Path.Combine(rootDirectory, "diagnostics-exports");
         SecretsDirectory = Path.Combine(rootDirectory, "secrets");
     }
 
@@ -22,6 +23,8 @@ public sealed class AppDataPaths
 
     public string DiagnosticsLogPath { get; }
 
+    public string DiagnosticsExportsDirectory { get; }
+
     public string SecretsDirectory { get; }
 
     public static AppDataPaths CreateDefault()
@@ -33,6 +36,7 @@ public sealed class AppDataPaths
     public void EnsureCreated()
     {
         Directory.CreateDirectory(RootDirectory);
+        Directory.CreateDirectory(DiagnosticsExportsDirectory);
         Directory.CreateDirectory(SecretsDirectory);
     }
 }

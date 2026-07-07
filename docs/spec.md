@@ -91,3 +91,7 @@ Manual provider values are validated before saving:
 - No automatic browser cookie scraping in MVP.
 - Codex integration does not read or display `auth.json` contents.
 - Tests cover diagnostic redaction.
+
+## Diagnostics Export
+
+The Privacy & Data page can create a diagnostics export under `%AppData%\WinAiUsageBar\diagnostics-exports`. The export may include `config.json`, `snapshots.json`, `history.ndjson`, and `diagnostics.log`, but it must redact common secret shapes at export time and must never include files from `secrets/`.

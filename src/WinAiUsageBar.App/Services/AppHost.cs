@@ -14,6 +14,7 @@ public sealed class AppHost : IAsyncDisposable
     private readonly IAppDispatcher dispatcher;
     private readonly ITrayIconService trayIconService;
     private readonly IUsageRefreshService refreshService;
+    private readonly IDiagnosticsExportService diagnosticsExportService;
     private readonly IAppWindowActivator windowActivator;
     private readonly IApplicationExitService exitService;
 
@@ -25,6 +26,7 @@ public sealed class AppHost : IAsyncDisposable
         refreshService = services.RefreshService;
         trayIconService = services.TrayIconService;
         DiagnosticsLog = services.DiagnosticsLog;
+        diagnosticsExportService = services.DiagnosticsExportService;
         windowActivator = services.WindowActivator;
         exitService = services.ExitService;
     }
@@ -75,6 +77,21 @@ public sealed class AppHost : IAsyncDisposable
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             await DiagnosticsLog.ErrorAsync("Refresh failed.", ex, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    public async Task<DiagnosticsExportResult> ExportDiagnosticsAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await diagnosticsExportService.ExportAsync(cancellationToken).ConfigureAwait(false);
+            await DiagnosticsLog.InfoAsync($"Diagnostics exported to {result.Path}.", cancellationToken).ConfigureAwait(false);
+            return result;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await DiagnosticsLog.ErrorAsync("Diagnostics export failed.", ex, CancellationToken.None).ConfigureAwait(false);
             throw;
         }
     }

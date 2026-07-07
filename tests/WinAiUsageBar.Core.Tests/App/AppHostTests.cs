@@ -28,6 +28,7 @@ public sealed class AppHostTests
                 refreshService,
                 tray,
                 diagnostics,
+                new FakeDiagnosticsExportService(paths),
                 windowActivator,
                 new FakeExitService()));
 
@@ -65,6 +66,7 @@ public sealed class AppHostTests
                 refreshService,
                 tray,
                 new RecordingDiagnosticsLog(),
+                new FakeDiagnosticsExportService(paths),
                 windowActivator,
                 exitService));
 
@@ -97,6 +99,7 @@ public sealed class AppHostTests
                 refreshService,
                 tray,
                 new RecordingDiagnosticsLog(),
+                new FakeDiagnosticsExportService(paths),
                 new FakeWindowActivator(),
                 new FakeExitService()));
 
@@ -264,6 +267,18 @@ public sealed class AppHostTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FakeDiagnosticsExportService(AppDataPaths paths) : IDiagnosticsExportService
+    {
+        public Task<DiagnosticsExportResult> ExportAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(new DiagnosticsExportResult(
+                Path.Combine(paths.RootDirectory, "diagnostics-export.txt"),
+                DateTimeOffset.Now,
+                ["test"]));
         }
     }
 
