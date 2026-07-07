@@ -240,6 +240,37 @@ public sealed class MainWindow : Window
 
         stack.Children.Add(manualGrid);
 
+        TextBox? gitHubOrganizationBox = null;
+        TextBox? gitHubEnterpriseBox = null;
+        TextBox? gitHubPatSecretNameBox = null;
+
+        if (provider.HasGitHubCopilotSettings)
+        {
+            var copilotGrid = new Grid
+            {
+                ColumnSpacing = 8,
+                RowSpacing = 8
+            };
+            copilotGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            copilotGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            gitHubOrganizationBox = TextBox("GitHub organization", provider.GitHubOrganizationText);
+            gitHubEnterpriseBox = TextBox("Enterprise slug", provider.GitHubEnterpriseSlugText);
+            gitHubPatSecretNameBox = TextBox("PAT secret name", provider.GitHubPatSecretNameText);
+            AddToGrid(copilotGrid, gitHubOrganizationBox, 0, 0);
+            AddToGrid(copilotGrid, gitHubEnterpriseBox, 0, 1);
+            AddToGrid(copilotGrid, gitHubPatSecretNameBox, 1, 0);
+            stack.Children.Add(copilotGrid);
+
+            stack.Children.Add(new InfoBar
+            {
+                Severity = InfoBarSeverity.Informational,
+                IsOpen = true,
+                IsClosable = false,
+                Message = provider.GitHubCopilotStatusText
+            });
+        }
+
         stack.Children.Add(new TextBlock
         {
             Text = provider.HelperText,
@@ -257,7 +288,10 @@ public sealed class MainWindow : Window
             resetBox,
             creditsBox,
             costBox,
-            notesBox);
+            notesBox,
+            gitHubOrganizationBox,
+            gitHubEnterpriseBox,
+            gitHubPatSecretNameBox);
     }
 
     private async Task<UIElement> BuildAppearancePageAsync()
@@ -422,7 +456,10 @@ public sealed class MainWindow : Window
         TextBox ResetBox,
         TextBox CreditsBox,
         TextBox CostBox,
-        TextBox NotesBox)
+        TextBox NotesBox,
+        TextBox? GitHubOrganizationBox,
+        TextBox? GitHubEnterpriseBox,
+        TextBox? GitHubPatSecretNameBox)
     {
         public void SyncToViewModel()
         {
@@ -434,6 +471,9 @@ public sealed class MainWindow : Window
             ViewModel.CreditBalanceText = CreditsBox.Text;
             ViewModel.MonthToDateCostText = CostBox.Text;
             ViewModel.NotesText = NotesBox.Text;
+            ViewModel.GitHubOrganizationText = GitHubOrganizationBox?.Text ?? string.Empty;
+            ViewModel.GitHubEnterpriseSlugText = GitHubEnterpriseBox?.Text ?? string.Empty;
+            ViewModel.GitHubPatSecretNameText = GitHubPatSecretNameBox?.Text ?? string.Empty;
         }
     }
 }

@@ -70,4 +70,62 @@ public sealed class ProviderSettingsPageViewModelTests
         Assert.Contains(result.Errors, error => error.Contains("Source must be one of the supported values.", StringComparison.Ordinal));
         Assert.NotEqual(DataSourceKind.LocalAppServer, provider.SourceKind);
     }
+
+    [Fact]
+    public void TryApply_AllowsGitHubCopilotManualModeWithoutOrganizationMetrics()
+    {
+        var config = AppConfig.CreateDefault();
+        var descriptor = ProviderDescriptors.Get(ProviderId.GitHubCopilot);
+        var provider = config.GetOrCreateProvider(descriptor);
+        var viewModel = new ProviderSettingsPageViewModel(config, [descriptor]);
+        var editor = viewModel.Editors.Single();
+        editor.SourceKindText = DataSourceKind.Manual.ToString();
+
+        var result = viewModel.TryApply();
+
+        Assert.True(result.IsValid);
+        Assert.Equal(DataSourceKind.Manual, provider.SourceKind);
+        Assert.Null(provider.GitHubCopilot.Organization);
+        Assert.Null(provider.GitHubCopilot.PatSecretName);
+    }
+
+    [Fact]
+    public void TryApply_RequiresGitHubCopilotOrgOrEnterpriseAndSecretForApiMode()
+    {
+        var config = AppConfig.CreateDefault();
+        var descriptor = ProviderDescriptors.Get(ProviderId.GitHubCopilot);
+        var provider = config.GetOrCreateProvider(descriptor);
+        var viewModel = new ProviderSettingsPageViewModel(config, [descriptor]);
+        var editor = viewModel.Editors.Single();
+        editor.SourceKindText = DataSourceKind.OfficialApi.ToString();
+
+        var result = viewModel.TryApply();
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, error => error.Contains("Organization or Enterprise slug is required", StringComparison.Ordinal));
+        Assert.Contains(result.Errors, error => error.Contains("PAT secret name is required", StringComparison.Ordinal));
+        Assert.NotEqual(DataSourceKind.OfficialApi, provider.SourceKind);
+    }
+
+    [Fact]
+    public void TryApply_AppliesGitHubCopilotApiSettingsAsSecretReferenceOnly()
+    {
+        var config = AppConfig.CreateDefault();
+        var descriptor = ProviderDescriptors.Get(ProviderId.GitHubCopilot);
+        var provider = config.GetOrCreateProvider(descriptor);
+        var viewModel = new ProviderSettingsPageViewModel(config, [descriptor]);
+        var editor = viewModel.Editors.Single();
+        editor.SourceKindText = DataSourceKind.OfficialApi.ToString();
+        editor.GitHubOrganizationText = "  my-org  ";
+        editor.GitHubEnterpriseSlugText = "";
+        editor.GitHubPatSecretNameText = "  github-copilot-pat  ";
+
+        var result = viewModel.TryApply();
+
+        Assert.True(result.IsValid);
+        Assert.Equal(DataSourceKind.OfficialApi, provider.SourceKind);
+        Assert.Equal("my-org", provider.GitHubCopilot.Organization);
+        Assert.Null(provider.GitHubCopilot.EnterpriseSlug);
+        Assert.Equal("github-copilot-pat", provider.GitHubCopilot.PatSecretName);
+    }
 }

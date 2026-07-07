@@ -61,6 +61,9 @@ public sealed class ProviderSettingsEditorViewModel(
     private string creditBalanceText = provider.Manual.CreditBalance?.ToString("0.##") ?? string.Empty;
     private string monthToDateCostText = provider.Manual.MonthToDateCost?.ToString("0.##") ?? string.Empty;
     private string notesText = provider.Manual.Notes ?? string.Empty;
+    private string gitHubOrganizationText = provider.GitHubCopilot.Organization ?? string.Empty;
+    private string gitHubEnterpriseSlugText = provider.GitHubCopilot.EnterpriseSlug ?? string.Empty;
+    private string gitHubPatSecretNameText = provider.GitHubCopilot.PatSecretName ?? string.Empty;
 
     public string DisplayName { get; } = descriptor.DisplayName;
 
@@ -72,6 +75,23 @@ public sealed class ProviderSettingsEditorViewModel(
         .Select(source => source.ToString())
         .ToList();
 
+    public bool HasGitHubCopilotSettings => descriptor.Id == ProviderId.GitHubCopilot;
+
+    public string GitHubCopilotStatusText
+    {
+        get
+        {
+            if (!HasGitHubCopilotSettings)
+            {
+                return string.Empty;
+            }
+
+            return SourceKindText == DataSourceKind.OfficialApi.ToString()
+                ? "Organization or Enterprise metrics require permissions. Store the PAT in the secret store and enter only its secret name here."
+                : "Personal Copilot users can stay in Manual mode without organization metrics.";
+        }
+    }
+
     public bool IsEnabled
     {
         get => isEnabled;
@@ -81,7 +101,13 @@ public sealed class ProviderSettingsEditorViewModel(
     public string SourceKindText
     {
         get => sourceKindText;
-        set => SetProperty(ref sourceKindText, value);
+        set
+        {
+            if (SetProperty(ref sourceKindText, value))
+            {
+                OnPropertyChanged(nameof(GitHubCopilotStatusText));
+            }
+        }
     }
 
     public string UsedPercentText
@@ -120,6 +146,24 @@ public sealed class ProviderSettingsEditorViewModel(
         set => SetProperty(ref notesText, value);
     }
 
+    public string GitHubOrganizationText
+    {
+        get => gitHubOrganizationText;
+        set => SetProperty(ref gitHubOrganizationText, value);
+    }
+
+    public string GitHubEnterpriseSlugText
+    {
+        get => gitHubEnterpriseSlugText;
+        set => SetProperty(ref gitHubEnterpriseSlugText, value);
+    }
+
+    public string GitHubPatSecretNameText
+    {
+        get => gitHubPatSecretNameText;
+        set => SetProperty(ref gitHubPatSecretNameText, value);
+    }
+
     public ProviderSettingsEditorValidationResult Validate()
     {
         var manualResult = ManualUsageInputValidator.Parse(
@@ -134,6 +178,7 @@ public sealed class ProviderSettingsEditorViewModel(
         var errors = manualResult.Errors.ToList();
 
         var sourceKind = ParseSourceKind(errors);
+        ValidateGitHubCopilotSettings(sourceKind, errors);
         return new ProviderSettingsEditorValidationResult(
             this,
             sourceKind,
@@ -152,6 +197,9 @@ public sealed class ProviderSettingsEditorViewModel(
         provider.IsEnabled = IsEnabled;
         provider.SourceKind = validation.SourceKind.Value;
         provider.Manual = validation.ManualSettings;
+        provider.GitHubCopilot.Organization = TrimToNull(GitHubOrganizationText);
+        provider.GitHubCopilot.EnterpriseSlug = TrimToNull(GitHubEnterpriseSlugText);
+        provider.GitHubCopilot.PatSecretName = TrimToNull(GitHubPatSecretNameText);
     }
 
     private DataSourceKind? ParseSourceKind(ICollection<string> errors)
@@ -164,6 +212,32 @@ public sealed class ProviderSettingsEditorViewModel(
         }
 
         return sourceKind;
+    }
+
+    private void ValidateGitHubCopilotSettings(
+        DataSourceKind? sourceKind,
+        ICollection<string> errors)
+    {
+        if (!HasGitHubCopilotSettings || sourceKind != DataSourceKind.OfficialApi)
+        {
+            return;
+        }
+
+        if (TrimToNull(GitHubOrganizationText) is null
+            && TrimToNull(GitHubEnterpriseSlugText) is null)
+        {
+            errors.Add("Organization or Enterprise slug is required for Copilot metrics API mode. Use Manual mode for personal-only tracking.");
+        }
+
+        if (TrimToNull(GitHubPatSecretNameText) is null)
+        {
+            errors.Add("PAT secret name is required for Copilot metrics API mode; do not paste the token into config.");
+        }
+    }
+
+    private static string? TrimToNull(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }
 
