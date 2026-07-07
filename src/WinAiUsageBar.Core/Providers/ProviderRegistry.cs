@@ -7,9 +7,16 @@ using WinAiUsageBar.Core.Providers.Mock;
 
 namespace WinAiUsageBar.Core.Providers;
 
+public interface IProviderAdapterSource
+{
+    IReadOnlyList<ProviderDescriptor> GetDescriptors();
+
+    IProviderAdapter CreateAdapter(ProviderDescriptor descriptor, ProviderConfig config);
+}
+
 public sealed class ProviderRegistry(
     ICommandProbe? commandProbe = null,
-    ICodexAppServerClient? codexAppServerClient = null)
+    ICodexAppServerClient? codexAppServerClient = null) : IProviderAdapterSource
 {
     public IReadOnlyList<ProviderDescriptor> GetDescriptors()
     {
