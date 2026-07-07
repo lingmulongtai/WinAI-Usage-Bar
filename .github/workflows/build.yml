@@ -31,6 +31,10 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: .\scripts\publish.ps1 -Configuration Release -Runtime win-x64 -OutputPath .\artifacts\publish\WinAIUsageBar-win-x64
 
+      - name: Smoke test published app
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --smoke-test
+
       - name: Upload app artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v7

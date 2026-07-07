@@ -45,6 +45,12 @@ Create a local self-contained build:
 
 The default output is `artifacts\publish\WinAIUsageBar-win-x64`. Run `WinAiUsageBar.App.exe` from that folder. Pushes to `main` also upload a `WinAIUsageBar-win-x64` artifact from GitHub Actions.
 
+Run the published-app smoke test without opening UI:
+
+```powershell
+.\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --smoke-test
+```
+
 ## Privacy
 
 - API keys, tokens, cookies, and auth file contents are not stored in plain text.
