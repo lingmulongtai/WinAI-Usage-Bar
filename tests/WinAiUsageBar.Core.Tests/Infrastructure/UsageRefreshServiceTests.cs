@@ -188,7 +188,10 @@ public sealed class UsageRefreshServiceTests
             return Task.CompletedTask;
         }
 
-        public Task AppendHistoryAsync(IEnumerable<UsageSnapshot> nextSnapshots, CancellationToken cancellationToken)
+        public Task AppendHistoryAsync(
+            IEnumerable<UsageSnapshot> nextSnapshots,
+            HistoryRetentionSettings retention,
+            CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             History.AddRange(nextSnapshots);

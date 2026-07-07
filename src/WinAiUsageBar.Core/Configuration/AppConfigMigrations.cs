@@ -16,10 +16,12 @@ public static class AppConfigMigrations
         config.Widget ??= new WidgetSettings();
         config.Appearance ??= new AppearanceSettings();
         config.Notifications ??= new NotificationSettings();
+        config.HistoryRetention ??= new HistoryRetentionSettings();
 
         NormalizeProviders(config);
         NormalizeWidget(config.Widget);
         NormalizeAppearance(config.Appearance);
+        NormalizeHistoryRetention(config.HistoryRetention);
 
         return config;
     }
@@ -73,5 +75,11 @@ public static class AppConfigMigrations
         appearance.Theme = string.IsNullOrWhiteSpace(appearance.Theme)
             ? "System"
             : appearance.Theme;
+    }
+
+    private static void NormalizeHistoryRetention(HistoryRetentionSettings retention)
+    {
+        retention.MaxDays = Math.Clamp(retention.MaxDays, 1, 3650);
+        retention.MaxBytes = Math.Clamp(retention.MaxBytes, 100_000, 500_000_000);
     }
 }

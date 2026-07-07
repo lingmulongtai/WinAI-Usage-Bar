@@ -100,7 +100,7 @@ public sealed class UsageRefreshService(
 
             currentSnapshots = snapshots.ToDictionary(snapshot => snapshot.ProviderId);
             await snapshotStore.SaveAsync(snapshots, cancellationToken).ConfigureAwait(false);
-            await snapshotStore.AppendHistoryAsync(snapshots, cancellationToken).ConfigureAwait(false);
+            await snapshotStore.AppendHistoryAsync(snapshots, config.HistoryRetention, cancellationToken).ConfigureAwait(false);
             SnapshotsChanged?.Invoke(this, CurrentSnapshots);
         }
         finally

@@ -17,6 +17,8 @@ public sealed class AppConfig
 
     public NotificationSettings Notifications { get; set; } = new();
 
+    public HistoryRetentionSettings HistoryRetention { get; set; } = new();
+
     public static AppConfig CreateDefault()
     {
         var config = new AppConfig();
@@ -158,4 +160,11 @@ public sealed class AppearanceSettings
 public sealed class NotificationSettings
 {
     public bool IsEnabled { get; set; } = true;
+}
+
+public sealed class HistoryRetentionSettings
+{
+    public int MaxDays { get; set; } = 30;
+
+    public long MaxBytes { get; set; } = 5_000_000;
 }

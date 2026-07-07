@@ -76,6 +76,8 @@ public sealed class JsonConfigStoreTests
             Assert.NotNull(config.Refresh);
             Assert.NotNull(config.Appearance);
             Assert.NotNull(config.Notifications);
+            Assert.NotNull(config.HistoryRetention);
+            Assert.Equal(30, config.HistoryRetention.MaxDays);
             Assert.Equal(123, config.Widget.Left);
             Assert.Equal(456, config.Widget.Top);
             Assert.Equal(280, config.Widget.Width);
