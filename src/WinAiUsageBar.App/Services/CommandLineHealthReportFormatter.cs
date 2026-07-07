@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using WinAiUsageBar.Infrastructure.Diagnostics;
+using WinAiUsageBar.Infrastructure.Process;
 using WinAiUsageBar.Infrastructure.Storage;
 
 namespace WinAiUsageBar.App.Services;
@@ -11,7 +12,8 @@ public static class CommandLineHealthReportFormatter
         AppInfo appInfo,
         DiagnosticsSummary diagnostics,
         HistorySummary history,
-        DateTimeOffset generatedAt)
+        DateTimeOffset generatedAt,
+        CliEnvironmentReport? cliEnvironment = null)
     {
         var builder = new StringBuilder();
         builder.AppendLine($"{appInfo.ProductName} {appInfo.InformationalVersion}");
@@ -52,6 +54,16 @@ public static class CommandLineHealthReportFormatter
                 $"    {provider.DisplayName}: {provider.EntryCount} entries, latest {provider.LatestHealth}, remaining {FormatPercent(provider.LatestRemainingPercent)}, source {provider.LatestSourceKind}");
         }
 
+        if (cliEnvironment is not null)
+        {
+            builder.AppendLine();
+            builder.AppendLine("CLI environment");
+            foreach (var command in cliEnvironment.Commands)
+            {
+                builder.AppendLine($"  {command.CommandName}: {FormatCommandStatus(command)}");
+            }
+        }
+
         builder.AppendLine();
         builder.AppendLine("Files");
         AppendFile(builder, "config.json", diagnostics.ConfigFile);
@@ -69,6 +81,28 @@ public static class CommandLineHealthReportFormatter
             : "Missing";
 
         builder.AppendLine($"  {label}: {status}");
+    }
+
+    private static string FormatCommandStatus(CliCommandStatus command)
+    {
+        if (!command.IsFound)
+        {
+            return "not found on PATH";
+        }
+
+        var start = command.TimedOut
+            ? "startup timed out"
+            : command.CanStart == true
+                ? "startup ok"
+                : "startup failed";
+        var exit = command.ExitCode is int exitCode ? $", exit {exitCode}" : string.Empty;
+        var path = command.Paths.Count == 0
+            ? "path n/a"
+            : command.Paths.Count == 1
+                ? command.Paths[0]
+                : $"{command.Paths[0]} (+{command.Paths.Count - 1} more)";
+
+        return $"{start}{exit}; {path}; {command.StatusMessage}";
     }
 
     private static string FormatDate(DateTimeOffset? value)

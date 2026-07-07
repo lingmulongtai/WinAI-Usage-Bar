@@ -2,6 +2,7 @@ using WinAiUsageBar.App.Services;
 using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Core.Models;
 using WinAiUsageBar.Infrastructure.Diagnostics;
+using WinAiUsageBar.Infrastructure.Process;
 using WinAiUsageBar.Infrastructure.Storage;
 
 namespace WinAiUsageBar.Core.Tests.App;
@@ -54,12 +55,40 @@ public sealed class CommandLineHealthReportFormatterTests
                     LatestRemainingPercent: 42.5,
                     LatestSourceKind: DataSourceKind.LocalAppServer)
             ]);
+        var cliEnvironment = new CliEnvironmentReport(
+        [
+            new CliCommandStatus(
+                "codex",
+                IsFound: true,
+                Paths: [@"C:\Tools\codex.exe"],
+                CanStart: false,
+                ExitCode: null,
+                TimedOut: false,
+                StatusMessage: "Access is denied."),
+            new CliCommandStatus(
+                "git",
+                IsFound: true,
+                Paths: [@"C:\Tools\git.exe", @"C:\Other\git.exe"],
+                CanStart: true,
+                ExitCode: 0,
+                TimedOut: false,
+                StatusMessage: "git version 2.50.0"),
+            new CliCommandStatus(
+                "claude",
+                IsFound: false,
+                Paths: [],
+                CanStart: null,
+                ExitCode: null,
+                TimedOut: false,
+                StatusMessage: "Not found on PATH.")
+        ]);
 
         var report = CommandLineHealthReportFormatter.Format(
             new AppInfo("WinAI Usage Bar", "1.2.3.0", "1.2.3"),
             diagnostics,
             history,
-            generatedAt);
+            generatedAt,
+            cliEnvironment);
 
         Assert.Contains("WinAI Usage Bar 1.2.3", report, StringComparison.Ordinal);
         Assert.Contains("Generated: 2026-07-08 06:45:00 +09:00", report, StringComparison.Ordinal);
@@ -70,6 +99,10 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.Contains("Cached snapshots: 2", report, StringComparison.Ordinal);
         Assert.Contains("Entries: 3", report, StringComparison.Ordinal);
         Assert.Contains("Codex: 3 entries, latest Warning, remaining 42.5%, source LocalAppServer", report, StringComparison.Ordinal);
+        Assert.Contains("CLI environment", report, StringComparison.Ordinal);
+        Assert.Contains(@"codex: startup failed; C:\Tools\codex.exe; Access is denied.", report, StringComparison.Ordinal);
+        Assert.Contains(@"git: startup ok, exit 0; C:\Tools\git.exe (+1 more); git version 2.50.0", report, StringComparison.Ordinal);
+        Assert.Contains("claude: not found on PATH", report, StringComparison.Ordinal);
         Assert.Contains("config.json: 2 KB", report, StringComparison.Ordinal);
         Assert.Contains("diagnostics.log: Missing", report, StringComparison.Ordinal);
     }

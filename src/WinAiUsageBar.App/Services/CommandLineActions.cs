@@ -1,11 +1,20 @@
 using WinAiUsageBar.Core.Providers;
 using WinAiUsageBar.Infrastructure.Diagnostics;
+using WinAiUsageBar.Infrastructure.Process;
 using WinAiUsageBar.Infrastructure.Storage;
 
 namespace WinAiUsageBar.App.Services;
 
 public static class CommandLineActions
 {
+    private static readonly CliCommandCheck[] HealthReportCliChecks =
+    [
+        new("codex", "--version"),
+        new("claude", "--version"),
+        new("gh", "--version"),
+        new("git", "--version")
+    ];
+
     public static async Task<string> ExportDiagnosticsAsync(CancellationToken cancellationToken)
     {
         var paths = AppDataPaths.CreateDefault();
@@ -21,15 +30,19 @@ public static class CommandLineActions
         var snapshotStore = new JsonSnapshotStore(paths);
         var diagnosticsService = new DiagnosticsSummaryService(paths, configStore, snapshotStore);
         var historyService = new HistorySummaryService(paths);
+        var cliEnvironmentService = new CliEnvironmentService();
 
         var diagnostics = await diagnosticsService.GetSummaryAsync(cancellationToken).ConfigureAwait(false);
         var history = await historyService.GetSummaryAsync(cancellationToken).ConfigureAwait(false);
+        var cliEnvironment = await cliEnvironmentService.GetReportAsync(HealthReportCliChecks, cancellationToken)
+            .ConfigureAwait(false);
 
         return CommandLineHealthReportFormatter.Format(
             AppInfoProvider.Get(),
             diagnostics,
             history,
-            DateTimeOffset.Now);
+            DateTimeOffset.Now,
+            cliEnvironment);
     }
 
     public static string CreateProviderCatalog()

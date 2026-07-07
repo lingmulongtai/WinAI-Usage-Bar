@@ -136,6 +136,8 @@ The Privacy & Data page can create a diagnostics export under `%AppData%\WinAiUs
 
 Diagnostics summary is separate from diagnostics export: the summary is for quick on-screen troubleshooting, while the export creates a redacted text bundle for deeper inspection.
 
+The CLI health report includes a safe CLI environment section for `codex`, `claude`, `gh`, and `git`. It may resolve PATH entries and run short startup checks such as `--version`, but it must not read provider auth files, cookies, or secret store values.
+
 ## Startup
 
 Start-at-login uses the current user's Windows Run registry key and stores only the quoted app executable command. The setting is surfaced through Appearance settings and mirrored in `config.json` as `startup.launchOnLogin`.
