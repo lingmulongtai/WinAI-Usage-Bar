@@ -61,6 +61,17 @@ Supported intervals:
 
 The refresh service updates enabled providers asynchronously, caches snapshots, appends history, and keeps the previous successful usage data visible when a provider reports an error.
 
+## Manual Input Validation
+
+Manual provider values are validated before saving:
+
+- Blank numeric fields are saved as unknown values.
+- Percent fields must parse as numbers. Values below 0 or above 100 are clamped to the nearest bound before saving.
+- When both Used % and Remaining % are provided, they must add up to 100.
+- Reset datetime must parse as an ISO-like datetime such as `2026-07-08T12:00:00Z`.
+- Credits and month cost must parse as non-negative numbers and are rounded to two decimal places.
+- Invalid text keeps the settings page open and is shown as a non-crashing validation error.
+
 ## Security
 
 - No plaintext secrets in config.

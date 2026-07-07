@@ -135,6 +135,13 @@ public sealed class MainWindow : Window
         var config = await host.LoadConfigAsync(CancellationToken.None);
         var panel = PageStack("Providers");
         var editors = new List<ProviderEditor>();
+        var validationInfo = new InfoBar
+        {
+            Severity = InfoBarSeverity.Error,
+            IsOpen = false,
+            IsClosable = true
+        };
+        panel.Children.Add(validationInfo);
 
         foreach (var descriptor in ProviderDescriptors.All)
         {
@@ -147,9 +154,23 @@ public sealed class MainWindow : Window
         var saveButton = new Button { Content = "Save Providers" };
         saveButton.Click += async (_, _) =>
         {
-            foreach (var editor in editors)
+            var validations = editors.Select(editor => editor.Validate()).ToList();
+            var errors = validations
+                .SelectMany(validation => validation.ManualResult.Errors.Select(
+                    error => $"{validation.Editor.DisplayName}: {error}"))
+                .ToList();
+
+            if (errors.Count > 0)
             {
-                editor.Apply();
+                validationInfo.Title = "Invalid provider settings";
+                validationInfo.Message = string.Join(Environment.NewLine, errors);
+                validationInfo.IsOpen = true;
+                return;
+            }
+
+            foreach (var validation in validations)
+            {
+                validation.Editor.Apply(validation.ManualResult.Settings);
             }
 
             await host.SaveConfigAsync(config, CancellationToken.None);
@@ -234,6 +255,7 @@ public sealed class MainWindow : Window
 
         return new ProviderEditor(
             root,
+            descriptor.DisplayName,
             provider,
             toggle,
             sourceCombo,
@@ -397,18 +419,9 @@ public sealed class MainWindow : Window
         grid.Children.Add(element);
     }
 
-    private static double? ParseDouble(string text)
-    {
-        return double.TryParse(text, out var value) ? value : null;
-    }
-
-    private static decimal? ParseDecimal(string text)
-    {
-        return decimal.TryParse(text, out var value) ? value : null;
-    }
-
     private sealed record ProviderEditor(
         Border Root,
+        string DisplayName,
         ProviderConfig Provider,
         ToggleSwitch Toggle,
         ComboBox SourceCombo,
@@ -419,7 +432,20 @@ public sealed class MainWindow : Window
         TextBox CostBox,
         TextBox NotesBox)
     {
-        public void Apply()
+        public ProviderEditorValidation Validate()
+        {
+            var input = new ManualUsageInput(
+                UsedBox.Text,
+                RemainingBox.Text,
+                ResetBox.Text,
+                CreditsBox.Text,
+                CostBox.Text,
+                NotesBox.Text);
+            var result = ManualUsageInputValidator.Parse(Provider.Manual, input);
+            return new ProviderEditorValidation(this, result);
+        }
+
+        public void Apply(ManualUsageSettings manualSettings)
         {
             Provider.IsEnabled = Toggle.IsOn;
             if (Enum.TryParse<DataSourceKind>(SourceCombo.SelectedItem?.ToString(), out var sourceKind))
@@ -427,14 +453,11 @@ public sealed class MainWindow : Window
                 Provider.SourceKind = sourceKind;
             }
 
-            Provider.Manual.UsedPercent = ParseDouble(UsedBox.Text);
-            Provider.Manual.RemainingPercent = ParseDouble(RemainingBox.Text);
-            Provider.Manual.CreditBalance = ParseDecimal(CreditsBox.Text);
-            Provider.Manual.MonthToDateCost = ParseDecimal(CostBox.Text);
-            Provider.Manual.Notes = string.IsNullOrWhiteSpace(NotesBox.Text) ? null : NotesBox.Text;
-            Provider.Manual.ResetsAt = DateTimeOffset.TryParse(ResetBox.Text, out var reset)
-                ? reset
-                : null;
+            Provider.Manual = manualSettings;
         }
     }
+
+    private sealed record ProviderEditorValidation(
+        ProviderEditor Editor,
+        ManualUsageValidationResult ManualResult);
 }
