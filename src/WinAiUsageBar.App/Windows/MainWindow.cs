@@ -30,6 +30,7 @@ public sealed class MainWindow : Window
         navigationView.MenuItems.Add(CreateItem("Overview", Symbol.Home));
         navigationView.MenuItems.Add(CreateItem("Providers", Symbol.AllApps));
         navigationView.MenuItems.Add(CreateItem("Appearance", Symbol.View));
+        navigationView.MenuItems.Add(CreateItem("Widget", Symbol.PreviewLink));
         navigationView.MenuItems.Add(CreateItem("Refresh", Symbol.Refresh));
         navigationView.MenuItems.Add(CreateItem("Privacy & Data", Symbol.Setting));
         navigationView.MenuItems.Add(CreateItem("About", Symbol.Help));
@@ -79,6 +80,7 @@ public sealed class MainWindow : Window
             "Overview" => BuildOverviewPage(),
             "Providers" => await BuildProvidersPageAsync(),
             "Appearance" => await BuildAppearancePageAsync(),
+            "Widget" => await BuildWidgetPageAsync(),
             "Refresh" => await BuildRefreshPageAsync(),
             "Privacy & Data" => BuildPrivacyPage(),
             "About" => BuildAboutPage(),
@@ -409,6 +411,87 @@ public sealed class MainWindow : Window
         var refresh = new Button { Content = "Refresh Now" };
         refresh.Click += (_, _) => _ = host.RefreshNowAsync(CancellationToken.None);
         actions.Children.Add(refresh);
+        panel.Children.Add(actions);
+
+        return Wrap(panel);
+    }
+
+    private async Task<UIElement> BuildWidgetPageAsync()
+    {
+        var config = await host.LoadConfigAsync(CancellationToken.None);
+        var viewModel = new WidgetSettingsPageViewModel(config.Widget, ProviderDescriptors.All);
+        var panel = PageStack("Widget");
+        var validationInfo = new InfoBar
+        {
+            Severity = InfoBarSeverity.Error,
+            IsOpen = false,
+            IsClosable = true
+        };
+        panel.Children.Add(validationInfo);
+
+        var showOnStartup = new ToggleSwitch
+        {
+            Header = "Show widget when app starts",
+            IsOn = viewModel.ShowOnStartup
+        };
+        panel.Children.Add(showOnStartup);
+
+        var topMost = new ToggleSwitch
+        {
+            Header = "Always on top",
+            IsOn = viewModel.TopMost
+        };
+        panel.Children.Add(topMost);
+
+        panel.Children.Add(UiFactory.Text("Widget providers", 16, FontWeights.SemiBold));
+        var providerChecks = new List<(WidgetProviderOptionViewModel Option, CheckBox CheckBox)>();
+        foreach (var option in viewModel.ProviderOptions)
+        {
+            var checkBox = new CheckBox
+            {
+                Content = option.DisplayName,
+                IsChecked = option.IsSelected
+            };
+            providerChecks.Add((option, checkBox));
+            panel.Children.Add(checkBox);
+        }
+
+        var actions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8
+        };
+        var save = new Button { Content = "Save Widget" };
+        save.Click += async (_, _) =>
+        {
+            viewModel.ShowOnStartup = showOnStartup.IsOn;
+            viewModel.TopMost = topMost.IsOn;
+            foreach (var (option, checkBox) in providerChecks)
+            {
+                option.IsSelected = checkBox.IsChecked == true;
+            }
+
+            var result = viewModel.TryApply();
+            if (!result.IsValid)
+            {
+                validationInfo.Title = "Invalid widget settings";
+                validationInfo.Message = string.Join(Environment.NewLine, result.Errors);
+                validationInfo.Severity = InfoBarSeverity.Error;
+                validationInfo.IsOpen = true;
+                return;
+            }
+
+            await host.SaveConfigAsync(config, CancellationToken.None);
+            validationInfo.Title = "Widget settings saved";
+            validationInfo.Message = "Reopen the widget to apply provider and always-on-top changes.";
+            validationInfo.Severity = InfoBarSeverity.Success;
+            validationInfo.IsOpen = true;
+        };
+        actions.Children.Add(save);
+
+        var show = new Button { Content = "Show Widget" };
+        show.Click += (_, _) => host.ShowWidget();
+        actions.Children.Add(show);
         panel.Children.Add(actions);
 
         return Wrap(panel);

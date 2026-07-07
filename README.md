@@ -9,7 +9,7 @@ WinAI Usage Bar is a personal Windows notification-area app for watching AI prov
 - Left-click tray icon opens a compact usage panel.
 - Right-click tray icon shows Show, Show Widget, Refresh Now, Settings, and Exit.
 - Settings window uses WinUI `NavigationView`.
-- Desktop widget window shows up to three selected providers and remembers placement.
+- Desktop widget window shows up to three selected providers, remembers placement, and has settings for startup/topmost/provider selection.
 - Provider cards show health, usage percentage, reset text, credits/costs, source, update time, and errors.
 - Mock and Manual provider modes are implemented.
 - Codex/ChatGPT app-server probing is isolated behind safe abstractions.
