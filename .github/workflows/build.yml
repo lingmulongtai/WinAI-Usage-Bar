@@ -37,7 +37,7 @@ jobs:
 
       - name: Package app
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: .\scripts\package.ps1 -PublishPath .\artifacts\publish\WinAIUsageBar-win-x64 -OutputDirectory .\artifacts\packages -PackageName WinAIUsageBar-win-x64
+        run: .\scripts\package.ps1 -PublishPath .\artifacts\publish\WinAIUsageBar-win-x64 -OutputDirectory .\artifacts\packages -Runtime win-x64
 
       - name: Upload app artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -52,5 +52,5 @@ jobs:
         with:
           name: WinAIUsageBar-win-x64-package
           path: |
-            .\artifacts\packages\WinAIUsageBar-win-x64.zip
-            .\artifacts\packages\WinAIUsageBar-win-x64.zip.sha256
+            .\artifacts\packages\*.zip
+            .\artifacts\packages\*.zip.sha256

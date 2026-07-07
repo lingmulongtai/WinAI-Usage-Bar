@@ -1,13 +1,15 @@
 param(
     [string]$PublishPath = "",
     [string]$OutputDirectory = "",
-    [string]$PackageName = "WinAIUsageBar-win-x64"
+    [string]$Runtime = "win-x64",
+    [string]$PackageName = ""
 )
 
 $ErrorActionPreference = "Stop"
 
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent $scriptRoot
+$projectPath = Join-Path $repoRoot "src\WinAiUsageBar.App\WinAiUsageBar.App.csproj"
 
 if ([string]::IsNullOrWhiteSpace($PublishPath)) {
     $PublishPath = Join-Path $repoRoot "artifacts\publish\WinAIUsageBar-win-x64"
@@ -15,6 +17,19 @@ if ([string]::IsNullOrWhiteSpace($PublishPath)) {
 
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     $OutputDirectory = Join-Path $repoRoot "artifacts\packages"
+}
+
+if ([string]::IsNullOrWhiteSpace($PackageName)) {
+    [xml]$projectXml = Get-Content -LiteralPath $projectPath
+    $version = $projectXml.Project.PropertyGroup.Version |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+        Select-Object -First 1
+
+    if ([string]::IsNullOrWhiteSpace($version)) {
+        throw "App Version was not found in $projectPath"
+    }
+
+    $PackageName = "WinAIUsageBar-$version-$Runtime"
 }
 
 $publishRoot = (Resolve-Path -LiteralPath $PublishPath).Path

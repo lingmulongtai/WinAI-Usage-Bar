@@ -57,11 +57,13 @@ Create a zip package and SHA256 checksum from the published output:
 
 ```powershell
 .\scripts\package.ps1
-Get-Content .\artifacts\packages\WinAIUsageBar-win-x64.zip.sha256
-Get-FileHash .\artifacts\packages\WinAIUsageBar-win-x64.zip -Algorithm SHA256
+Get-Content .\artifacts\packages\WinAIUsageBar-0.1.0-win-x64.zip.sha256
+Get-FileHash .\artifacts\packages\WinAIUsageBar-0.1.0-win-x64.zip -Algorithm SHA256
 ```
 
-Pushes to `main` upload both the publish directory and a `WinAIUsageBar-win-x64-package` artifact containing the zip and `.sha256` file.
+By default, the package script reads the app version from `WinAiUsageBar.App.csproj` and creates `WinAIUsageBar-<version>-win-x64.zip`. Pass `-PackageName WinAIUsageBar-custom-name` to override the generated name.
+
+Pushes to `main` upload both the publish directory and a `WinAIUsageBar-win-x64-package` artifact containing the versioned zip and `.sha256` file.
 
 Run the published-app smoke test without opening UI:
 
