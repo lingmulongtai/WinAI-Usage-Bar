@@ -80,7 +80,7 @@ public static class ManualUsageInputValidator
             warnings.Add($"{label} was clamped to {clamped:0.##}.");
         }
 
-        return Math.Round(clamped, 2);
+        return Math.Round(clamped, 2, MidpointRounding.AwayFromZero);
     }
 
     private static DateTimeOffset? ParseDateTime(
@@ -134,7 +134,7 @@ public static class ManualUsageInputValidator
             return null;
         }
 
-        return decimal.Round(value, 2);
+        return decimal.Round(value, 2, MidpointRounding.AwayFromZero);
     }
 
     private static string? TrimToNull(string? value)

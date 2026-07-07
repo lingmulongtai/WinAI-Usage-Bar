@@ -4,6 +4,7 @@ using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using WinAiUsageBar.App.Services;
+using WinAiUsageBar.App.ViewModels;
 using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Core.Models;
 using WinAiUsageBar.Core.Providers;
@@ -133,6 +134,7 @@ public sealed class MainWindow : Window
     private async Task<UIElement> BuildProvidersPageAsync()
     {
         var config = await host.LoadConfigAsync(CancellationToken.None);
+        var viewModel = new ProviderSettingsPageViewModel(config, ProviderDescriptors.All);
         var panel = PageStack("Providers");
         var editors = new List<ProviderEditor>();
         var validationInfo = new InfoBar
@@ -143,10 +145,9 @@ public sealed class MainWindow : Window
         };
         panel.Children.Add(validationInfo);
 
-        foreach (var descriptor in ProviderDescriptors.All)
+        foreach (var providerEditor in viewModel.Editors)
         {
-            var provider = config.GetOrCreateProvider(descriptor);
-            var editor = CreateProviderEditor(descriptor, provider);
+            var editor = CreateProviderEditor(providerEditor);
             editors.Add(editor);
             panel.Children.Add(editor.Root);
         }
@@ -154,23 +155,18 @@ public sealed class MainWindow : Window
         var saveButton = new Button { Content = "Save Providers" };
         saveButton.Click += async (_, _) =>
         {
-            var validations = editors.Select(editor => editor.Validate()).ToList();
-            var errors = validations
-                .SelectMany(validation => validation.ManualResult.Errors.Select(
-                    error => $"{validation.Editor.DisplayName}: {error}"))
-                .ToList();
-
-            if (errors.Count > 0)
+            foreach (var editor in editors)
             {
-                validationInfo.Title = "Invalid provider settings";
-                validationInfo.Message = string.Join(Environment.NewLine, errors);
-                validationInfo.IsOpen = true;
-                return;
+                editor.SyncToViewModel();
             }
 
-            foreach (var validation in validations)
+            var result = viewModel.TryApply();
+            if (!result.IsValid)
             {
-                validation.Editor.Apply(validation.ManualResult.Settings);
+                validationInfo.Title = "Invalid provider settings";
+                validationInfo.Message = string.Join(Environment.NewLine, result.Errors);
+                validationInfo.IsOpen = true;
+                return;
             }
 
             await host.SaveConfigAsync(config, CancellationToken.None);
@@ -182,7 +178,7 @@ public sealed class MainWindow : Window
         return Wrap(panel);
     }
 
-    private ProviderEditor CreateProviderEditor(ProviderDescriptor descriptor, ProviderConfig provider)
+    private ProviderEditor CreateProviderEditor(ProviderSettingsEditorViewModel provider)
     {
         var root = new Border
         {
@@ -200,7 +196,7 @@ public sealed class MainWindow : Window
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        header.Children.Add(UiFactory.Text(descriptor.DisplayName, 16, FontWeights.SemiBold));
+        header.Children.Add(UiFactory.Text(provider.DisplayName, 16, FontWeights.SemiBold));
         var toggle = new ToggleSwitch { IsOn = provider.IsEnabled, Header = "Enabled" };
         Grid.SetColumn(toggle, 1);
         header.Children.Add(toggle);
@@ -212,12 +208,12 @@ public sealed class MainWindow : Window
             MinWidth = 180
         };
 
-        foreach (var source in descriptor.SupportedSources)
+        foreach (var source in provider.SupportedSourceNames)
         {
-            sourceCombo.Items.Add(source.ToString());
+            sourceCombo.Items.Add(source);
         }
 
-        sourceCombo.SelectedItem = provider.SourceKind.ToString();
+        sourceCombo.SelectedItem = provider.SourceKindText;
         stack.Children.Add(sourceCombo);
 
         var manualGrid = new Grid
@@ -228,12 +224,12 @@ public sealed class MainWindow : Window
         manualGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         manualGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        var usedBox = TextBox("Used %", provider.Manual.UsedPercent?.ToString("0.##") ?? string.Empty);
-        var remainingBox = TextBox("Remaining %", provider.Manual.RemainingPercent?.ToString("0.##") ?? string.Empty);
-        var resetBox = TextBox("Reset datetime", provider.Manual.ResetsAt?.ToString("O") ?? string.Empty);
-        var creditsBox = TextBox("Credits", provider.Manual.CreditBalance?.ToString("0.##") ?? string.Empty);
-        var costBox = TextBox("Month cost", provider.Manual.MonthToDateCost?.ToString("0.##") ?? string.Empty);
-        var notesBox = TextBox("Notes", provider.Manual.Notes ?? string.Empty);
+        var usedBox = TextBox("Used %", provider.UsedPercentText);
+        var remainingBox = TextBox("Remaining %", provider.RemainingPercentText);
+        var resetBox = TextBox("Reset datetime", provider.ResetDateTimeText);
+        var creditsBox = TextBox("Credits", provider.CreditBalanceText);
+        var costBox = TextBox("Month cost", provider.MonthToDateCostText);
+        var notesBox = TextBox("Notes", provider.NotesText);
 
         AddToGrid(manualGrid, usedBox, 0, 0);
         AddToGrid(manualGrid, remainingBox, 0, 1);
@@ -246,16 +242,13 @@ public sealed class MainWindow : Window
 
         stack.Children.Add(new TextBlock
         {
-            Text = descriptor.SupportsLogin
-                ? "Automatic sources use placeholders unless an official or local integration is available."
-                : "Manual source is available.",
+            Text = provider.HelperText,
             FontSize = 12,
             TextWrapping = TextWrapping.Wrap
         });
 
         return new ProviderEditor(
             root,
-            descriptor.DisplayName,
             provider,
             toggle,
             sourceCombo,
@@ -421,8 +414,7 @@ public sealed class MainWindow : Window
 
     private sealed record ProviderEditor(
         Border Root,
-        string DisplayName,
-        ProviderConfig Provider,
+        ProviderSettingsEditorViewModel ViewModel,
         ToggleSwitch Toggle,
         ComboBox SourceCombo,
         TextBox UsedBox,
@@ -432,32 +424,16 @@ public sealed class MainWindow : Window
         TextBox CostBox,
         TextBox NotesBox)
     {
-        public ProviderEditorValidation Validate()
+        public void SyncToViewModel()
         {
-            var input = new ManualUsageInput(
-                UsedBox.Text,
-                RemainingBox.Text,
-                ResetBox.Text,
-                CreditsBox.Text,
-                CostBox.Text,
-                NotesBox.Text);
-            var result = ManualUsageInputValidator.Parse(Provider.Manual, input);
-            return new ProviderEditorValidation(this, result);
-        }
-
-        public void Apply(ManualUsageSettings manualSettings)
-        {
-            Provider.IsEnabled = Toggle.IsOn;
-            if (Enum.TryParse<DataSourceKind>(SourceCombo.SelectedItem?.ToString(), out var sourceKind))
-            {
-                Provider.SourceKind = sourceKind;
-            }
-
-            Provider.Manual = manualSettings;
+            ViewModel.IsEnabled = Toggle.IsOn;
+            ViewModel.SourceKindText = SourceCombo.SelectedItem?.ToString() ?? string.Empty;
+            ViewModel.UsedPercentText = UsedBox.Text;
+            ViewModel.RemainingPercentText = RemainingBox.Text;
+            ViewModel.ResetDateTimeText = ResetBox.Text;
+            ViewModel.CreditBalanceText = CreditsBox.Text;
+            ViewModel.MonthToDateCostText = CostBox.Text;
+            ViewModel.NotesText = NotesBox.Text;
         }
     }
-
-    private sealed record ProviderEditorValidation(
-        ProviderEditor Editor,
-        ManualUsageValidationResult ManualResult);
 }
