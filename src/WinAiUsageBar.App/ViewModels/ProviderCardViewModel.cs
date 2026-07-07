@@ -28,11 +28,14 @@ public sealed class ProviderCardViewModel(UsageSnapshot snapshot)
 
     public string UpdatedText { get; } = $"Updated {FormatAgo(DateTimeOffset.Now - snapshot.UpdatedAt)} ago";
 
+    public string StatusText { get; } = (snapshot.StatusMessage ?? string.Empty).Trim();
+
+    public bool HasStatusMessage => !string.IsNullOrWhiteSpace(StatusText)
+        && !string.Equals(StatusText, ErrorMessage, StringComparison.Ordinal);
+
     public string? ErrorMessage { get; } = snapshot.ErrorMessage;
 
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
-
-    public string StatusMessage { get; } = snapshot.StatusMessage ?? string.Empty;
 
     public UsageSnapshot Snapshot { get; } = snapshot;
 

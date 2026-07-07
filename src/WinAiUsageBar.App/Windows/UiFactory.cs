@@ -65,6 +65,11 @@ public static class UiFactory
         root.Children.Add(Text(provider.PercentText, 13));
         root.Children.Add(Text(provider.ResetText, 12));
 
+        if (provider.HasStatusMessage)
+        {
+            root.Children.Add(Text(provider.StatusText, 12));
+        }
+
         if (!string.IsNullOrWhiteSpace(provider.CreditsLine))
         {
             root.Children.Add(Text(provider.CreditsLine, 12));

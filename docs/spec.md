@@ -47,6 +47,7 @@ Provider cards show:
 - Health badge text
 - Usage bar
 - Reset text
+- Status message
 - Credits/cost line
 - Source kind
 - Updated time
