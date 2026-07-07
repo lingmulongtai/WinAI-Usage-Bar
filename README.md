@@ -80,7 +80,10 @@ Published builds also support lightweight command-line checks:
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --version
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --smoke-test
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --export-diagnostics
+.\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --health-report
 ```
+
+Use `--export-diagnostics` when you want a redacted support bundle on disk. Use `--health-report` when you want a quick non-secret summary printed to the console.
 
 ## Release
 

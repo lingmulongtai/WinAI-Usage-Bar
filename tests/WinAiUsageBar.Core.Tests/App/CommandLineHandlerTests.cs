@@ -13,6 +13,7 @@ public sealed class CommandLineHandlerTests
             new StringWriter(),
             _ => Task.FromResult(0),
             ExportDiagnostics,
+            HealthReport,
             AppInfo,
             CancellationToken.None);
 
@@ -35,6 +36,7 @@ public sealed class CommandLineHandlerTests
             error,
             _ => Task.FromResult(1),
             ExportDiagnostics,
+            HealthReport,
             AppInfo,
             CancellationToken.None);
 
@@ -55,6 +57,7 @@ public sealed class CommandLineHandlerTests
             new StringWriter(),
             _ => Task.FromResult(1),
             ExportDiagnostics,
+            HealthReport,
             AppInfo,
             CancellationToken.None);
 
@@ -78,6 +81,7 @@ public sealed class CommandLineHandlerTests
                 return Task.FromResult(42);
             },
             ExportDiagnostics,
+            HealthReport,
             AppInfo,
             CancellationToken.None);
 
@@ -102,6 +106,7 @@ public sealed class CommandLineHandlerTests
                 exportCount++;
                 return Task.FromResult(@"C:\Temp\diagnostics-export.txt");
             },
+            HealthReport,
             AppInfo,
             CancellationToken.None);
 
@@ -109,6 +114,32 @@ public sealed class CommandLineHandlerTests
         Assert.Equal(0, result.ExitCode);
         Assert.Equal(1, exportCount);
         Assert.Contains("Diagnostics exported to C:\\Temp\\diagnostics-export.txt", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_WritesHealthReport()
+    {
+        using var output = new StringWriter();
+        var healthReportCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--health-report"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            _ =>
+            {
+                healthReportCount++;
+                return Task.FromResult("health report body");
+            },
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(1, healthReportCount);
+        Assert.Contains("health report body", output.ToString(), StringComparison.Ordinal);
     }
 
     [Theory]
@@ -124,6 +155,7 @@ public sealed class CommandLineHandlerTests
             error,
             _ => Task.FromResult(0),
             ExportDiagnostics,
+            HealthReport,
             AppInfo,
             CancellationToken.None);
 
@@ -142,5 +174,11 @@ public sealed class CommandLineHandlerTests
     {
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(@"C:\Temp\diagnostics-export.txt");
+    }
+
+    private static Task<string> HealthReport(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult("health report");
     }
 }

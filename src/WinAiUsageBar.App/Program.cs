@@ -16,6 +16,7 @@ public static class Program
             Console.Error,
             SmokeTestRunner.RunAsync,
             CommandLineActions.ExportDiagnosticsAsync,
+            CommandLineActions.CreateHealthReportAsync,
             AppInfoProvider.Get,
             CancellationToken.None)
             .GetAwaiter()
