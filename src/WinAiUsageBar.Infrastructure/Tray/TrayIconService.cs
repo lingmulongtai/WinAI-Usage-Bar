@@ -3,7 +3,22 @@ using System.Windows.Forms;
 
 namespace WinAiUsageBar.Infrastructure.Tray;
 
-public sealed class TrayIconService : IDisposable
+public interface ITrayIconService : IDisposable
+{
+    event EventHandler? ShowRequested;
+
+    event EventHandler? ShowWidgetRequested;
+
+    event EventHandler? RefreshNowRequested;
+
+    event EventHandler? SettingsRequested;
+
+    event EventHandler? ExitRequested;
+
+    void UpdateTooltip(string tooltip);
+}
+
+public sealed class TrayIconService : ITrayIconService
 {
     private readonly NotifyIcon notifyIcon;
     private readonly ContextMenuStrip contextMenu;

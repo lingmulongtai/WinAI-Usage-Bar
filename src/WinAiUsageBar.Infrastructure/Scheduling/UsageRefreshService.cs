@@ -7,13 +7,26 @@ using WinAiUsageBar.Infrastructure.Storage;
 
 namespace WinAiUsageBar.Infrastructure.Scheduling;
 
+public interface IUsageRefreshService : IAsyncDisposable
+{
+    event EventHandler<IReadOnlyList<UsageSnapshot>>? SnapshotsChanged;
+
+    IReadOnlyList<UsageSnapshot> CurrentSnapshots { get; }
+
+    Task InitializeAsync(CancellationToken cancellationToken);
+
+    Task StartAsync(CancellationToken cancellationToken);
+
+    Task RefreshNowAsync(CancellationToken cancellationToken);
+}
+
 public sealed class UsageRefreshService(
     IAppConfigStore configStore,
     ISnapshotStore snapshotStore,
     IProviderAdapterSource providerRegistry,
     AppDataPaths paths,
     IAppNotificationService notificationService,
-    Func<RefreshIntervalKind, TimeSpan?>? intervalMapper = null) : IAsyncDisposable
+    Func<RefreshIntervalKind, TimeSpan?>? intervalMapper = null) : IUsageRefreshService
 {
     private readonly SemaphoreSlim refreshLock = new(1, 1);
     private readonly Func<RefreshIntervalKind, TimeSpan?> mapRefreshInterval = intervalMapper ?? RefreshIntervalMapper.ToTimeSpan;

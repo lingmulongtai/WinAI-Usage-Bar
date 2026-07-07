@@ -24,6 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\WinAiUsageBar.App\WinAiUsageBar.App.csproj" />
     <ProjectReference Include="..\..\src\WinAiUsageBar.Core\WinAiUsageBar.Core.csproj" />
     <ProjectReference Include="..\..\src\WinAiUsageBar.Infrastructure\WinAiUsageBar.Infrastructure.csproj" />
   </ItemGroup>

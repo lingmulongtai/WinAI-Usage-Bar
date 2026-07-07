@@ -4,10 +4,7 @@ using WinAiUsageBar.App.ViewModels;
 using WinAiUsageBar.App.Windows;
 using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Core.Models;
-using WinAiUsageBar.Core.Providers;
 using WinAiUsageBar.Infrastructure.Diagnostics;
-using WinAiUsageBar.Infrastructure.Notifications;
-using WinAiUsageBar.Infrastructure.Process;
 using WinAiUsageBar.Infrastructure.Scheduling;
 using WinAiUsageBar.Infrastructure.Storage;
 using WinAiUsageBar.Infrastructure.Tray;
@@ -17,30 +14,23 @@ namespace WinAiUsageBar.App.Services;
 
 public sealed class AppHost : IAsyncDisposable
 {
-    private readonly DispatcherQueue dispatcherQueue;
-    private readonly TrayIconService trayIconService;
-    private readonly UsageRefreshService refreshService;
+    private readonly IAppDispatcher dispatcher;
+    private readonly ITrayIconService trayIconService;
+    private readonly IUsageRefreshService refreshService;
     private readonly WidgetPlacementStore widgetPlacementStore;
     private MainWindow? mainWindow;
     private CompactUsageWindow? compactUsageWindow;
     private WidgetWindow? widgetWindow;
 
-    private AppHost(
-        DispatcherQueue dispatcherQueue,
-        AppDataPaths paths,
-        IAppConfigStore configStore,
-        UsageRefreshService refreshService,
-        WidgetPlacementStore widgetPlacementStore,
-        TrayIconService trayIconService,
-        IAppDiagnosticsLog diagnosticsLog)
+    public AppHost(IAppDispatcher dispatcher, AppHostServices services)
     {
-        this.dispatcherQueue = dispatcherQueue;
-        Paths = paths;
-        ConfigStore = configStore;
-        this.refreshService = refreshService;
-        this.widgetPlacementStore = widgetPlacementStore;
-        this.trayIconService = trayIconService;
-        DiagnosticsLog = diagnosticsLog;
+        this.dispatcher = dispatcher;
+        Paths = services.Paths;
+        ConfigStore = services.ConfigStore;
+        refreshService = services.RefreshService;
+        widgetPlacementStore = services.WidgetPlacementStore;
+        trayIconService = services.TrayIconService;
+        DiagnosticsLog = services.DiagnosticsLog;
     }
 
     public ShellViewModel ViewModel { get; } = new();
@@ -53,31 +43,7 @@ public sealed class AppHost : IAsyncDisposable
 
     public static async Task<AppHost> CreateAsync(DispatcherQueue dispatcherQueue, CancellationToken cancellationToken)
     {
-        var paths = AppDataPaths.CreateDefault();
-        var diagnosticsLog = new FileAppDiagnosticsLog(paths);
-        await diagnosticsLog.InfoAsync("Starting WinAI Usage Bar.", cancellationToken).ConfigureAwait(false);
-
-        var configStore = new JsonAppConfigStore(paths);
-        var snapshotStore = new JsonSnapshotStore(paths);
-        var commandProbe = new CliCommandProbe();
-        var codexClient = new CodexAppServerClient();
-        var registry = new ProviderRegistry(commandProbe, codexClient);
-        var notifications = new NoOpAppNotificationService();
-        var refreshService = new UsageRefreshService(configStore, snapshotStore, registry, paths, notifications);
-        var widgetPlacementStore = new WidgetPlacementStore(configStore);
-        var tray = new TrayIconService();
-
-        var host = new AppHost(
-            dispatcherQueue,
-            paths,
-            configStore,
-            refreshService,
-            widgetPlacementStore,
-            tray,
-            diagnosticsLog);
-
-        await host.InitializeAsync(cancellationToken).ConfigureAwait(false);
-        return host;
+        return await AppCompositionRoot.CreateHostAsync(dispatcherQueue, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -90,7 +56,7 @@ public sealed class AppHost : IAsyncDisposable
         var config = await ConfigStore.LoadAsync(cancellationToken).ConfigureAwait(false);
         if (config.Widget.ShowOnStartup)
         {
-            dispatcherQueue.TryEnqueue(ShowWidget);
+            dispatcher.TryEnqueue(ShowWidget);
         }
     }
 
@@ -186,16 +152,16 @@ public sealed class AppHost : IAsyncDisposable
         await refreshService.DisposeAsync().ConfigureAwait(false);
     }
 
-    private async Task InitializeAsync(CancellationToken cancellationToken)
+    public async Task InitializeAsync(CancellationToken cancellationToken)
     {
         refreshService.SnapshotsChanged += OnSnapshotsChanged;
-        trayIconService.ShowRequested += (_, _) => dispatcherQueue.TryEnqueue(ShowCompactPanel);
-        trayIconService.ShowWidgetRequested += (_, _) => dispatcherQueue.TryEnqueue(ShowWidget);
-        trayIconService.SettingsRequested += (_, _) => dispatcherQueue.TryEnqueue(ShowSettings);
+        trayIconService.ShowRequested += (_, _) => dispatcher.TryEnqueue(ShowCompactPanel);
+        trayIconService.ShowWidgetRequested += (_, _) => dispatcher.TryEnqueue(ShowWidget);
+        trayIconService.SettingsRequested += (_, _) => dispatcher.TryEnqueue(ShowSettings);
         trayIconService.RefreshNowRequested += (_, _) => RunLoggedInBackground(
             () => RefreshNowAsync(CancellationToken.None),
             "Tray refresh command failed.");
-        trayIconService.ExitRequested += (_, _) => dispatcherQueue.TryEnqueue(() => Application.Current.Exit());
+        trayIconService.ExitRequested += (_, _) => dispatcher.TryEnqueue(() => Application.Current.Exit());
 
         await refreshService.InitializeAsync(cancellationToken).ConfigureAwait(false);
         ApplySnapshots(refreshService.CurrentSnapshots);
@@ -204,7 +170,7 @@ public sealed class AppHost : IAsyncDisposable
 
     private void OnSnapshotsChanged(object? sender, IReadOnlyList<UsageSnapshot> snapshots)
     {
-        dispatcherQueue.TryEnqueue(() => ApplySnapshots(snapshots));
+        dispatcher.TryEnqueue(() => ApplySnapshots(snapshots));
     }
 
     private void ApplySnapshots(IReadOnlyList<UsageSnapshot> snapshots)
