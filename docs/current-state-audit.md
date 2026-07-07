@@ -11,7 +11,7 @@ This audit is intentionally strict. The repository has moved past a throwaway sc
 | Architecture foundation | 8/10 | The layer split is real, testable, and mostly respected. |
 | Provider extensibility | 7/10 | Descriptors, adapters, manual mode, and safe failure states are in place. Real provider depth is still thin. |
 | Security posture | 7/10 | Good defaults around DPAPI, redaction, and no cookie scraping. Needs more adversarial review before wider distribution. |
-| Windows shell integration | 5/10 | Tray, windows, placement, startup registration, and notifications exist, but shell behavior still needs hands-on verification. |
+| Windows shell integration | 5/10 | Tray, windows, placement, startup registration, and notifications exist, with a manual verification checklist now available. Actual shell behavior still needs hands-on runs. |
 | Product usability | 5/10 | The app can be dogfooded, but it is mostly useful with Mock/Manual data today. |
 | Packaging and release | 6/10 | Self-contained publish, zip packaging, checksums, artifacts, and draft release workflow exist. No installer, signing, or update path yet. |
 | Test confidence | 8/10 | Core, infrastructure, view model, CLI, storage, parser, refresh, and packaging smoke paths are covered without external CLIs. UI runtime coverage remains limited. |
@@ -34,6 +34,7 @@ Overall:
 - Config, snapshots, history, diagnostics, and maintenance flows are all represented in code and tests.
 - CI now builds, tests, publishes, smoke-tests, packages, and uploads artifacts on `main`.
 - The CLI surface gives useful non-UI checks: help, version, smoke test, diagnostics export, and health report.
+- Windows shell dogfooding now has a concrete manual verification checklist in `docs/windows-manual-verification.md`.
 - The issue and commit history is becoming meaningful rather than fake contribution noise.
 
 ## What Is Weak
@@ -46,7 +47,7 @@ Overall:
 - Tray behavior, taskbar-near placement, topmost widget behavior, and notification delivery need real Windows manual testing.
 - There is no installer, MSIX, code signing, auto-update, or uninstall story.
 - There is no first-run onboarding or guided setup for providers.
-- There is no import/export of non-secret config, backup/restore, or reset-to-known-good flow.
+- Config backup and confirmed CLI restore exist, but there is no in-app restore or reset-to-known-good flow.
 - There is no visual regression or automated UI smoke test for WinUI windows.
 
 ## Risk Register
@@ -55,7 +56,7 @@ Overall:
 | --- | --- | --- | --- |
 | Provider APIs are undocumented or unstable | High | Manual mode and unsupported states | Track documented endpoints only and isolate each integration behind tests. |
 | Secret leakage through diagnostics | High | DPAPI store, redactor, export exclusions | Add more redaction test cases and review every provider diagnostic path. |
-| Tray/window behavior differs across Windows setups | Medium | Placement service and single-instance guard tests | Manual matrix across taskbar edges, DPI, multi-monitor, startup, and theme modes. |
+| Tray/window behavior differs across Windows setups | Medium | Placement service, single-instance guard tests, and manual checklist | Run and record the checklist across taskbar edges, DPI, multi-monitor, startup, and theme modes. |
 | CI restore flakiness blocks progress | Medium | Retry script and NuGet audit disabled by default | Keep restore helper simple and inspect future failures quickly. |
 | App feels like a demo because provider data is manual | High | Mock and Manual are stable | Prioritize one reliable real provider path end to end. |
 | Public binaries are not trusted by Windows | High | Zip and checksum exist | Add signing or at least documented install warnings before public release. |
@@ -81,16 +82,16 @@ The weak point is value density. A usage bar is only as useful as the data it ca
 1. Pick one real provider path and make it genuinely useful.
    Codex/ChatGPT is the best candidate because the local app-server path already exists.
 
-2. Add a provider details page.
-   The compact cards are not enough for diagnostics, setup, and source-specific guidance.
+2. Run the Provider Details page through dogfooding.
+   The page exists now, but it needs real snapshot data and daily-use feedback.
 
 3. Add a first-run setup flow.
    A new user should see enabled providers, source mode, and manual fallback without digging through settings.
 
-4. Add config backup and restore.
-   This protects dogfooding data and makes experimentation safer.
+4. Dogfood config backup and restore.
+   The CLI flow exists now, but it needs repeated real-use recovery checks before it becomes a comfort feature.
 
-5. Add a manual Windows verification checklist.
+5. Run the manual Windows verification checklist.
    Cover tray click, context menu, widget placement, topmost behavior, notifications, startup registration, DPI, taskbar position, and multi-monitor.
 
 6. Add one automated UI launch check if feasible.
