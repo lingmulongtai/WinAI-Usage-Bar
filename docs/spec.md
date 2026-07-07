@@ -30,7 +30,7 @@ Gemini and OpenCode Zen support provider-specific API settings for future integr
 - App uses a single-instance guard so launching it twice does not create duplicate tray icons or refresh loops.
 - Tray left-click opens a compact panel.
 - Tray right-click menu includes Show, Show Widget, Refresh Now, Settings, Exit.
-- Main settings window contains Overview, Providers, Appearance, Widget, History, Refresh, Privacy & Data, and About pages.
+- Main settings window contains Overview, Providers, Provider Details, Appearance, Widget, History, Refresh, Privacy & Data, and About pages.
 - Compact panel shows enabled provider cards.
 - Widget window shows one to three provider cards and remembers size and position.
 - Widget settings validate that one to three providers are selected and expose show-on-startup and always-on-top toggles.
@@ -52,6 +52,14 @@ Provider cards show:
 - Source kind
 - Updated time
 - Error message
+
+Provider Details shows current provider snapshots in a fuller non-secret format:
+
+- Provider ID, health, source, and updated age
+- Identity summary when the snapshot provides one
+- Primary and secondary usage windows
+- Credits, cost, and token totals
+- Redacted status and error text
 
 The History page summarizes retained `history.ndjson` data without displaying raw snapshot content. It shows total valid entries, invalid line count, earliest/latest update timestamps, and per-provider entry count, latest health, latest remaining percent, and latest source kind. It must not display raw status messages, error messages, account identities, or other unredacted snapshot payload text from history.
 

@@ -29,6 +29,7 @@ public sealed class MainWindow : Window
 
         navigationView.MenuItems.Add(CreateItem("Overview", Symbol.Home));
         navigationView.MenuItems.Add(CreateItem("Providers", Symbol.AllApps));
+        navigationView.MenuItems.Add(CreateItem("Provider Details", Symbol.ContactInfo));
         navigationView.MenuItems.Add(CreateItem("Appearance", Symbol.View));
         navigationView.MenuItems.Add(CreateItem("Widget", Symbol.PreviewLink));
         navigationView.MenuItems.Add(CreateItem("History", Symbol.Calendar));
@@ -69,9 +70,10 @@ public sealed class MainWindow : Window
 
     private void OnProvidersChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if ((navigationView.SelectedItem as NavigationViewItem)?.Tag as string == "Overview")
+        var tag = (navigationView.SelectedItem as NavigationViewItem)?.Tag as string;
+        if (tag is "Overview" or "Provider Details")
         {
-            _ = NavigateAsync("Overview");
+            _ = NavigateAsync(tag);
         }
     }
 
@@ -81,6 +83,7 @@ public sealed class MainWindow : Window
         {
             "Overview" => BuildOverviewPage(),
             "Providers" => await BuildProvidersPageAsync(),
+            "Provider Details" => BuildProviderDetailsPage(),
             "Appearance" => await BuildAppearancePageAsync(),
             "Widget" => await BuildWidgetPageAsync(),
             "History" => await BuildHistoryPageAsync(),
@@ -134,6 +137,83 @@ public sealed class MainWindow : Window
         }
 
         return Wrap(panel);
+    }
+
+    private UIElement BuildProviderDetailsPage()
+    {
+        var viewModel = new ProviderDetailsPageViewModel(
+            host.ViewModel.Providers.Select(provider => provider.Snapshot));
+        var panel = PageStack("Provider Details");
+
+        if (!viewModel.HasProviders)
+        {
+            panel.Children.Add(UiFactory.Text(viewModel.EmptyText, 14));
+        }
+        else
+        {
+            foreach (var provider in viewModel.Providers)
+            {
+                panel.Children.Add(CreateProviderDetailRow(provider));
+            }
+        }
+
+        return Wrap(panel);
+    }
+
+    private static Border CreateProviderDetailRow(ProviderDetailsRowViewModel provider)
+    {
+        var stack = new StackPanel { Spacing = 8 };
+        stack.Children.Add(UiFactory.Text(provider.DisplayName, 16, FontWeights.SemiBold));
+        AddDetailSection(stack, "Snapshot", provider.SummaryLines);
+        AddDetailSection(stack, "Identity", provider.IdentityLines);
+        AddDetailSection(stack, "Usage", provider.UsageLines);
+        AddDetailSection(stack, "Credits", provider.CreditLines);
+
+        if (provider.HasStatusText)
+        {
+            stack.Children.Add(new InfoBar
+            {
+                Severity = InfoBarSeverity.Informational,
+                IsOpen = true,
+                IsClosable = false,
+                Title = "Status",
+                Message = provider.StatusText
+            });
+        }
+
+        if (provider.HasErrorText)
+        {
+            stack.Children.Add(new InfoBar
+            {
+                Severity = InfoBarSeverity.Error,
+                IsOpen = true,
+                IsClosable = false,
+                Title = "Error",
+                Message = provider.ErrorText
+            });
+        }
+
+        return new Border
+        {
+            Padding = new Thickness(12),
+            Margin = new Thickness(0, 0, 0, 8),
+            CornerRadius = new CornerRadius(6),
+            BorderThickness = new Thickness(1),
+            BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(global::Windows.UI.Color.FromArgb(80, 120, 120, 120)),
+            Child = stack
+        };
+    }
+
+    private static void AddDetailSection(
+        StackPanel stack,
+        string title,
+        IReadOnlyList<string> lines)
+    {
+        stack.Children.Add(UiFactory.Text(title, 13, FontWeights.SemiBold));
+        foreach (var line in lines)
+        {
+            stack.Children.Add(UiFactory.Text(line, 12));
+        }
     }
 
     private async Task<UIElement> BuildProvidersPageAsync()
