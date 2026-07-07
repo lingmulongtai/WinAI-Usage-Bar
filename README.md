@@ -111,10 +111,15 @@ To create a draft GitHub Release:
 .\scripts\new-windows-verification-report.ps1
 ```
 
-4. Verify release metadata:
+4. Publish, package, and verify release readiness:
 
 ```powershell
-.\scripts\verify-release.ps1 -TagName v0.1.0
+.\scripts\publish.ps1
+.\scripts\package.ps1
+$report = Get-ChildItem .\artifacts\verification\windows-verification-*.md |
+  Sort-Object LastWriteTime -Descending |
+  Select-Object -First 1
+.\scripts\verify-release-readiness.ps1 -TagName v0.1.0 -VerificationReportPath $report.FullName -RequireVerificationReport
 ```
 
 5. Create and push a version tag:

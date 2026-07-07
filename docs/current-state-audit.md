@@ -13,7 +13,7 @@ This audit is intentionally strict. The repository has moved past a throwaway sc
 | Security posture | 7/10 | Good defaults around DPAPI, redaction, and no cookie scraping. Needs more adversarial review before wider distribution. |
 | Windows shell integration | 5/10 | Tray, windows, placement, startup registration, and notifications exist, with a manual verification checklist and report scaffold now available. Actual shell behavior still needs hands-on runs. |
 | Product usability | 6/10 | The app now has first-run setup state, provider details, backup export/restore, and recovery checks, but it is still mostly useful with Mock/Manual data today. |
-| Packaging and release | 6/10 | Self-contained publish, zip packaging, checksums, artifacts, and draft release workflow exist. No installer, signing, or update path yet. |
+| Packaging and release | 7/10 | Self-contained publish, zip packaging, checksums, readiness gates, artifacts, and draft release workflow exist. No installer, signing, or update path yet. |
 | Test confidence | 8/10 | Core, infrastructure, view model, CLI, storage, parser, refresh, and packaging smoke paths are covered without external CLIs. UI runtime coverage remains limited. |
 | Observability and support | 7/10 | Diagnostics summary, redacted export, health report, and logs are solid for an MVP. No structured crash reports or user-facing repair flow yet. |
 
@@ -34,6 +34,7 @@ Overall:
 - Config, snapshots, history, diagnostics, and maintenance flows are all represented in code and tests.
 - CI now builds, tests, publishes, smoke-tests, packages, and uploads artifacts on `main`.
 - The CLI surface gives useful non-UI checks: help, version, smoke test, diagnostics export, and health report.
+- Release readiness checks now cover version metadata, changelog, audit date, published-app smoke test, package presence, and checksum validity.
 - First-run setup state, Provider Details, config backup export, backup validation, confirmed CLI restore, and latest-backup in-app restore are implemented.
 - Windows shell dogfooding now has a concrete manual verification checklist and a timestamped local report script.
 - The issue and commit history is becoming meaningful rather than fake contribution noise.
@@ -106,8 +107,8 @@ The weak point is value density. A usage bar is only as useful as the data it ca
 8. Add installer or MSIX investigation.
    Zip artifacts are fine for development, but not a smooth Windows app distribution path.
 
-9. Add release readiness gates.
-   Require changelog entry, version consistency, package checksum, smoke test, and a current audit update before tags.
+9. Keep release readiness gates strict as distribution matures.
+   Current gates cover metadata, audit date, smoke test, package, checksum, and optional manual verification report evidence.
 
 ## Contribution Strategy Assessment
 

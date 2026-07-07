@@ -42,6 +42,10 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: .\scripts\package.ps1 -PublishPath .\artifacts\publish\WinAIUsageBar-win-x64 -OutputDirectory .\artifacts\packages -Runtime win-x64
 
+      - name: Verify release readiness
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: .\scripts\verify-release-readiness.ps1 -PublishedAppPath .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe -PackageDirectory .\artifacts\packages
+
       - name: Upload app artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v7
