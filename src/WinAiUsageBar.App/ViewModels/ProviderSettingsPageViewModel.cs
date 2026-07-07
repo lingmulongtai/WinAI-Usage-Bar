@@ -58,8 +58,11 @@ public sealed class ProviderSettingsEditorViewModel(
     private string usedPercentText = provider.Manual.UsedPercent?.ToString("0.##") ?? string.Empty;
     private string remainingPercentText = provider.Manual.RemainingPercent?.ToString("0.##") ?? string.Empty;
     private string resetDateTimeText = provider.Manual.ResetsAt?.ToString("O") ?? string.Empty;
+    private string resetDescriptionText = provider.Manual.ResetDescription ?? string.Empty;
     private string creditBalanceText = provider.Manual.CreditBalance?.ToString("0.##") ?? string.Empty;
+    private string currencyText = provider.Manual.Currency ?? string.Empty;
     private string monthToDateCostText = provider.Manual.MonthToDateCost?.ToString("0.##") ?? string.Empty;
+    private string tokensLast31DaysText = provider.Manual.TokensLast31Days?.ToString() ?? string.Empty;
     private string notesText = provider.Manual.Notes ?? string.Empty;
     private string apiKeySecretNameText = provider.ApiKey.SecretName ?? string.Empty;
     private string gitHubOrganizationText = provider.GitHubCopilot.Organization ?? string.Empty;
@@ -147,16 +150,34 @@ public sealed class ProviderSettingsEditorViewModel(
         set => SetProperty(ref resetDateTimeText, value);
     }
 
+    public string ResetDescriptionText
+    {
+        get => resetDescriptionText;
+        set => SetProperty(ref resetDescriptionText, value);
+    }
+
     public string CreditBalanceText
     {
         get => creditBalanceText;
         set => SetProperty(ref creditBalanceText, value);
     }
 
+    public string CurrencyText
+    {
+        get => currencyText;
+        set => SetProperty(ref currencyText, value);
+    }
+
     public string MonthToDateCostText
     {
         get => monthToDateCostText;
         set => SetProperty(ref monthToDateCostText, value);
+    }
+
+    public string TokensLast31DaysText
+    {
+        get => tokensLast31DaysText;
+        set => SetProperty(ref tokensLast31DaysText, value);
     }
 
     public string NotesText
@@ -197,8 +218,11 @@ public sealed class ProviderSettingsEditorViewModel(
                 UsedPercentText,
                 RemainingPercentText,
                 ResetDateTimeText,
+                ResetDescriptionText,
                 CreditBalanceText,
+                CurrencyText,
                 MonthToDateCostText,
+                TokensLast31DaysText,
                 NotesText));
         var errors = manualResult.Errors.ToList();
 

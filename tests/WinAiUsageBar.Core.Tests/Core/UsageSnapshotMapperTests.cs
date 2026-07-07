@@ -13,8 +13,10 @@ public sealed class UsageSnapshotMapperTests
         var manual = new ManualUsageSettings
         {
             UsedPercent = 85,
+            ResetDescription = "daily manual reset",
             CreditBalance = 12.5m,
             Currency = "USD",
+            TokensLast31Days = 12345,
             Notes = "Manual note"
         };
 
@@ -26,7 +28,9 @@ public sealed class UsageSnapshotMapperTests
         Assert.Equal(15, snapshot.PrimaryWindow?.RemainingPercent);
         Assert.Equal(ProviderHealth.Warning, snapshot.Health);
         Assert.Equal("Manual note", snapshot.StatusMessage);
+        Assert.Equal("daily manual reset", snapshot.PrimaryWindow?.ResetDescription);
         Assert.Equal(12.5m, snapshot.Credits?.Balance);
+        Assert.Equal(12345, snapshot.Credits?.TokensLast31Days);
     }
 
     [Fact]

@@ -6,8 +6,11 @@ public sealed record ManualUsageInput(
     string? UsedPercent,
     string? RemainingPercent,
     string? ResetDateTime,
+    string? ResetDescription,
     string? CreditBalance,
+    string? Currency,
     string? MonthToDateCost,
+    string? TokensLast31Days,
     string? Notes);
 
 public sealed record ManualUsageValidationResult(
@@ -28,9 +31,9 @@ public static class ManualUsageInputValidator
         var warnings = new List<string>();
         var settings = new ManualUsageSettings
         {
-            ResetDescription = current.ResetDescription,
-            Currency = current.Currency,
-            TokensLast31Days = current.TokensLast31Days,
+            ResetDescription = TrimToNull(input.ResetDescription),
+            Currency = ParseCurrency(input.Currency, "Currency/unit", errors),
+            TokensLast31Days = ParseTokenCount(input.TokensLast31Days, "Tokens last 31 days", errors),
             Notes = TrimToNull(input.Notes)
         };
 
@@ -135,6 +138,56 @@ public static class ManualUsageInputValidator
         }
 
         return decimal.Round(value, 2, MidpointRounding.AwayFromZero);
+    }
+
+    private static string? ParseCurrency(
+        string? text,
+        string label,
+        ICollection<string> errors)
+    {
+        var normalized = TrimToNull(text);
+        if (normalized is null)
+        {
+            return null;
+        }
+
+        if (normalized.Length > 16)
+        {
+            errors.Add($"{label} must be 16 characters or fewer.");
+            return null;
+        }
+
+        return normalized;
+    }
+
+    private static long? ParseTokenCount(
+        string? text,
+        string label,
+        ICollection<string> errors)
+    {
+        var normalized = TrimToNull(text);
+        if (normalized is null)
+        {
+            return null;
+        }
+
+        if (!long.TryParse(
+            normalized,
+            NumberStyles.Integer,
+            CultureInfo.InvariantCulture,
+            out var value))
+        {
+            errors.Add($"{label} must be a whole number.");
+            return null;
+        }
+
+        if (value < 0)
+        {
+            errors.Add($"{label} cannot be negative.");
+            return null;
+        }
+
+        return value;
     }
 
     private static string? TrimToNull(string? value)

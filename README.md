@@ -18,6 +18,7 @@ Current app version: `0.1.0`.
 - Appearance settings apply System, Light, or Dark theme to app windows.
 - Privacy & Data shows a diagnostics summary with local file paths, config version, cached snapshot count, latest update time, and tracked file sizes.
 - Mock and Manual provider modes are implemented.
+- Manual mode can track used/remaining percentage, reset datetime/description, credits, currency/unit, month cost, last-31-day tokens, and notes.
 - Codex/ChatGPT app-server probing is isolated behind safe abstractions.
 - Claude, Claude Code, Gemini, OpenCode Zen, and GitHub Copilot have MVP-safe descriptors and manual mode support.
 - Gemini and OpenCode Zen expose API key secret-name fields without storing API key values in config.

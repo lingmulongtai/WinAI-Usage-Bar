@@ -230,16 +230,22 @@ public sealed class MainWindow : Window
         var usedBox = TextBox("Used %", provider.UsedPercentText);
         var remainingBox = TextBox("Remaining %", provider.RemainingPercentText);
         var resetBox = TextBox("Reset datetime", provider.ResetDateTimeText);
+        var resetDescriptionBox = TextBox("Reset description", provider.ResetDescriptionText);
         var creditsBox = TextBox("Credits", provider.CreditBalanceText);
+        var currencyBox = TextBox("Currency/unit", provider.CurrencyText);
         var costBox = TextBox("Month cost", provider.MonthToDateCostText);
+        var tokensBox = TextBox("Tokens last 31 days", provider.TokensLast31DaysText);
         var notesBox = TextBox("Notes", provider.NotesText);
 
         AddToGrid(manualGrid, usedBox, 0, 0);
         AddToGrid(manualGrid, remainingBox, 0, 1);
         AddToGrid(manualGrid, resetBox, 1, 0);
-        AddToGrid(manualGrid, creditsBox, 1, 1);
-        AddToGrid(manualGrid, costBox, 2, 0);
-        AddToGrid(manualGrid, notesBox, 2, 1);
+        AddToGrid(manualGrid, resetDescriptionBox, 1, 1);
+        AddToGrid(manualGrid, creditsBox, 2, 0);
+        AddToGrid(manualGrid, currencyBox, 2, 1);
+        AddToGrid(manualGrid, costBox, 3, 0);
+        AddToGrid(manualGrid, tokensBox, 3, 1);
+        AddToGrid(manualGrid, notesBox, 4, 0);
 
         stack.Children.Add(manualGrid);
 
@@ -304,8 +310,11 @@ public sealed class MainWindow : Window
             usedBox,
             remainingBox,
             resetBox,
+            resetDescriptionBox,
             creditsBox,
+            currencyBox,
             costBox,
+            tokensBox,
             notesBox,
             apiKeySecretNameBox,
             gitHubOrganizationBox,
@@ -826,8 +835,11 @@ public sealed class MainWindow : Window
         TextBox UsedBox,
         TextBox RemainingBox,
         TextBox ResetBox,
+        TextBox ResetDescriptionBox,
         TextBox CreditsBox,
+        TextBox CurrencyBox,
         TextBox CostBox,
+        TextBox TokensBox,
         TextBox NotesBox,
         TextBox? ApiKeySecretNameBox,
         TextBox? GitHubOrganizationBox,
@@ -841,8 +853,11 @@ public sealed class MainWindow : Window
             ViewModel.UsedPercentText = UsedBox.Text;
             ViewModel.RemainingPercentText = RemainingBox.Text;
             ViewModel.ResetDateTimeText = ResetBox.Text;
+            ViewModel.ResetDescriptionText = ResetDescriptionBox.Text;
             ViewModel.CreditBalanceText = CreditsBox.Text;
+            ViewModel.CurrencyText = CurrencyBox.Text;
             ViewModel.MonthToDateCostText = CostBox.Text;
+            ViewModel.TokensLast31DaysText = TokensBox.Text;
             ViewModel.NotesText = NotesBox.Text;
             ViewModel.ApiKeySecretNameText = ApiKeySecretNameBox?.Text ?? string.Empty;
             ViewModel.GitHubOrganizationText = GitHubOrganizationBox?.Text ?? string.Empty;
