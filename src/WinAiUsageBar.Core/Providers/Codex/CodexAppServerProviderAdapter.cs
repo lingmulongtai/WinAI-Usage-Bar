@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using WinAiUsageBar.Core.Abstractions;
 using WinAiUsageBar.Core.Models;
 
@@ -14,7 +15,8 @@ public sealed class CodexAppServerProviderAdapter(
         ProviderFetchContext context,
         CancellationToken cancellationToken)
     {
-        if (!await commandProbe.ExistsAsync("codex", cancellationToken).ConfigureAwait(false))
+        var probe = await commandProbe.InspectAsync("codex", cancellationToken).ConfigureAwait(false);
+        if (!probe.IsFound)
         {
             return ProviderFetchResult.Failure(
                 Descriptor,
@@ -22,7 +24,7 @@ public sealed class CodexAppServerProviderAdapter(
                 DataSourceKind.LocalAppServer,
                 context.Now,
                 "Codex CLI was not found. Use Manual mode or install Codex.",
-                "codex command was not found on PATH.");
+                probe.StatusMessage);
         }
 
         try
@@ -50,6 +52,17 @@ public sealed class CodexAppServerProviderAdapter(
                 "Codex app-server requires authentication.",
                 ex.Message);
         }
+        catch (Win32Exception ex)
+        {
+            return ProviderFetchResult.Failure(
+                Descriptor,
+                ProviderHealth.Unsupported,
+                DataSourceKind.LocalAppServer,
+                context.Now,
+                $"Codex CLI was found but Windows could not start it. Check the app execution alias or reinstall Codex. Details: {ex.Message}",
+                probe.StatusMessage,
+                $"Codex startup failed: {ex.Message}");
+        }
         catch (Exception ex)
         {
             return ProviderFetchResult.Failure(
@@ -58,6 +71,7 @@ public sealed class CodexAppServerProviderAdapter(
                 DataSourceKind.LocalAppServer,
                 context.Now,
                 "Codex app-server failed. Manual mode is still available.",
+                probe.StatusMessage,
                 ex.Message);
         }
     }

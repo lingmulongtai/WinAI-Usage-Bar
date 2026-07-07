@@ -49,7 +49,7 @@ Overall:
 - There is no installer, MSIX, code signing, auto-update, or uninstall story.
 - First-run setup is a useful state surface, not yet a full guided wizard with provider-specific decisions.
 - Config backup and confirmed CLI restore exist, but there is no in-app restore or reset-to-known-good flow.
-- Local CLI discovery can still be messy on Windows. A command can be present on `PATH` but fail at startup because of package alias or permissions issues.
+- Local CLI discovery can still be messy on Windows. Codex startup failures are now classified, but similar repair guidance should be extended to every future CLI-backed provider.
 - There is no visual regression or automated UI smoke test for WinUI windows.
 
 ## Risk Register
@@ -64,7 +64,7 @@ Overall:
 | Public binaries are not trusted by Windows | High | Zip and checksum exist | Add signing or at least documented install warnings before public release. |
 | Local data files grow too much | Medium | History retention by days and bytes | Add UI display for current storage pressure and backup/compact actions. |
 | Config corruption causes user confusion | Medium | Corrupt config backup, default migration, config export, validation, and confirmed CLI restore | Add visible in-app recovery messaging and restore. |
-| CLI availability is ambiguous on Windows | Medium | Safe health report checks command discovery and short startup | Surface provider-specific repair guidance when a discovered CLI cannot start. |
+| CLI availability is ambiguous on Windows | Medium | Safe health report checks command discovery and short startup; Codex provider classifies startup failures | Extend provider-specific repair guidance to every future CLI-backed provider. |
 
 ## Current MVP Reality
 

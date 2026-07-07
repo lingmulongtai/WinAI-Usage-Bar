@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using WinAiUsageBar.Core.Abstractions;
 using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Core.Models;
@@ -81,7 +82,7 @@ public sealed class ProviderAdapterTests
         var descriptor = ProviderDescriptors.Get(ProviderId.ClaudeCode);
         var adapter = new CliProbeProviderAdapter(
             descriptor,
-            new FixedCommandProbe(true),
+            FixedCommandProbe.Found("claude"),
             "claude",
             "Claude CLI exists, but usage retrieval is unavailable.",
             "Claude CLI is missing.");
@@ -103,7 +104,7 @@ public sealed class ProviderAdapterTests
         var descriptor = ProviderDescriptors.Get(ProviderId.Codex);
         var adapter = new CodexAppServerProviderAdapter(
             descriptor,
-            new FixedCommandProbe(false),
+            FixedCommandProbe.Missing("codex"),
             new ThrowingCodexClient(new InvalidOperationException("client should not be called")));
         var context = new ProviderFetchContext(
             ProviderConfig.CreateDefault(descriptor),
@@ -115,6 +116,7 @@ public sealed class ProviderAdapterTests
         Assert.False(result.Success);
         Assert.Equal(ProviderHealth.Unsupported, result.Snapshot?.Health);
         Assert.Equal(DataSourceKind.LocalAppServer, result.Snapshot?.SourceKind);
+        Assert.Contains("not found", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -123,7 +125,7 @@ public sealed class ProviderAdapterTests
         var descriptor = ProviderDescriptors.Get(ProviderId.Codex);
         var adapter = new CodexAppServerProviderAdapter(
             descriptor,
-            new FixedCommandProbe(true),
+            FixedCommandProbe.Found("codex"),
             new ThrowingCodexClient(new UnauthorizedAccessException("auth required")));
         var context = new ProviderFetchContext(
             ProviderConfig.CreateDefault(descriptor),
@@ -135,6 +137,29 @@ public sealed class ProviderAdapterTests
         Assert.False(result.Success);
         Assert.Equal(ProviderHealth.AuthRequired, result.Snapshot?.Health);
         Assert.Equal("Codex app-server requires authentication.", result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task CodexAppServerProviderAdapter_ReturnsUnsupportedWhenCodexCliCannotStart()
+    {
+        var descriptor = ProviderDescriptors.Get(ProviderId.Codex);
+        var adapter = new CodexAppServerProviderAdapter(
+            descriptor,
+            FixedCommandProbe.Found("codex", @"C:\Program Files\WindowsApps\Codex\codex.exe"),
+            new ThrowingCodexClient(new Win32Exception(5, "Access is denied.")));
+        var context = new ProviderFetchContext(
+            ProviderConfig.CreateDefault(descriptor),
+            DateTimeOffset.UtcNow,
+            "test");
+
+        var result = await adapter.FetchAsync(context, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(ProviderHealth.Unsupported, result.Snapshot?.Health);
+        Assert.Contains("could not start", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("app execution alias", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Contains("found on PATH", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Contains("startup failed", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -187,12 +212,31 @@ public sealed class ProviderAdapterTests
         Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Contains("ghp_secret_token", StringComparison.Ordinal));
     }
 
-    private sealed class FixedCommandProbe(bool exists) : ICommandProbe
+    private sealed class FixedCommandProbe(CommandProbeResult result) : ICommandProbe
     {
+        public static FixedCommandProbe Missing(string commandName)
+        {
+            return new FixedCommandProbe(CommandProbeResult.Missing(commandName));
+        }
+
+        public static FixedCommandProbe Found(string commandName, params string[] paths)
+        {
+            var resolvedPaths = paths.Length == 0
+                ? [$@"C:\Tools\{commandName}.exe"]
+                : paths;
+            return new FixedCommandProbe(CommandProbeResult.Found(commandName, resolvedPaths));
+        }
+
         public Task<bool> ExistsAsync(string commandName, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return Task.FromResult(exists);
+            return Task.FromResult(result.IsFound);
+        }
+
+        public Task<CommandProbeResult> InspectAsync(string commandName, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(result);
         }
     }
 

@@ -5,6 +5,34 @@ namespace WinAiUsageBar.Core.Abstractions;
 public interface ICommandProbe
 {
     Task<bool> ExistsAsync(string commandName, CancellationToken cancellationToken);
+
+    Task<CommandProbeResult> InspectAsync(string commandName, CancellationToken cancellationToken);
+}
+
+public sealed record CommandProbeResult(
+    string CommandName,
+    bool IsFound,
+    IReadOnlyList<string> Paths,
+    string StatusMessage)
+{
+    public static CommandProbeResult Missing(string commandName)
+    {
+        return new CommandProbeResult(
+            commandName,
+            IsFound: false,
+            Paths: [],
+            StatusMessage: $"{commandName} command was not found on PATH.");
+    }
+
+    public static CommandProbeResult Found(string commandName, IReadOnlyList<string> paths)
+    {
+        var pathCount = paths.Count == 1 ? "1 path" : $"{paths.Count} paths";
+        return new CommandProbeResult(
+            commandName,
+            IsFound: true,
+            paths,
+            StatusMessage: $"{commandName} command was found on PATH ({pathCount}).");
+    }
 }
 
 public interface ICodexAppServerClient

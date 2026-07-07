@@ -29,6 +29,7 @@ Expected failures should not throw. Return a failure result instead:
 | Case | Required result |
 | --- | --- |
 | Missing external CLI | `Success = false`, `Health = Unsupported`, source set to the attempted source. |
+| CLI found but cannot start | `Success = false`, usually `Health = Unsupported`, with a repair-oriented user message and safe diagnostics. |
 | Missing or expired credentials | `Success = false`, `Health = AuthRequired`. |
 | Documented unsupported endpoint | `Success = false`, `Health = Unsupported`. |
 | Provider-specific recoverable error | `Success = false`, `Health = Error`. |

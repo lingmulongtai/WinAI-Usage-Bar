@@ -16,9 +16,9 @@ public sealed class CliProbeProviderAdapter(
         ProviderFetchContext context,
         CancellationToken cancellationToken)
     {
-        var exists = await commandProbe.ExistsAsync(commandName, cancellationToken).ConfigureAwait(false);
+        var probe = await commandProbe.InspectAsync(commandName, cancellationToken).ConfigureAwait(false);
 
-        if (!exists)
+        if (!probe.IsFound)
         {
             return ProviderFetchResult.Failure(
                 Descriptor,
@@ -26,7 +26,7 @@ public sealed class CliProbeProviderAdapter(
                 DataSourceKind.Cli,
                 context.Now,
                 missingMessage,
-                $"{commandName} command was not found on PATH.");
+                probe.StatusMessage);
         }
 
         return ProviderFetchResult.Failure(
@@ -35,6 +35,7 @@ public sealed class CliProbeProviderAdapter(
             DataSourceKind.Cli,
             context.Now,
             installedMessage,
+            probe.StatusMessage,
             $"{commandName} command exists; automatic usage source is not implemented in the MVP.");
     }
 }

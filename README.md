@@ -28,6 +28,7 @@ For Windows shell dogfooding checks, see [docs/windows-manual-verification.md](d
 - Mock and Manual provider modes are implemented.
 - Manual mode can track used/remaining percentage, reset datetime/description, credits, currency/unit, month cost, last-31-day tokens, and notes.
 - Codex/ChatGPT app-server probing is isolated behind safe abstractions.
+- Codex CLI startup failures are classified separately from auth and JSON-RPC errors, with repair-oriented messages for Windows app alias or permission problems.
 - Claude, Claude Code, Gemini, OpenCode Zen, and GitHub Copilot have MVP-safe descriptors and manual mode support.
 - Gemini and OpenCode Zen expose API key secret-name fields without storing API key values in config.
 - JSON config, snapshot cache, and history are stored under `%AppData%\WinAiUsageBar`.
@@ -136,7 +137,7 @@ The release workflow builds, tests, publishes, smoke-tests, packages the app, an
 
 - Mock: implemented for UI development.
 - Manual: implemented for every provider.
-- Codex / ChatGPT: safe best-effort `codex app-server` JSON-RPC client and parser are implemented; failures return visible provider errors.
+- Codex / ChatGPT: safe best-effort `codex app-server` JSON-RPC client and parser are implemented; missing CLI, startup failure, auth failure, and JSON-RPC failure return visible provider errors.
 - Claude / Claude Code: CLI presence probe only; no private file scraping.
 - Gemini: API key secret-name setting; no unofficial usage endpoint.
 - OpenCode Zen: API key secret-name setting, manual balance mode, and documented TODO for future official balance API.
