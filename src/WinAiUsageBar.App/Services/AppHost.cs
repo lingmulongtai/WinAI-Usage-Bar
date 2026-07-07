@@ -6,6 +6,7 @@ using WinAiUsageBar.Infrastructure.Diagnostics;
 using WinAiUsageBar.Infrastructure.Scheduling;
 using WinAiUsageBar.Infrastructure.Storage;
 using WinAiUsageBar.Infrastructure.Tray;
+using WinAiUsageBar.Infrastructure.Windows;
 
 namespace WinAiUsageBar.App.Services;
 
@@ -15,6 +16,7 @@ public sealed class AppHost : IAsyncDisposable
     private readonly ITrayIconService trayIconService;
     private readonly IUsageRefreshService refreshService;
     private readonly IDiagnosticsExportService diagnosticsExportService;
+    private readonly IStartupRegistrationService startupRegistrationService;
     private readonly IAppWindowActivator windowActivator;
     private readonly IApplicationExitService exitService;
 
@@ -27,6 +29,7 @@ public sealed class AppHost : IAsyncDisposable
         trayIconService = services.TrayIconService;
         DiagnosticsLog = services.DiagnosticsLog;
         diagnosticsExportService = services.DiagnosticsExportService;
+        startupRegistrationService = services.StartupRegistrationService;
         windowActivator = services.WindowActivator;
         exitService = services.ExitService;
     }
@@ -52,6 +55,11 @@ public sealed class AppHost : IAsyncDisposable
             "Initial refresh failed.");
 
         var config = await ConfigStore.LoadAsync(cancellationToken).ConfigureAwait(false);
+        if (config.Startup.LaunchOnLogin)
+        {
+            await ApplyStartupRegistrationAsync(isEnabled: true, cancellationToken).ConfigureAwait(false);
+        }
+
         if (config.Widget.ShowOnStartup)
         {
             dispatcher.TryEnqueue(ShowWidget);
@@ -92,6 +100,27 @@ public sealed class AppHost : IAsyncDisposable
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             await DiagnosticsLog.ErrorAsync("Diagnostics export failed.", ex, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    public async Task<StartupRegistrationStatus> GetStartupRegistrationStatusAsync(CancellationToken cancellationToken)
+    {
+        return await startupRegistrationService.GetStatusAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task ApplyStartupRegistrationAsync(bool isEnabled, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await startupRegistrationService.SetEnabledAsync(isEnabled, cancellationToken).ConfigureAwait(false);
+            await DiagnosticsLog.InfoAsync(
+                isEnabled ? "Startup registration enabled." : "Startup registration disabled.",
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await DiagnosticsLog.ErrorAsync("Startup registration failed.", ex, CancellationToken.None).ConfigureAwait(false);
             throw;
         }
     }

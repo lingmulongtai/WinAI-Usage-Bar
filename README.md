@@ -5,6 +5,7 @@ WinAI Usage Bar is a personal Windows notification-area app for watching AI prov
 ## Features
 
 - Starts minimized to the Windows tray.
+- Optional start-at-login registration is available from Appearance settings.
 - Left-click tray icon opens a compact usage panel.
 - Right-click tray icon shows Show, Show Widget, Refresh Now, Settings, and Exit.
 - Settings window uses WinUI `NavigationView`.

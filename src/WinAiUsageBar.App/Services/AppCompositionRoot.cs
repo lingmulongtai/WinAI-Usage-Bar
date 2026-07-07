@@ -37,6 +37,7 @@ public static class AppCompositionRoot
         var refreshService = new UsageRefreshService(configStore, snapshotStore, registry, paths, notifications);
         var widgetPlacementStore = new WidgetPlacementStore(configStore);
         var compactPlacementService = new CompactPanelPlacementService();
+        var startupRegistrationService = new RunKeyStartupRegistrationService(new RegistryStartupRunKey());
         var tray = new TrayIconService();
         var windowActivator = new WinUiWindowActivator(widgetPlacementStore, compactPlacementService);
         var exitService = new WinUiApplicationExitService();
@@ -48,6 +49,7 @@ public static class AppCompositionRoot
             tray,
             diagnosticsLog,
             diagnosticsExportService,
+            startupRegistrationService,
             windowActivator,
             exitService);
     }
@@ -60,6 +62,7 @@ public sealed record AppHostServices(
     ITrayIconService TrayIconService,
     IAppDiagnosticsLog DiagnosticsLog,
     IDiagnosticsExportService DiagnosticsExportService,
+    IStartupRegistrationService StartupRegistrationService,
     IAppWindowActivator WindowActivator,
     IApplicationExitService ExitService);
 

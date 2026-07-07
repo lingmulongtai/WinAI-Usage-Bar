@@ -30,6 +30,7 @@ Gemini and OpenCode Zen support provider-specific API settings for future integr
 - Main settings window contains Overview, Providers, Appearance, Refresh, Privacy & Data, and About pages.
 - Compact panel shows enabled provider cards.
 - Widget window shows one to three provider cards and remembers size and position.
+- Appearance settings can enable start-at-login registration for the current Windows user.
 
 Tray command routing is covered with fake services. Real `NotifyIcon` rendering, WinUI window activation, and operating-system left-click behavior remain manual verification points because they require the Windows shell and WinUI runtime.
 
@@ -95,3 +96,7 @@ Manual provider values are validated before saving:
 ## Diagnostics Export
 
 The Privacy & Data page can create a diagnostics export under `%AppData%\WinAiUsageBar\diagnostics-exports`. The export may include `config.json`, `snapshots.json`, `history.ndjson`, and `diagnostics.log`, but it must redact common secret shapes at export time and must never include files from `secrets/`.
+
+## Startup
+
+Start-at-login uses the current user's Windows Run registry key and stores only the quoted app executable command. The setting is surfaced through Appearance settings and mirrored in `config.json` as `startup.launchOnLogin`.

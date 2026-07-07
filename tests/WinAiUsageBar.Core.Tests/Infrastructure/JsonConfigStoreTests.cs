@@ -22,6 +22,7 @@ public sealed class JsonConfigStoreTests
         codex.Manual.RemainingPercent = 52;
         gemini.SourceKind = DataSourceKind.OfficialApi;
         gemini.ApiKey.SecretName = "gemini-api-key";
+        config.Startup.LaunchOnLogin = true;
 
         await store.SaveAsync(config, CancellationToken.None);
         var reloaded = await store.LoadAsync(CancellationToken.None);
@@ -33,6 +34,7 @@ public sealed class JsonConfigStoreTests
         Assert.Equal(52, reloadedCodex.Manual.RemainingPercent);
         Assert.Equal(DataSourceKind.OfficialApi, reloadedGemini.SourceKind);
         Assert.Equal("gemini-api-key", reloadedGemini.ApiKey.SecretName);
+        Assert.True(reloaded.Startup.LaunchOnLogin);
 
         Directory.Delete(root, recursive: true);
     }
@@ -82,6 +84,8 @@ public sealed class JsonConfigStoreTests
             Assert.NotNull(config.Refresh);
             Assert.NotNull(config.Appearance);
             Assert.NotNull(config.Notifications);
+            Assert.NotNull(config.Startup);
+            Assert.False(config.Startup.LaunchOnLogin);
             Assert.NotNull(config.HistoryRetention);
             Assert.Equal(30, config.HistoryRetention.MaxDays);
             Assert.Equal(123, config.Widget.Left);

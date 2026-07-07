@@ -17,6 +17,8 @@ public sealed class AppConfig
 
     public NotificationSettings Notifications { get; set; } = new();
 
+    public StartupSettings Startup { get; set; } = new();
+
     public HistoryRetentionSettings HistoryRetention { get; set; } = new();
 
     public static AppConfig CreateDefault()
@@ -160,6 +162,11 @@ public sealed class AppearanceSettings
 public sealed class NotificationSettings
 {
     public bool IsEnabled { get; set; } = true;
+}
+
+public sealed class StartupSettings
+{
+    public bool LaunchOnLogin { get; set; }
 }
 
 public sealed class HistoryRetentionSettings

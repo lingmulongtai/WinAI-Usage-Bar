@@ -16,6 +16,7 @@ public static class AppConfigMigrations
         config.Widget ??= new WidgetSettings();
         config.Appearance ??= new AppearanceSettings();
         config.Notifications ??= new NotificationSettings();
+        config.Startup ??= new StartupSettings();
         config.HistoryRetention ??= new HistoryRetentionSettings();
 
         NormalizeProviders(config);

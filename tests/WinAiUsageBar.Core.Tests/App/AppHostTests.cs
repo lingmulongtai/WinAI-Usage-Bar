@@ -5,6 +5,7 @@ using WinAiUsageBar.Infrastructure.Diagnostics;
 using WinAiUsageBar.Infrastructure.Scheduling;
 using WinAiUsageBar.Infrastructure.Storage;
 using WinAiUsageBar.Infrastructure.Tray;
+using WinAiUsageBar.Infrastructure.Windows;
 
 namespace WinAiUsageBar.Core.Tests.App;
 
@@ -29,6 +30,7 @@ public sealed class AppHostTests
                 tray,
                 diagnostics,
                 new FakeDiagnosticsExportService(paths),
+                new FakeStartupRegistrationService(),
                 windowActivator,
                 new FakeExitService()));
 
@@ -67,6 +69,7 @@ public sealed class AppHostTests
                 tray,
                 new RecordingDiagnosticsLog(),
                 new FakeDiagnosticsExportService(paths),
+                new FakeStartupRegistrationService(),
                 windowActivator,
                 exitService));
 
@@ -100,6 +103,7 @@ public sealed class AppHostTests
                 tray,
                 new RecordingDiagnosticsLog(),
                 new FakeDiagnosticsExportService(paths),
+                new FakeStartupRegistrationService(),
                 new FakeWindowActivator(),
                 new FakeExitService()));
 
@@ -109,6 +113,32 @@ public sealed class AppHostTests
         await refreshService.RefreshObserved.Task.WaitAsync(TimeSpan.FromSeconds(2));
 
         Assert.Equal(1, refreshService.RefreshCount);
+    }
+
+    [Fact]
+    public async Task StartAsync_AppliesStartupRegistrationWhenConfigRequestsIt()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        var config = AppConfig.CreateDefault();
+        config.Startup.LaunchOnLogin = true;
+        var startup = new FakeStartupRegistrationService();
+        var host = new AppHost(
+            new ImmediateDispatcher(),
+            new AppHostServices(
+                paths,
+                new InMemoryConfigStore(config),
+                new FakeRefreshService([]),
+                new FakeTrayIconService(),
+                new RecordingDiagnosticsLog(),
+                new FakeDiagnosticsExportService(paths),
+                startup,
+                new FakeWindowActivator(),
+                new FakeExitService()));
+
+        await host.StartAsync(CancellationToken.None);
+
+        Assert.True(startup.LastSetEnabled);
     }
 
     private static UsageSnapshot Snapshot(ProviderId providerId, string displayName, double remainingPercent)
@@ -279,6 +309,28 @@ public sealed class AppHostTests
                 Path.Combine(paths.RootDirectory, "diagnostics-export.txt"),
                 DateTimeOffset.Now,
                 ["test"]));
+        }
+    }
+
+    private sealed class FakeStartupRegistrationService : IStartupRegistrationService
+    {
+        public bool? LastSetEnabled { get; private set; }
+
+        public Task<StartupRegistrationStatus> GetStatusAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(new StartupRegistrationStatus(
+                IsSupported: true,
+                IsEnabled: LastSetEnabled == true,
+                Command: null,
+                "fake startup status"));
+        }
+
+        public Task SetEnabledAsync(bool isEnabled, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            LastSetEnabled = isEnabled;
+            return Task.CompletedTask;
         }
     }
 

@@ -313,6 +313,7 @@ public sealed class MainWindow : Window
     private async Task<UIElement> BuildAppearancePageAsync()
     {
         var config = await host.LoadConfigAsync(CancellationToken.None);
+        var startupStatus = await host.GetStartupRegistrationStatusAsync(CancellationToken.None);
         var panel = PageStack("Appearance");
         var combo = new ComboBox
         {
@@ -325,11 +326,46 @@ public sealed class MainWindow : Window
         combo.SelectedItem = config.Appearance.Theme;
         panel.Children.Add(combo);
 
+        var startupToggle = new ToggleSwitch
+        {
+            Header = "Start at login",
+            IsOn = config.Startup.LaunchOnLogin || startupStatus.IsEnabled,
+            IsEnabled = startupStatus.IsSupported
+        };
+        panel.Children.Add(startupToggle);
+
+        var startupInfo = new InfoBar
+        {
+            Severity = startupStatus.IsSupported ? InfoBarSeverity.Informational : InfoBarSeverity.Warning,
+            IsOpen = true,
+            IsClosable = false,
+            Title = "Startup",
+            Message = startupStatus.StatusMessage
+        };
+        panel.Children.Add(startupInfo);
+
         var save = new Button { Content = "Save Appearance" };
         save.Click += async (_, _) =>
         {
-            config.Appearance.Theme = combo.SelectedItem?.ToString() ?? "System";
-            await host.SaveConfigAsync(config, CancellationToken.None);
+            try
+            {
+                config.Appearance.Theme = combo.SelectedItem?.ToString() ?? "System";
+                config.Startup.LaunchOnLogin = startupToggle.IsOn;
+                await host.ApplyStartupRegistrationAsync(startupToggle.IsOn, CancellationToken.None);
+                await host.SaveConfigAsync(config, CancellationToken.None);
+                var nextStatus = await host.GetStartupRegistrationStatusAsync(CancellationToken.None);
+                startupInfo.Severity = InfoBarSeverity.Success;
+                startupInfo.Title = "Appearance saved";
+                startupInfo.Message = nextStatus.StatusMessage;
+                startupInfo.IsOpen = true;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                startupInfo.Severity = InfoBarSeverity.Error;
+                startupInfo.Title = "Appearance save failed";
+                startupInfo.Message = ex.Message;
+                startupInfo.IsOpen = true;
+            }
         };
         panel.Children.Add(save);
 
