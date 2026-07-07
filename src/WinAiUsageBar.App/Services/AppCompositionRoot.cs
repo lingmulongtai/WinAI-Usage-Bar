@@ -45,6 +45,11 @@ public static class AppCompositionRoot
         var diagnosticsSummaryService = new DiagnosticsSummaryService(paths, configStore, snapshotStore);
         var historySummaryService = new HistorySummaryService(paths);
         var dataMaintenanceService = new DataMaintenanceService(paths, configStore);
+        var configBackupValidationService = new ConfigBackupValidationService();
+        var configBackupRestoreService = new ConfigBackupRestoreService(
+            paths,
+            configStore,
+            configBackupValidationService);
         var refreshService = new UsageRefreshService(
             configStore,
             snapshotStore,
@@ -72,7 +77,9 @@ public static class AppCompositionRoot
             secretStore,
             startupRegistrationService,
             windowActivator,
-            exitService);
+            exitService,
+            configBackupValidationService,
+            configBackupRestoreService);
     }
 }
 
@@ -89,7 +96,9 @@ public sealed record AppHostServices(
     ISecretStore SecretStore,
     IStartupRegistrationService StartupRegistrationService,
     IAppWindowActivator WindowActivator,
-    IApplicationExitService ExitService);
+    IApplicationExitService ExitService,
+    IConfigBackupValidationService? ConfigBackupValidationService = null,
+    IConfigBackupRestoreService? ConfigBackupRestoreService = null);
 
 public interface IAppDispatcher
 {

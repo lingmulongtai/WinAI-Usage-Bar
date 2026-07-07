@@ -12,7 +12,7 @@ This audit is intentionally strict. The repository has moved past a throwaway sc
 | Provider extensibility | 7/10 | Descriptors, adapters, manual mode, and safe failure states are in place. Real provider depth is still thin. |
 | Security posture | 7/10 | Good defaults around DPAPI, redaction, and no cookie scraping. Needs more adversarial review before wider distribution. |
 | Windows shell integration | 5/10 | Tray, windows, placement, startup registration, and notifications exist, with a manual verification checklist and report scaffold now available. Actual shell behavior still needs hands-on runs. |
-| Product usability | 6/10 | The app now has first-run setup state, provider details, backup export, and CLI recovery checks, but it is still mostly useful with Mock/Manual data today. |
+| Product usability | 6/10 | The app now has first-run setup state, provider details, backup export/restore, and recovery checks, but it is still mostly useful with Mock/Manual data today. |
 | Packaging and release | 6/10 | Self-contained publish, zip packaging, checksums, artifacts, and draft release workflow exist. No installer, signing, or update path yet. |
 | Test confidence | 8/10 | Core, infrastructure, view model, CLI, storage, parser, refresh, and packaging smoke paths are covered without external CLIs. UI runtime coverage remains limited. |
 | Observability and support | 7/10 | Diagnostics summary, redacted export, health report, and logs are solid for an MVP. No structured crash reports or user-facing repair flow yet. |
@@ -34,7 +34,7 @@ Overall:
 - Config, snapshots, history, diagnostics, and maintenance flows are all represented in code and tests.
 - CI now builds, tests, publishes, smoke-tests, packages, and uploads artifacts on `main`.
 - The CLI surface gives useful non-UI checks: help, version, smoke test, diagnostics export, and health report.
-- First-run setup state, Provider Details, config backup export, backup validation, and confirmed CLI restore are implemented.
+- First-run setup state, Provider Details, config backup export, backup validation, confirmed CLI restore, and latest-backup in-app restore are implemented.
 - Windows shell dogfooding now has a concrete manual verification checklist and a timestamped local report script.
 - The issue and commit history is becoming meaningful rather than fake contribution noise.
 
@@ -48,7 +48,7 @@ Overall:
 - Tray behavior, taskbar-near placement, topmost widget behavior, and notification delivery need real Windows manual testing.
 - There is no installer, MSIX, code signing, auto-update, or uninstall story.
 - First-run setup is a useful state surface, not yet a full guided wizard with provider-specific decisions.
-- Config backup and confirmed CLI restore exist, but there is no in-app restore or reset-to-known-good flow.
+- Config backup recovery now exists, but it only restores the latest app-created backup and still needs repeated dogfooding.
 - Local CLI discovery can still be messy on Windows. Codex startup failures are now classified, but similar repair guidance should be extended to every future CLI-backed provider.
 - There is no visual regression or automated UI smoke test for WinUI windows.
 
@@ -63,7 +63,7 @@ Overall:
 | App feels like a demo because provider data is manual | High | Mock, Manual, Codex parser tests, and provider details are stable | Prioritize one reliable real provider path end to end. |
 | Public binaries are not trusted by Windows | High | Zip and checksum exist | Add signing or at least documented install warnings before public release. |
 | Local data files grow too much | Medium | History retention by days and bytes | Add UI display for current storage pressure and backup/compact actions. |
-| Config corruption causes user confusion | Medium | Corrupt config backup, default migration, config export, validation, and confirmed CLI restore | Add visible in-app recovery messaging and restore. |
+| Config corruption causes user confusion | Medium | Corrupt config backup, default migration, config export, validation, confirmed CLI restore, and latest-backup in-app restore | Dogfood restore repeatedly and add a broader reset-to-known-good flow if needed. |
 | CLI availability is ambiguous on Windows | Medium | Safe health report checks command discovery and short startup; Codex provider classifies startup failures | Extend provider-specific repair guidance to every future CLI-backed provider. |
 
 ## Current MVP Reality
@@ -95,10 +95,10 @@ The weak point is value density. A usage bar is only as useful as the data it ca
    A new user should choose enabled providers, source mode, and manual fallback without digging through settings.
 
 5. Dogfood config backup and restore.
-   The CLI flow exists now, but it needs repeated real-use recovery checks before it becomes a comfort feature.
+   CLI restore and latest-backup in-app restore exist now, but they need repeated real-use recovery checks before they become comfort features.
 
-6. Add in-app restore or reset-to-known-good recovery.
-   CLI restore is good for power users, but recovery should be discoverable from Privacy & Data.
+6. Add reset-to-known-good recovery if dogfooding shows restore is not enough.
+   Latest-backup restore is discoverable now, but a separate reset flow may still be useful for broken configs.
 
 7. Add one automated UI launch check if feasible.
    Even a minimal app-start plus window activation check would catch major WinUI regressions.

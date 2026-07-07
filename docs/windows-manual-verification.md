@@ -93,6 +93,8 @@ Record the environment for each run.
 | Check a secret name | UI reports present or missing without showing the value |  |  |
 | Export diagnostics | Export excludes `secrets/` and redacts common secret shapes |  |  |
 | Export config backup | Backup includes config only and does not copy `secrets/` |  |  |
+| Validate latest config backup from Privacy & Data | Latest backup is validated and result does not expose secret values |  |  |
+| Restore latest config backup from Privacy & Data | Restore requires confirmation, creates rollback backup, and restarts refresh |  |  |
 | Restore config backup from CLI with `--confirm` | Current config is backed up before restore and `secrets/` is unchanged |  |  |
 | Attempt restore without `--confirm` | Command exits non-zero and config is unchanged |  |  |
 

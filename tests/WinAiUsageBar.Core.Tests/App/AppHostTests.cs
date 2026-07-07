@@ -260,6 +260,119 @@ public sealed class AppHostTests
         Assert.Contains(diagnostics.InfoMessages, message => message.StartsWith("Config backup exported to ", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task ConfigBackupRecoveryMethods_UseLatestBackupAndRestartAfterRestore()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        var latestBackupPath = Path.Combine(paths.ConfigBackupsDirectory, "config-backup.json");
+        var validation = new FakeConfigBackupValidationService();
+        var restore = new FakeConfigBackupRestoreService(paths);
+        var refresh = new FakeRefreshService([]);
+        var diagnostics = new RecordingDiagnosticsLog();
+        var host = new AppHost(
+            new ImmediateDispatcher(),
+            new AppHostServices(
+                paths,
+                new InMemoryConfigStore(AppConfig.CreateDefault()),
+                refresh,
+                new FakeTrayIconService(),
+                diagnostics,
+                new FakeDiagnosticsExportService(paths),
+                new FakeDiagnosticsSummaryService(paths, latestBackupPath),
+                new FakeHistorySummaryService(),
+                new FakeDataMaintenanceService(paths),
+                new FakeSecretStore(),
+                new FakeStartupRegistrationService(),
+                new FakeWindowActivator(),
+                new FakeExitService(),
+                validation,
+                restore));
+
+        var validationResult = await host.ValidateLatestConfigBackupAsync(CancellationToken.None);
+        var restoreResult = await host.RestoreLatestConfigBackupAsync(CancellationToken.None);
+
+        Assert.True(validationResult.IsValid);
+        Assert.True(restoreResult.Restored);
+        Assert.Equal(latestBackupPath, validation.LastPath);
+        Assert.Equal(latestBackupPath, restore.LastPath);
+        Assert.Equal(1, refresh.RestartCount);
+        Assert.Contains(diagnostics.InfoMessages, message => message.StartsWith("Config backup validated: ", StringComparison.Ordinal));
+        Assert.Contains(diagnostics.InfoMessages, message => message.StartsWith("Config backup restored from ", StringComparison.Ordinal));
+        Assert.Contains("config-backup-before-restore.json", restoreResult.RollbackBackupPath);
+    }
+
+    [Fact]
+    public async Task ConfigBackupRecoveryMethods_ReturnErrorsWhenNoBackupExists()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        var validation = new FakeConfigBackupValidationService();
+        var restore = new FakeConfigBackupRestoreService(paths);
+        var host = new AppHost(
+            new ImmediateDispatcher(),
+            new AppHostServices(
+                paths,
+                new InMemoryConfigStore(AppConfig.CreateDefault()),
+                new FakeRefreshService([]),
+                new FakeTrayIconService(),
+                new RecordingDiagnosticsLog(),
+                new FakeDiagnosticsExportService(paths),
+                new FakeDiagnosticsSummaryService(paths),
+                new FakeHistorySummaryService(),
+                new FakeDataMaintenanceService(paths),
+                new FakeSecretStore(),
+                new FakeStartupRegistrationService(),
+                new FakeWindowActivator(),
+                new FakeExitService(),
+                validation,
+                restore));
+
+        var validationResult = await host.ValidateLatestConfigBackupAsync(CancellationToken.None);
+        var restoreResult = await host.RestoreLatestConfigBackupAsync(CancellationToken.None);
+
+        Assert.False(validationResult.IsValid);
+        Assert.False(restoreResult.Restored);
+        Assert.Contains("No config backup", validationResult.Errors.Single(), StringComparison.Ordinal);
+        Assert.Contains("No config backup", restoreResult.Errors.Single(), StringComparison.Ordinal);
+        Assert.Equal(0, validation.CallCount);
+        Assert.Equal(0, restore.CallCount);
+    }
+
+    [Fact]
+    public async Task RestoreLatestConfigBackupAsync_ReturnsRestoredWhenRefreshRestartFails()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        var latestBackupPath = Path.Combine(paths.ConfigBackupsDirectory, "config-backup.json");
+        var diagnostics = new RecordingDiagnosticsLog();
+        var host = new AppHost(
+            new ImmediateDispatcher(),
+            new AppHostServices(
+                paths,
+                new InMemoryConfigStore(AppConfig.CreateDefault()),
+                new FakeRefreshService([], throwOnRestart: true),
+                new FakeTrayIconService(),
+                diagnostics,
+                new FakeDiagnosticsExportService(paths),
+                new FakeDiagnosticsSummaryService(paths, latestBackupPath),
+                new FakeHistorySummaryService(),
+                new FakeDataMaintenanceService(paths),
+                new FakeSecretStore(),
+                new FakeStartupRegistrationService(),
+                new FakeWindowActivator(),
+                new FakeExitService(),
+                new FakeConfigBackupValidationService(),
+                new FakeConfigBackupRestoreService(paths)));
+
+        var restoreResult = await host.RestoreLatestConfigBackupAsync(CancellationToken.None);
+
+        Assert.True(restoreResult.Restored);
+        Assert.Contains(diagnostics.ErrorMessages, message => message.StartsWith(
+            "Config backup restored, but refresh schedule restart failed.",
+            StringComparison.Ordinal));
+    }
+
     private static UsageSnapshot Snapshot(ProviderId providerId, string displayName, double remainingPercent)
     {
         return new UsageSnapshot(
@@ -301,7 +414,9 @@ public sealed class AppHostTests
         }
     }
 
-    private sealed class FakeRefreshService(IReadOnlyList<UsageSnapshot> currentSnapshots) : IUsageRefreshService
+    private sealed class FakeRefreshService(
+        IReadOnlyList<UsageSnapshot> currentSnapshots,
+        bool throwOnRestart = false) : IUsageRefreshService
     {
         public event EventHandler<IReadOnlyList<UsageSnapshot>>? SnapshotsChanged;
 
@@ -334,6 +449,11 @@ public sealed class AppHostTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             RestartCount++;
+            if (throwOnRestart)
+            {
+                throw new InvalidOperationException("restart failed");
+            }
+
             return Task.CompletedTask;
         }
 
@@ -414,6 +534,8 @@ public sealed class AppHostTests
     {
         public List<string> InfoMessages { get; } = [];
 
+        public List<string> ErrorMessages { get; } = [];
+
         public Task InfoAsync(string message, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -424,6 +546,7 @@ public sealed class AppHostTests
         public Task ErrorAsync(string message, Exception exception, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            ErrorMessages.Add(message);
             return Task.CompletedTask;
         }
     }
@@ -474,11 +597,14 @@ public sealed class AppHostTests
         }
     }
 
-    private sealed class FakeDiagnosticsSummaryService(AppDataPaths paths) : IDiagnosticsSummaryService
+    private sealed class FakeDiagnosticsSummaryService(AppDataPaths paths, string? latestConfigBackupPath = null) : IDiagnosticsSummaryService
     {
         public Task<DiagnosticsSummary> GetSummaryAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            DateTimeOffset? latestConfigBackupCreatedAt = latestConfigBackupPath is null
+                ? null
+                : DateTimeOffset.Now;
             return Task.FromResult(new DiagnosticsSummary(
                 paths.RootDirectory,
                 paths.ConfigPath,
@@ -494,16 +620,62 @@ public sealed class AppHostTests
                 NotificationsEnabled: true,
                 CachedSnapshotCount: 0,
                 LatestSnapshotUpdatedAt: null,
-                ConfigBackupCount: 0,
-                LatestConfigBackupPath: null,
-                LatestConfigBackupCreatedAt: null,
-                ConfigBackupTotalBytes: 0,
+                ConfigBackupCount: latestConfigBackupPath is null ? 0 : 1,
+                LatestConfigBackupPath: latestConfigBackupPath,
+                LatestConfigBackupCreatedAt: latestConfigBackupCreatedAt,
+                ConfigBackupTotalBytes: latestConfigBackupPath is null ? 0 : 1024,
                 HistoryRetentionMaxDays: 30,
                 HistoryRetentionMaxBytes: 5_000_000,
                 new DiagnosticsFileSummary(paths.ConfigPath, Exists: false, SizeBytes: 0, LastWriteTime: null),
                 new DiagnosticsFileSummary(paths.SnapshotsPath, Exists: false, SizeBytes: 0, LastWriteTime: null),
                 new DiagnosticsFileSummary(paths.HistoryPath, Exists: false, SizeBytes: 0, LastWriteTime: null),
                 new DiagnosticsFileSummary(paths.DiagnosticsLogPath, Exists: false, SizeBytes: 0, LastWriteTime: null)));
+        }
+    }
+
+    private sealed class FakeConfigBackupValidationService : IConfigBackupValidationService
+    {
+        public int CallCount { get; private set; }
+
+        public string? LastPath { get; private set; }
+
+        public Task<ConfigBackupValidationResult> ValidateAsync(string path, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            CallCount++;
+            LastPath = path;
+            return Task.FromResult(new ConfigBackupValidationResult(
+                path,
+                IsValid: true,
+                ConfigVersion: 1,
+                ProviderCount: 7,
+                EnabledProviderCount: 2,
+                DefaultedProviderCount: 0,
+                Errors: [],
+                Warnings: []));
+        }
+    }
+
+    private sealed class FakeConfigBackupRestoreService(AppDataPaths paths) : IConfigBackupRestoreService
+    {
+        public int CallCount { get; private set; }
+
+        public string? LastPath { get; private set; }
+
+        public Task<ConfigBackupRestoreResult> RestoreAsync(string path, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            CallCount++;
+            LastPath = path;
+            return Task.FromResult(new ConfigBackupRestoreResult(
+                path,
+                Restored: true,
+                Path.Combine(paths.ConfigBackupsDirectory, "config-backup-before-restore.json"),
+                ConfigVersion: 1,
+                ProviderCount: 7,
+                EnabledProviderCount: 2,
+                Errors: [],
+                Warnings: []));
         }
     }
 

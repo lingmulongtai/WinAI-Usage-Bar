@@ -26,6 +26,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - Privacy & Data shows a diagnostics summary with local file paths, config version, cached snapshot count, latest update time, and tracked file sizes.
 - Privacy & Data can clear cached snapshots and retained history without deleting config or saved secrets.
 - Privacy & Data can export a timestamped `config.json` backup without copying secret values.
+- Privacy & Data can validate and restore the latest config backup after explicit confirmation.
 - Mock and Manual provider modes are implemented.
 - Manual mode can track used/remaining percentage, reset datetime/description, credits, currency/unit, month cost, last-31-day tokens, and notes.
 - Codex/ChatGPT app-server probing is isolated behind safe abstractions.
@@ -136,7 +137,7 @@ The release workflow builds, tests, publishes, smoke-tests, packages the app, an
 - Secret values can be saved or deleted by secret name from Privacy & Data; values are never displayed back.
 - Snapshot cache and retained history can be cleared from Privacy & Data; `config.json` and `secrets/` are left untouched.
 - `config.json` can be backed up from Privacy & Data; backup files include non-secret settings only and do not copy `secrets/`.
-- Config backups can be restored from the CLI only with an explicit `--confirm`; restore creates a rollback backup first and does not copy or modify files under `secrets/`.
+- Config backups can be restored from the CLI with an explicit `--confirm`, or from Privacy & Data using the latest backup and an in-app confirmation checkbox; restore creates a rollback backup first and does not copy or modify files under `secrets/`.
 - Browser cookie scraping is intentionally not implemented in this MVP.
 - Codex integration never reads or displays `auth.json` contents.
 

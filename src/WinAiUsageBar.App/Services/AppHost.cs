@@ -20,6 +20,8 @@ public sealed class AppHost : IAsyncDisposable
     private readonly IDiagnosticsSummaryService diagnosticsSummaryService;
     private readonly IHistorySummaryService historySummaryService;
     private readonly IDataMaintenanceService dataMaintenanceService;
+    private readonly IConfigBackupValidationService configBackupValidationService;
+    private readonly IConfigBackupRestoreService configBackupRestoreService;
     private readonly ISecretStore secretStore;
     private readonly IStartupRegistrationService startupRegistrationService;
     private readonly IAppWindowActivator windowActivator;
@@ -37,6 +39,9 @@ public sealed class AppHost : IAsyncDisposable
         diagnosticsSummaryService = services.DiagnosticsSummaryService;
         historySummaryService = services.HistorySummaryService;
         dataMaintenanceService = services.DataMaintenanceService;
+        configBackupValidationService = services.ConfigBackupValidationService ?? new ConfigBackupValidationService();
+        configBackupRestoreService = services.ConfigBackupRestoreService
+            ?? new ConfigBackupRestoreService(Paths, ConfigStore, configBackupValidationService);
         secretStore = services.SecretStore;
         startupRegistrationService = services.StartupRegistrationService;
         windowActivator = services.WindowActivator;
@@ -162,6 +167,92 @@ public sealed class AppHost : IAsyncDisposable
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             await DiagnosticsLog.ErrorAsync("Config backup export failed.", ex, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    public async Task<ConfigBackupValidationResult> ValidateLatestConfigBackupAsync(CancellationToken cancellationToken)
+    {
+        var path = await GetLatestConfigBackupPathAsync(cancellationToken).ConfigureAwait(false);
+        if (path is null)
+        {
+            return new ConfigBackupValidationResult(
+                string.Empty,
+                IsValid: false,
+                ConfigVersion: null,
+                ProviderCount: null,
+                EnabledProviderCount: null,
+                DefaultedProviderCount: null,
+                Errors: ["No config backup is available."],
+                Warnings: []);
+        }
+
+        try
+        {
+            var result = await configBackupValidationService.ValidateAsync(path, cancellationToken).ConfigureAwait(false);
+            await DiagnosticsLog.InfoAsync(
+                result.IsValid
+                    ? $"Config backup validated: {result.Path}."
+                    : $"Config backup validation failed: {result.Path}.",
+                cancellationToken).ConfigureAwait(false);
+            return result;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await DiagnosticsLog.ErrorAsync("Config backup validation failed.", ex, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    public async Task<ConfigBackupRestoreResult> RestoreLatestConfigBackupAsync(CancellationToken cancellationToken)
+    {
+        var path = await GetLatestConfigBackupPathAsync(cancellationToken).ConfigureAwait(false);
+        if (path is null)
+        {
+            return new ConfigBackupRestoreResult(
+                string.Empty,
+                Restored: false,
+                RollbackBackupPath: null,
+                ConfigVersion: null,
+                ProviderCount: null,
+                EnabledProviderCount: null,
+                Errors: ["No config backup is available."],
+                Warnings: []);
+        }
+
+        try
+        {
+            var result = await configBackupRestoreService.RestoreAsync(path, cancellationToken).ConfigureAwait(false);
+            if (result.Restored)
+            {
+                await DiagnosticsLog.InfoAsync(
+                    $"Config backup restored from {result.Path}; rollback saved to {result.RollbackBackupPath}.",
+                    cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    await refreshService.RestartAsync(cancellationToken).ConfigureAwait(false);
+                    await DiagnosticsLog.InfoAsync("Refresh schedule restarted after config restore.", cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    await DiagnosticsLog.ErrorAsync(
+                        "Config backup restored, but refresh schedule restart failed.",
+                        ex,
+                        CancellationToken.None).ConfigureAwait(false);
+                }
+            }
+            else
+            {
+                await DiagnosticsLog.InfoAsync($"Config backup restore did not apply: {result.Path}.", cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            return result;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await DiagnosticsLog.ErrorAsync("Config backup restore failed.", ex, CancellationToken.None).ConfigureAwait(false);
             throw;
         }
     }
@@ -317,6 +408,14 @@ public sealed class AppHost : IAsyncDisposable
                 await DiagnosticsLog.ErrorAsync(failureMessage, ex, CancellationToken.None).ConfigureAwait(false);
             }
         });
+    }
+
+    private async Task<string?> GetLatestConfigBackupPathAsync(CancellationToken cancellationToken)
+    {
+        var summary = await diagnosticsSummaryService.GetSummaryAsync(cancellationToken).ConfigureAwait(false);
+        return string.IsNullOrWhiteSpace(summary.LatestConfigBackupPath)
+            ? null
+            : summary.LatestConfigBackupPath;
     }
 
     private static string RequireSecretName(string name)

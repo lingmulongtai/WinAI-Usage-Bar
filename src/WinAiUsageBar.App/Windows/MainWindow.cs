@@ -991,6 +991,13 @@ public sealed class MainWindow : Window
         };
         maintenanceActions.Children.Add(clearHistoryButton);
 
+        panel.Children.Add(maintenanceActions);
+
+        var backupActions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8
+        };
         var backupConfigButton = new Button { Content = "Export Config Backup" };
         backupConfigButton.Click += async (_, _) =>
         {
@@ -1010,8 +1017,69 @@ public sealed class MainWindow : Window
                 maintenanceInfo.IsOpen = true;
             }
         };
-        maintenanceActions.Children.Add(backupConfigButton);
-        panel.Children.Add(maintenanceActions);
+        backupActions.Children.Add(backupConfigButton);
+
+        var validateLatestBackupButton = new Button { Content = "Validate Latest Backup" };
+        validateLatestBackupButton.Click += async (_, _) =>
+        {
+            try
+            {
+                var result = await host.ValidateLatestConfigBackupAsync(CancellationToken.None);
+                maintenanceInfo.Severity = result.IsValid ? InfoBarSeverity.Success : InfoBarSeverity.Error;
+                maintenanceInfo.Title = result.IsValid ? "Config backup is valid" : "Config backup is invalid";
+                maintenanceInfo.Message = CommandLineConfigBackupValidationFormatter.Format(result);
+                maintenanceInfo.IsOpen = true;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                maintenanceInfo.Severity = InfoBarSeverity.Error;
+                maintenanceInfo.Title = "Config backup validation failed";
+                maintenanceInfo.Message = ex.Message;
+                maintenanceInfo.IsOpen = true;
+            }
+        };
+        backupActions.Children.Add(validateLatestBackupButton);
+
+        var restoreLatestBackupButton = new Button
+        {
+            Content = "Restore Latest Backup",
+            IsEnabled = false
+        };
+        var restoreConfirm = new CheckBox
+        {
+            Content = "Confirm restore",
+            MinWidth = 120
+        };
+        restoreConfirm.Checked += (_, _) => restoreLatestBackupButton.IsEnabled = true;
+        restoreConfirm.Unchecked += (_, _) => restoreLatestBackupButton.IsEnabled = false;
+        restoreLatestBackupButton.Click += async (_, _) =>
+        {
+            try
+            {
+                restoreLatestBackupButton.IsEnabled = false;
+                var result = await host.RestoreLatestConfigBackupAsync(CancellationToken.None);
+                maintenanceInfo.Severity = result.Restored ? InfoBarSeverity.Success : InfoBarSeverity.Error;
+                maintenanceInfo.Title = result.Restored ? "Config backup restored" : "Config backup not restored";
+                maintenanceInfo.Message = result.Restored
+                    ? $"{CommandLineConfigBackupRestoreFormatter.Format(result)}{Environment.NewLine}Reopen settings to see restored values."
+                    : CommandLineConfigBackupRestoreFormatter.Format(result);
+                maintenanceInfo.IsOpen = true;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                maintenanceInfo.Severity = InfoBarSeverity.Error;
+                maintenanceInfo.Title = "Config backup restore failed";
+                maintenanceInfo.Message = ex.Message;
+                maintenanceInfo.IsOpen = true;
+            }
+            finally
+            {
+                restoreConfirm.IsChecked = false;
+            }
+        };
+        backupActions.Children.Add(restoreConfirm);
+        backupActions.Children.Add(restoreLatestBackupButton);
+        panel.Children.Add(backupActions);
 
         var exportInfo = new InfoBar
         {
