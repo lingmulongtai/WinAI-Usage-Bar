@@ -24,6 +24,7 @@ public static class CommandLineHealthReportFormatter
         builder.AppendLine($"  History: {diagnostics.HistoryPath}");
         builder.AppendLine($"  Diagnostics log: {diagnostics.DiagnosticsLogPath}");
         builder.AppendLine($"  Diagnostics exports: {diagnostics.DiagnosticsExportsDirectory}");
+        builder.AppendLine($"  Config backups: {diagnostics.ConfigBackupsDirectory}");
         builder.AppendLine();
         builder.AppendLine("Configuration");
         builder.AppendLine($"  Config version: {diagnostics.ConfigVersion}");
@@ -31,6 +32,9 @@ public static class CommandLineHealthReportFormatter
         builder.AppendLine($"  Refresh interval: {diagnostics.RefreshInterval}");
         builder.AppendLine($"  Notifications: {(diagnostics.NotificationsEnabled ? "On" : "Off")}");
         builder.AppendLine($"  History retention: {diagnostics.HistoryRetentionMaxDays} day(s), {FormatBytes(diagnostics.HistoryRetentionMaxBytes)} max");
+        builder.AppendLine($"  Config backups: {diagnostics.ConfigBackupCount} backup(s), {FormatBytes(diagnostics.ConfigBackupTotalBytes)} total");
+        builder.AppendLine($"  Latest config backup: {diagnostics.LatestConfigBackupPath ?? "n/a"}");
+        builder.AppendLine($"  Latest config backup time: {FormatDate(diagnostics.LatestConfigBackupCreatedAt)}");
         builder.AppendLine();
         builder.AppendLine("Snapshots");
         builder.AppendLine($"  Cached snapshots: {diagnostics.CachedSnapshotCount}");

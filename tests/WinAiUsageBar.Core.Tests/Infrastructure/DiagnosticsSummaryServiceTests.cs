@@ -39,6 +39,12 @@ public sealed class DiagnosticsSummaryServiceTests
             await snapshotStore.SaveAsync(snapshots, CancellationToken.None);
             await snapshotStore.AppendHistoryAsync(snapshots, config.HistoryRetention, CancellationToken.None);
             await File.WriteAllTextAsync(paths.DiagnosticsLogPath, "normal diagnostics line");
+            var olderBackupPath = Path.Combine(paths.ConfigBackupsDirectory, "config-backup-20260708-150000.json");
+            var latestBackupPath = Path.Combine(paths.ConfigBackupsDirectory, "config-backup-20260708-160000.json");
+            await File.WriteAllTextAsync(olderBackupPath, "old backup");
+            await File.WriteAllTextAsync(latestBackupPath, "latest backup");
+            File.SetLastWriteTime(latestBackupPath, now.DateTime);
+            File.SetLastWriteTime(olderBackupPath, now.AddMinutes(-30).DateTime);
 
             var summary = await service.GetSummaryAsync(CancellationToken.None);
             var viewModel = new DiagnosticsSummaryViewModel(summary);
@@ -54,12 +60,18 @@ public sealed class DiagnosticsSummaryServiceTests
             Assert.False(summary.NotificationsEnabled);
             Assert.Equal(2, summary.CachedSnapshotCount);
             Assert.Equal(now, summary.LatestSnapshotUpdatedAt);
+            Assert.Equal(paths.ConfigBackupsDirectory, summary.ConfigBackupsDirectory);
+            Assert.Equal(2, summary.ConfigBackupCount);
+            Assert.Equal(latestBackupPath, summary.LatestConfigBackupPath);
+            Assert.NotNull(summary.LatestConfigBackupCreatedAt);
+            Assert.Equal("old backup".Length + "latest backup".Length, summary.ConfigBackupTotalBytes);
             Assert.True(summary.ConfigFile.Exists);
             Assert.True(summary.SnapshotsFile.Exists);
             Assert.True(summary.HistoryFile.Exists);
             Assert.True(summary.DiagnosticsLogFile.Exists);
             Assert.Contains($"Config v{AppConfigMigrations.CurrentVersion}", viewModel.ConfigText);
             Assert.Contains("2 cached snapshot", viewModel.SnapshotText);
+            Assert.Contains("2 config backup", viewModel.ConfigBackupText);
             Assert.DoesNotContain("gemini-secret-ref", visibleText, StringComparison.Ordinal);
             Assert.DoesNotContain("copilot-pat-secret", visibleText, StringComparison.Ordinal);
         }

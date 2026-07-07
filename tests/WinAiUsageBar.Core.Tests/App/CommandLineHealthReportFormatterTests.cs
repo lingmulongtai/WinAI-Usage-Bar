@@ -20,6 +20,7 @@ public sealed class CommandLineHealthReportFormatterTests
             @"C:\Users\test\AppData\Roaming\WinAiUsageBar\history.ndjson",
             @"C:\Users\test\AppData\Roaming\WinAiUsageBar\diagnostics.log",
             @"C:\Users\test\AppData\Roaming\WinAiUsageBar\diagnostics-exports",
+            @"C:\Users\test\AppData\Roaming\WinAiUsageBar\config-backups",
             ConfigVersion: 7,
             ConfiguredProviderCount: 8,
             EnabledProviderCount: 3,
@@ -27,6 +28,10 @@ public sealed class CommandLineHealthReportFormatterTests
             NotificationsEnabled: true,
             CachedSnapshotCount: 2,
             LatestSnapshotUpdatedAt: latestSnapshot,
+            ConfigBackupCount: 2,
+            LatestConfigBackupPath: @"C:\Users\test\AppData\Roaming\WinAiUsageBar\config-backups\config-backup-20260708-064000.json",
+            LatestConfigBackupCreatedAt: latestSnapshot,
+            ConfigBackupTotalBytes: 4096,
             HistoryRetentionMaxDays: 30,
             HistoryRetentionMaxBytes: 1_048_576,
             ConfigFile: FileSummary("config.json", true, 2048, latestSnapshot),
@@ -59,6 +64,9 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.Contains("WinAI Usage Bar 1.2.3", report, StringComparison.Ordinal);
         Assert.Contains("Generated: 2026-07-08 06:45:00 +09:00", report, StringComparison.Ordinal);
         Assert.Contains("Providers: 3 enabled / 8 configured", report, StringComparison.Ordinal);
+        Assert.Contains(@"Config backups: C:\Users\test\AppData\Roaming\WinAiUsageBar\config-backups", report, StringComparison.Ordinal);
+        Assert.Contains("Config backups: 2 backup(s), 4 KB total", report, StringComparison.Ordinal);
+        Assert.Contains("Latest config backup time: 2026-07-08 06:40:00 +09:00", report, StringComparison.Ordinal);
         Assert.Contains("Cached snapshots: 2", report, StringComparison.Ordinal);
         Assert.Contains("Entries: 3", report, StringComparison.Ordinal);
         Assert.Contains("Codex: 3 entries, latest Warning, remaining 42.5%, source LocalAppServer", report, StringComparison.Ordinal);

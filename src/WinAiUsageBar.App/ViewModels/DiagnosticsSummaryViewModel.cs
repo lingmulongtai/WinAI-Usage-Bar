@@ -12,11 +12,16 @@ public sealed class DiagnosticsSummaryViewModel
         HistoryPath = summary.HistoryPath;
         DiagnosticsLogPath = summary.DiagnosticsLogPath;
         DiagnosticsExportsDirectory = summary.DiagnosticsExportsDirectory;
+        ConfigBackupsDirectory = summary.ConfigBackupsDirectory;
         ConfigText = $"Config v{summary.ConfigVersion} / {summary.EnabledProviderCount} of {summary.ConfiguredProviderCount} providers enabled";
         RefreshText = $"Refresh: {summary.RefreshInterval} / Notifications: {(summary.NotificationsEnabled ? "On" : "Off")}";
         SnapshotText = summary.LatestSnapshotUpdatedAt is null
             ? $"{summary.CachedSnapshotCount} cached snapshot(s)"
             : $"{summary.CachedSnapshotCount} cached snapshot(s) / latest {summary.LatestSnapshotUpdatedAt:yyyy-MM-dd HH:mm:ss zzz}";
+        ConfigBackupText = summary.LatestConfigBackupCreatedAt is null
+            ? $"{summary.ConfigBackupCount} config backup(s)"
+            : $"{summary.ConfigBackupCount} config backup(s), {FormatBytes(summary.ConfigBackupTotalBytes)} total / latest {summary.LatestConfigBackupCreatedAt:yyyy-MM-dd HH:mm:ss zzz}";
+        LatestConfigBackupPath = summary.LatestConfigBackupPath;
         HistoryText = $"History retention: {summary.HistoryRetentionMaxDays} day(s), {FormatBytes(summary.HistoryRetentionMaxBytes)} max";
         Files =
         [
@@ -39,11 +44,17 @@ public sealed class DiagnosticsSummaryViewModel
 
     public string DiagnosticsExportsDirectory { get; }
 
+    public string ConfigBackupsDirectory { get; }
+
     public string ConfigText { get; }
 
     public string RefreshText { get; }
 
     public string SnapshotText { get; }
+
+    public string ConfigBackupText { get; }
+
+    public string? LatestConfigBackupPath { get; }
 
     public string HistoryText { get; }
 
@@ -54,12 +65,15 @@ public sealed class DiagnosticsSummaryViewModel
         ConfigText,
         RefreshText,
         SnapshotText,
+        ConfigBackupText,
         HistoryText,
         $"Config: {ConfigPath}",
         $"Snapshots: {SnapshotsPath}",
         $"History: {HistoryPath}",
         $"Diagnostics log: {DiagnosticsLogPath}",
-        $"Exports: {DiagnosticsExportsDirectory}"
+        $"Exports: {DiagnosticsExportsDirectory}",
+        $"Config backups: {ConfigBackupsDirectory}",
+        LatestConfigBackupPath is null ? "Latest config backup: n/a" : $"Latest config backup: {LatestConfigBackupPath}"
     ];
 
     public static string FormatBytes(long bytes)

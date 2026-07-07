@@ -16,6 +16,7 @@ public sealed record DiagnosticsSummary(
     string HistoryPath,
     string DiagnosticsLogPath,
     string DiagnosticsExportsDirectory,
+    string ConfigBackupsDirectory,
     int ConfigVersion,
     int ConfiguredProviderCount,
     int EnabledProviderCount,
@@ -23,6 +24,10 @@ public sealed record DiagnosticsSummary(
     bool NotificationsEnabled,
     int CachedSnapshotCount,
     DateTimeOffset? LatestSnapshotUpdatedAt,
+    int ConfigBackupCount,
+    string? LatestConfigBackupPath,
+    DateTimeOffset? LatestConfigBackupCreatedAt,
+    long ConfigBackupTotalBytes,
     int HistoryRetentionMaxDays,
     long HistoryRetentionMaxBytes,
     DiagnosticsFileSummary ConfigFile,
@@ -49,6 +54,7 @@ public sealed class DiagnosticsSummaryService(
         DateTimeOffset? latestSnapshot = snapshots.Count == 0
             ? null
             : snapshots.Values.Max(snapshot => snapshot.UpdatedAt);
+        var backupSummary = ReadConfigBackups(paths.ConfigBackupsDirectory);
 
         return new DiagnosticsSummary(
             paths.RootDirectory,
@@ -57,6 +63,7 @@ public sealed class DiagnosticsSummaryService(
             paths.HistoryPath,
             paths.DiagnosticsLogPath,
             paths.DiagnosticsExportsDirectory,
+            paths.ConfigBackupsDirectory,
             config.Version,
             config.Providers.Count,
             config.Providers.Count(provider => provider.IsEnabled),
@@ -64,6 +71,10 @@ public sealed class DiagnosticsSummaryService(
             config.Notifications.IsEnabled,
             snapshots.Count,
             latestSnapshot,
+            backupSummary.Count,
+            backupSummary.LatestPath,
+            backupSummary.LatestCreatedAt,
+            backupSummary.TotalBytes,
             config.HistoryRetention.MaxDays,
             config.HistoryRetention.MaxBytes,
             ReadFile(paths.ConfigPath),
@@ -86,4 +97,39 @@ public sealed class DiagnosticsSummaryService(
             file.Length,
             new DateTimeOffset(file.LastWriteTime));
     }
+
+    private static ConfigBackupSummary ReadConfigBackups(string directory)
+    {
+        if (!Directory.Exists(directory))
+        {
+            return new ConfigBackupSummary(0, null, null, 0);
+        }
+
+        var files = Directory
+            .EnumerateFiles(directory, "config-backup-*.json", SearchOption.TopDirectoryOnly)
+            .Select(path => new FileInfo(path))
+            .Where(file => file.Exists)
+            .ToList();
+
+        if (files.Count == 0)
+        {
+            return new ConfigBackupSummary(0, null, null, 0);
+        }
+
+        var latest = files
+            .OrderByDescending(file => file.LastWriteTimeUtc)
+            .First();
+
+        return new ConfigBackupSummary(
+            files.Count,
+            latest.FullName,
+            new DateTimeOffset(latest.LastWriteTime),
+            files.Sum(file => file.Length));
+    }
+
+    private sealed record ConfigBackupSummary(
+        int Count,
+        string? LatestPath,
+        DateTimeOffset? LatestCreatedAt,
+        long TotalBytes);
 }
