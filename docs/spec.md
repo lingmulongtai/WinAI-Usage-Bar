@@ -29,6 +29,8 @@ Every provider supports Manual mode first. Automatic integrations are best-effor
 
 Tray command routing is covered with fake services. Real `NotifyIcon` rendering, WinUI window activation, and operating-system left-click behavior remain manual verification points because they require the Windows shell and WinUI runtime.
 
+Compact panel placement uses the monitor under the current cursor position, reads that monitor's working area, infers the taskbar edge from the working-area inset, and clamps the panel inside the work area. If screen placement fails, the app falls back to a centered placement.
+
 Provider cards show:
 
 - Display name

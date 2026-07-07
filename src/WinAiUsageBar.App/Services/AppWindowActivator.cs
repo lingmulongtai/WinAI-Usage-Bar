@@ -24,7 +24,9 @@ public interface IApplicationExitService
     void Exit();
 }
 
-public sealed class WinUiWindowActivator(WidgetPlacementStore widgetPlacementStore) : IAppWindowActivator
+public sealed class WinUiWindowActivator(
+    WidgetPlacementStore widgetPlacementStore,
+    ICompactPanelPlacementService compactPanelPlacementService) : IAppWindowActivator
 {
     private MainWindow? mainWindow;
     private CompactUsageWindow? compactUsageWindow;
@@ -33,6 +35,13 @@ public sealed class WinUiWindowActivator(WidgetPlacementStore widgetPlacementSto
     public void ShowCompactPanel(AppHost host)
     {
         compactUsageWindow ??= new CompactUsageWindow(host);
+        var placement = compactPanelPlacementService.Calculate(360, 520);
+        WindowHelpers.MoveAndResize(
+            compactUsageWindow,
+            Convert.ToInt32(placement.Left),
+            Convert.ToInt32(placement.Top),
+            Convert.ToInt32(placement.Width),
+            Convert.ToInt32(placement.Height));
         compactUsageWindow.Activate();
     }
 

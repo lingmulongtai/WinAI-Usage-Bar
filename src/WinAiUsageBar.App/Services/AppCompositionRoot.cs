@@ -35,8 +35,9 @@ public static class AppCompositionRoot
         var notifications = new WindowsAppNotificationService(new WindowsAppNotificationTransport());
         var refreshService = new UsageRefreshService(configStore, snapshotStore, registry, paths, notifications);
         var widgetPlacementStore = new WidgetPlacementStore(configStore);
+        var compactPlacementService = new CompactPanelPlacementService();
         var tray = new TrayIconService();
-        var windowActivator = new WinUiWindowActivator(widgetPlacementStore);
+        var windowActivator = new WinUiWindowActivator(widgetPlacementStore, compactPlacementService);
         var exitService = new WinUiApplicationExitService();
 
         return new AppHostServices(
