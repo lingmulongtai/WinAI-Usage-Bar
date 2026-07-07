@@ -89,6 +89,20 @@ public sealed class AppHost : IAsyncDisposable
         }
     }
 
+    public async Task RestartRefreshScheduleAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await refreshService.RestartAsync(cancellationToken).ConfigureAwait(false);
+            await DiagnosticsLog.InfoAsync("Refresh schedule restarted.", cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await DiagnosticsLog.ErrorAsync("Refresh schedule restart failed.", ex, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
+    }
+
     public async Task<DiagnosticsExportResult> ExportDiagnosticsAsync(CancellationToken cancellationToken)
     {
         try

@@ -17,6 +17,8 @@ public interface IUsageRefreshService : IAsyncDisposable
 
     Task StartAsync(CancellationToken cancellationToken);
 
+    Task RestartAsync(CancellationToken cancellationToken);
+
     Task RefreshNowAsync(CancellationToken cancellationToken);
 }
 
@@ -29,6 +31,7 @@ public sealed class UsageRefreshService(
     Func<RefreshIntervalKind, TimeSpan?>? intervalMapper = null) : IUsageRefreshService
 {
     private readonly SemaphoreSlim refreshLock = new(1, 1);
+    private readonly SemaphoreSlim scheduleLock = new(1, 1);
     private readonly Func<RefreshIntervalKind, TimeSpan?> mapRefreshInterval = intervalMapper ?? RefreshIntervalMapper.ToTimeSpan;
     private CancellationTokenSource? loopCancellation;
     private Task? loopTask;
@@ -46,7 +49,26 @@ public sealed class UsageRefreshService(
         SnapshotsChanged?.Invoke(this, CurrentSnapshots);
     }
 
-    public async Task StartAsync(CancellationToken cancellationToken)
+    public Task StartAsync(CancellationToken cancellationToken)
+    {
+        return RestartAsync(cancellationToken);
+    }
+
+    public async Task RestartAsync(CancellationToken cancellationToken)
+    {
+        await scheduleLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await StopLoopAsync().ConfigureAwait(false);
+            await StartLoopFromConfigAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            scheduleLock.Release();
+        }
+    }
+
+    private async Task StartLoopFromConfigAsync(CancellationToken cancellationToken)
     {
         var config = await configStore.LoadAsync(cancellationToken).ConfigureAwait(false);
         var interval = mapRefreshInterval(config.Refresh.Interval);
@@ -124,25 +146,36 @@ public sealed class UsageRefreshService(
 
     public async ValueTask DisposeAsync()
     {
-        if (loopCancellation is not null)
+        await StopLoopAsync().ConfigureAwait(false);
+
+        await notificationService.DisposeAsync().ConfigureAwait(false);
+        refreshLock.Dispose();
+        scheduleLock.Dispose();
+    }
+
+    private async Task StopLoopAsync()
+    {
+        var cancellation = loopCancellation;
+        var task = loopTask;
+        loopCancellation = null;
+        loopTask = null;
+
+        if (cancellation is not null)
         {
-            await loopCancellation.CancelAsync().ConfigureAwait(false);
-            loopCancellation.Dispose();
+            await cancellation.CancelAsync().ConfigureAwait(false);
+            cancellation.Dispose();
         }
 
-        if (loopTask is not null)
+        if (task is not null)
         {
             try
             {
-                await loopTask.ConfigureAwait(false);
+                await task.ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
             }
         }
-
-        await notificationService.DisposeAsync().ConfigureAwait(false);
-        refreshLock.Dispose();
     }
 
     private async Task RunLoopAsync(TimeSpan interval, CancellationToken cancellationToken)

@@ -106,6 +106,42 @@ public sealed class UsageRefreshServiceTests
     }
 
     [Fact]
+    public async Task RestartAsync_ReloadsIntervalFromConfig()
+    {
+        var config = DisabledDefaultConfig();
+        Enable(config, ProviderId.Codex);
+        config.Refresh.Interval = RefreshIntervalKind.Manual;
+        var snapshotStore = new InMemorySnapshotStore();
+        var refreshService = new UsageRefreshService(
+            new InMemoryConfigStore(config),
+            snapshotStore,
+            new FakeProviderSource(
+                [ProviderDescriptors.Get(ProviderId.Codex)],
+                descriptor => new SuccessfulProviderAdapter(descriptor)),
+            TestPaths(),
+            new RecordingNotificationService(),
+            interval => interval == RefreshIntervalKind.Manual
+                ? null
+                : TimeSpan.FromMilliseconds(10));
+
+        await refreshService.StartAsync(CancellationToken.None);
+        await Task.Delay(40);
+        Assert.Equal(0, snapshotStore.SaveCalls);
+
+        config.Refresh.Interval = RefreshIntervalKind.OneMinute;
+        await refreshService.RestartAsync(CancellationToken.None);
+        await WaitUntilAsync(() => snapshotStore.SaveCalls >= 1);
+
+        config.Refresh.Interval = RefreshIntervalKind.Manual;
+        await refreshService.RestartAsync(CancellationToken.None);
+        var saveCallsAfterStop = snapshotStore.SaveCalls;
+        await Task.Delay(40);
+        await refreshService.DisposeAsync();
+
+        Assert.Equal(saveCallsAfterStop, snapshotStore.SaveCalls);
+    }
+
+    [Fact]
     public async Task RefreshNowAsync_DoesNotNotifyWhenNotificationsAreDisabled()
     {
         var config = DisabledDefaultConfig();

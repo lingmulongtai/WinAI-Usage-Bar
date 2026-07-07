@@ -444,6 +444,7 @@ public sealed class MainWindow : Window
             }
 
             await host.SaveConfigAsync(config, CancellationToken.None);
+            await host.RestartRefreshScheduleAsync(CancellationToken.None);
             validationInfo.Severity = result.Warnings.Count > 0
                 ? InfoBarSeverity.Warning
                 : InfoBarSeverity.Success;

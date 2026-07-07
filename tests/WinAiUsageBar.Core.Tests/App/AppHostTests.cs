@@ -116,6 +116,30 @@ public sealed class AppHostTests
     }
 
     [Fact]
+    public async Task RestartRefreshScheduleAsync_UsesInjectedRefreshService()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        var refreshService = new FakeRefreshService([]);
+        var host = new AppHost(
+            new ImmediateDispatcher(),
+            new AppHostServices(
+                paths,
+                new InMemoryConfigStore(AppConfig.CreateDefault()),
+                refreshService,
+                new FakeTrayIconService(),
+                new RecordingDiagnosticsLog(),
+                new FakeDiagnosticsExportService(paths),
+                new FakeStartupRegistrationService(),
+                new FakeWindowActivator(),
+                new FakeExitService()));
+
+        await host.RestartRefreshScheduleAsync(CancellationToken.None);
+
+        Assert.Equal(1, refreshService.RestartCount);
+    }
+
+    [Fact]
     public async Task StartAsync_AppliesStartupRegistrationWhenConfigRequestsIt()
     {
         var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
@@ -194,6 +218,8 @@ public sealed class AppHostTests
 
         public int RefreshCount { get; private set; }
 
+        public int RestartCount { get; private set; }
+
         public TaskCompletionSource RefreshObserved { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public Task InitializeAsync(CancellationToken cancellationToken)
@@ -206,6 +232,13 @@ public sealed class AppHostTests
         public Task StartAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
+
+        public Task RestartAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            RestartCount++;
             return Task.CompletedTask;
         }
 
