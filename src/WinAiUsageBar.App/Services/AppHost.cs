@@ -19,6 +19,7 @@ public sealed class AppHost : IAsyncDisposable
     private readonly IDiagnosticsExportService diagnosticsExportService;
     private readonly IDiagnosticsSummaryService diagnosticsSummaryService;
     private readonly IHistorySummaryService historySummaryService;
+    private readonly IDataMaintenanceService dataMaintenanceService;
     private readonly ISecretStore secretStore;
     private readonly IStartupRegistrationService startupRegistrationService;
     private readonly IAppWindowActivator windowActivator;
@@ -35,6 +36,7 @@ public sealed class AppHost : IAsyncDisposable
         diagnosticsExportService = services.DiagnosticsExportService;
         diagnosticsSummaryService = services.DiagnosticsSummaryService;
         historySummaryService = services.HistorySummaryService;
+        dataMaintenanceService = services.DataMaintenanceService;
         secretStore = services.SecretStore;
         startupRegistrationService = services.StartupRegistrationService;
         windowActivator = services.WindowActivator;
@@ -133,6 +135,20 @@ public sealed class AppHost : IAsyncDisposable
     public async Task<HistorySummary> GetHistorySummaryAsync(CancellationToken cancellationToken)
     {
         return await historySummaryService.GetSummaryAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<DataMaintenanceResult> ClearSnapshotsAsync(CancellationToken cancellationToken)
+    {
+        var result = await dataMaintenanceService.ClearSnapshotsAsync(cancellationToken).ConfigureAwait(false);
+        await DiagnosticsLog.InfoAsync("Snapshot cache cleared.", cancellationToken).ConfigureAwait(false);
+        return result;
+    }
+
+    public async Task<DataMaintenanceResult> ClearHistoryAsync(CancellationToken cancellationToken)
+    {
+        var result = await dataMaintenanceService.ClearHistoryAsync(cancellationToken).ConfigureAwait(false);
+        await DiagnosticsLog.InfoAsync("History file cleared.", cancellationToken).ConfigureAwait(false);
+        return result;
     }
 
     public async Task<bool> HasSecretAsync(string name, CancellationToken cancellationToken)

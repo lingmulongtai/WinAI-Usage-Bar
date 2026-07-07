@@ -44,6 +44,7 @@ public static class AppCompositionRoot
         var diagnosticsExportService = new DiagnosticsExportService(paths);
         var diagnosticsSummaryService = new DiagnosticsSummaryService(paths, configStore, snapshotStore);
         var historySummaryService = new HistorySummaryService(paths);
+        var dataMaintenanceService = new DataMaintenanceService(paths);
         var refreshService = new UsageRefreshService(
             configStore,
             snapshotStore,
@@ -67,6 +68,7 @@ public static class AppCompositionRoot
             diagnosticsExportService,
             diagnosticsSummaryService,
             historySummaryService,
+            dataMaintenanceService,
             secretStore,
             startupRegistrationService,
             windowActivator,
@@ -83,6 +85,7 @@ public sealed record AppHostServices(
     IDiagnosticsExportService DiagnosticsExportService,
     IDiagnosticsSummaryService DiagnosticsSummaryService,
     IHistorySummaryService HistorySummaryService,
+    IDataMaintenanceService DataMaintenanceService,
     ISecretStore SecretStore,
     IStartupRegistrationService StartupRegistrationService,
     IAppWindowActivator WindowActivator,

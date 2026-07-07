@@ -33,6 +33,7 @@ public sealed class AppHostTests
                 new FakeDiagnosticsExportService(paths),
                 new FakeDiagnosticsSummaryService(paths),
                 new FakeHistorySummaryService(),
+                new FakeDataMaintenanceService(paths),
                 new FakeSecretStore(),
                 new FakeStartupRegistrationService(),
                 windowActivator,
@@ -75,6 +76,7 @@ public sealed class AppHostTests
                 new FakeDiagnosticsExportService(paths),
                 new FakeDiagnosticsSummaryService(paths),
                 new FakeHistorySummaryService(),
+                new FakeDataMaintenanceService(paths),
                 new FakeSecretStore(),
                 new FakeStartupRegistrationService(),
                 windowActivator,
@@ -112,6 +114,7 @@ public sealed class AppHostTests
                 new FakeDiagnosticsExportService(paths),
                 new FakeDiagnosticsSummaryService(paths),
                 new FakeHistorySummaryService(),
+                new FakeDataMaintenanceService(paths),
                 new FakeSecretStore(),
                 new FakeStartupRegistrationService(),
                 new FakeWindowActivator(),
@@ -142,6 +145,7 @@ public sealed class AppHostTests
                 new FakeDiagnosticsExportService(paths),
                 new FakeDiagnosticsSummaryService(paths),
                 new FakeHistorySummaryService(),
+                new FakeDataMaintenanceService(paths),
                 new FakeSecretStore(),
                 new FakeStartupRegistrationService(),
                 new FakeWindowActivator(),
@@ -171,6 +175,7 @@ public sealed class AppHostTests
                 new FakeDiagnosticsExportService(paths),
                 new FakeDiagnosticsSummaryService(paths),
                 new FakeHistorySummaryService(),
+                new FakeDataMaintenanceService(paths),
                 new FakeSecretStore(),
                 startup,
                 new FakeWindowActivator(),
@@ -199,6 +204,7 @@ public sealed class AppHostTests
                 new FakeDiagnosticsExportService(paths),
                 new FakeDiagnosticsSummaryService(paths),
                 new FakeHistorySummaryService(),
+                new FakeDataMaintenanceService(paths),
                 secrets,
                 new FakeStartupRegistrationService(),
                 new FakeWindowActivator(),
@@ -213,6 +219,41 @@ public sealed class AppHostTests
         Assert.False(existsAfterDelete);
         Assert.DoesNotContain(diagnostics.InfoMessages, message => message.Contains("sk-test-secret", StringComparison.Ordinal));
         Assert.Equal("gemini-api-key", secrets.LastSetName);
+    }
+
+    [Fact]
+    public async Task DataMaintenanceMethods_UseInjectedService()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        var maintenance = new FakeDataMaintenanceService(paths);
+        var diagnostics = new RecordingDiagnosticsLog();
+        var host = new AppHost(
+            new ImmediateDispatcher(),
+            new AppHostServices(
+                paths,
+                new InMemoryConfigStore(AppConfig.CreateDefault()),
+                new FakeRefreshService([]),
+                new FakeTrayIconService(),
+                diagnostics,
+                new FakeDiagnosticsExportService(paths),
+                new FakeDiagnosticsSummaryService(paths),
+                new FakeHistorySummaryService(),
+                maintenance,
+                new FakeSecretStore(),
+                new FakeStartupRegistrationService(),
+                new FakeWindowActivator(),
+                new FakeExitService()));
+
+        var snapshotsResult = await host.ClearSnapshotsAsync(CancellationToken.None);
+        var historyResult = await host.ClearHistoryAsync(CancellationToken.None);
+
+        Assert.Equal(1, maintenance.ClearSnapshotsCount);
+        Assert.Equal(1, maintenance.ClearHistoryCount);
+        Assert.Equal(paths.SnapshotsPath, snapshotsResult.Path);
+        Assert.Equal(paths.HistoryPath, historyResult.Path);
+        Assert.Contains("Snapshot cache cleared.", diagnostics.InfoMessages);
+        Assert.Contains("History file cleared.", diagnostics.InfoMessages);
     }
 
     private static UsageSnapshot Snapshot(ProviderId providerId, string displayName, double remainingPercent)
@@ -468,6 +509,33 @@ public sealed class AppHostTests
                 EarliestUpdatedAt: null,
                 LatestUpdatedAt: null,
                 Providers: []));
+        }
+    }
+
+    private sealed class FakeDataMaintenanceService(AppDataPaths paths) : IDataMaintenanceService
+    {
+        public int ClearSnapshotsCount { get; private set; }
+
+        public int ClearHistoryCount { get; private set; }
+
+        public Task<DataMaintenanceResult> ClearSnapshotsAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ClearSnapshotsCount++;
+            return Task.FromResult(new DataMaintenanceResult(
+                paths.SnapshotsPath,
+                true,
+                DateTimeOffset.Now));
+        }
+
+        public Task<DataMaintenanceResult> ClearHistoryAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ClearHistoryCount++;
+            return Task.FromResult(new DataMaintenanceResult(
+                paths.HistoryPath,
+                true,
+                DateTimeOffset.Now));
         }
     }
 

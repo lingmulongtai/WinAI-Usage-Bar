@@ -789,6 +789,63 @@ public sealed class MainWindow : Window
         secretActions.Children.Add(deleteSecretButton);
         panel.Children.Add(secretActions);
 
+        panel.Children.Add(UiFactory.Text("Data maintenance", 16, FontWeights.SemiBold));
+        panel.Children.Add(UiFactory.Text("Clear local cache files without deleting config.json or saved secrets.", 14));
+        var maintenanceInfo = new InfoBar
+        {
+            IsOpen = false,
+            IsClosable = true
+        };
+        panel.Children.Add(maintenanceInfo);
+
+        var maintenanceActions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8
+        };
+        var clearSnapshotsButton = new Button { Content = "Clear Snapshot Cache" };
+        clearSnapshotsButton.Click += async (_, _) =>
+        {
+            try
+            {
+                var result = await host.ClearSnapshotsAsync(CancellationToken.None);
+                maintenanceInfo.Severity = InfoBarSeverity.Success;
+                maintenanceInfo.Title = result.Deleted ? "Snapshot cache cleared" : "Snapshot cache already clear";
+                maintenanceInfo.Message = Path.GetFileName(result.Path);
+                maintenanceInfo.IsOpen = true;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                maintenanceInfo.Severity = InfoBarSeverity.Error;
+                maintenanceInfo.Title = "Snapshot cache clear failed";
+                maintenanceInfo.Message = ex.Message;
+                maintenanceInfo.IsOpen = true;
+            }
+        };
+        maintenanceActions.Children.Add(clearSnapshotsButton);
+
+        var clearHistoryButton = new Button { Content = "Clear History" };
+        clearHistoryButton.Click += async (_, _) =>
+        {
+            try
+            {
+                var result = await host.ClearHistoryAsync(CancellationToken.None);
+                maintenanceInfo.Severity = InfoBarSeverity.Success;
+                maintenanceInfo.Title = result.Deleted ? "History cleared" : "History already clear";
+                maintenanceInfo.Message = Path.GetFileName(result.Path);
+                maintenanceInfo.IsOpen = true;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                maintenanceInfo.Severity = InfoBarSeverity.Error;
+                maintenanceInfo.Title = "History clear failed";
+                maintenanceInfo.Message = ex.Message;
+                maintenanceInfo.IsOpen = true;
+            }
+        };
+        maintenanceActions.Children.Add(clearHistoryButton);
+        panel.Children.Add(maintenanceActions);
+
         var exportInfo = new InfoBar
         {
             IsOpen = false,

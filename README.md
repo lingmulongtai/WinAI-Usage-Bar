@@ -18,6 +18,7 @@ Current app version: `0.1.0`.
 - Refresh settings include interval, notification enablement, and history retention limits.
 - Appearance settings apply System, Light, or Dark theme to app windows.
 - Privacy & Data shows a diagnostics summary with local file paths, config version, cached snapshot count, latest update time, and tracked file sizes.
+- Privacy & Data can clear cached snapshots and retained history without deleting config or saved secrets.
 - Mock and Manual provider modes are implemented.
 - Manual mode can track used/remaining percentage, reset datetime/description, credits, currency/unit, month cost, last-31-day tokens, and notes.
 - Codex/ChatGPT app-server probing is isolated behind safe abstractions.
@@ -67,6 +68,7 @@ Run the published-app smoke test without opening UI:
 - Privacy & Data shows non-secret diagnostics metadata only; it does not list secret names or values.
 - Diagnostics can be exported from Privacy & Data; exports redact common secret shapes and never include files under `secrets/`.
 - Secret values can be saved or deleted by secret name from Privacy & Data; values are never displayed back.
+- Snapshot cache and retained history can be cleared from Privacy & Data; `config.json` and `secrets/` are left untouched.
 - Browser cookie scraping is intentionally not implemented in this MVP.
 - Codex integration never reads or displays `auth.json` contents.
 
