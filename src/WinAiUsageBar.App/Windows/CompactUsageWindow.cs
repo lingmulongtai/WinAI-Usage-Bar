@@ -26,6 +26,7 @@ public sealed class CompactUsageWindow : Window
         };
 
         RenderCards();
+        _ = ApplyConfiguredThemeAsync();
     }
 
     private UIElement BuildContent()
@@ -95,5 +96,11 @@ public sealed class CompactUsageWindow : Window
         {
             cardsPanel.Children.Add(UiFactory.ProviderCard(provider));
         }
+    }
+
+    private async Task ApplyConfiguredThemeAsync()
+    {
+        var config = await host.LoadConfigAsync(CancellationToken.None);
+        ThemeHelper.Apply(Content, config.Appearance.Theme);
     }
 }

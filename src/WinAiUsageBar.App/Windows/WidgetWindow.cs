@@ -28,6 +28,7 @@ public sealed class WidgetWindow : Window
 
         _ = LoadPlacementAsync();
         RenderCards();
+        _ = ApplyConfiguredThemeAsync();
     }
 
     private UIElement BuildContent()
@@ -124,5 +125,11 @@ public sealed class WidgetWindow : Window
         {
             cardsPanel.Children.Add(UiFactory.ProviderCard(provider));
         }
+    }
+
+    private async Task ApplyConfiguredThemeAsync()
+    {
+        var config = await host.LoadConfigAsync(CancellationToken.None);
+        ThemeHelper.Apply(Content, config.Appearance.Theme);
     }
 }

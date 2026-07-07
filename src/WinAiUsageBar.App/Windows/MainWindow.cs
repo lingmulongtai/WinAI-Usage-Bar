@@ -44,6 +44,7 @@ public sealed class MainWindow : Window
         };
 
         navigationView.SelectedItem = navigationView.MenuItems[0];
+        _ = ApplyConfiguredThemeAsync();
         _ = NavigateAsync("Overview");
     }
 
@@ -355,6 +356,7 @@ public sealed class MainWindow : Window
                 config.Startup.LaunchOnLogin = startupToggle.IsOn;
                 await host.ApplyStartupRegistrationAsync(startupToggle.IsOn, CancellationToken.None);
                 await host.SaveConfigAsync(config, CancellationToken.None);
+                ApplyTheme(config.Appearance.Theme);
                 var nextStatus = await host.GetStartupRegistrationStatusAsync(CancellationToken.None);
                 startupInfo.Severity = InfoBarSeverity.Success;
                 startupInfo.Title = "Appearance saved";
@@ -372,6 +374,17 @@ public sealed class MainWindow : Window
         panel.Children.Add(save);
 
         return Wrap(panel);
+    }
+
+    private async Task ApplyConfiguredThemeAsync()
+    {
+        var config = await host.LoadConfigAsync(CancellationToken.None);
+        ApplyTheme(config.Appearance.Theme);
+    }
+
+    private void ApplyTheme(string theme)
+    {
+        ThemeHelper.Apply(navigationView, theme);
     }
 
     private async Task<UIElement> BuildRefreshPageAsync()

@@ -35,6 +35,7 @@ Gemini and OpenCode Zen support provider-specific API settings for future integr
 - Widget window shows one to three provider cards and remembers size and position.
 - Widget settings validate that one to three providers are selected and expose show-on-startup and always-on-top toggles.
 - Appearance settings can enable start-at-login registration for the current Windows user.
+- Appearance settings apply the saved System, Light, or Dark theme to settings, compact, and widget windows.
 
 Tray command routing is covered with fake services. Real `NotifyIcon` rendering, WinUI window activation, and operating-system left-click behavior remain manual verification points because they require the Windows shell and WinUI runtime.
 
