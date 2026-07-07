@@ -73,6 +73,8 @@ Run the published-app smoke test without opening UI:
 
 ## Release
 
+Release notes are tracked in [CHANGELOG.md](CHANGELOG.md).
+
 To create a draft GitHub Release:
 
 1. Update the app version in `src\WinAiUsageBar.App\WinAiUsageBar.App.csproj`.
