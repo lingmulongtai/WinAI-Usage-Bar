@@ -166,6 +166,56 @@ public sealed class UsageRefreshServiceTests
         Assert.Empty(notifications.Snapshots);
     }
 
+    [Fact]
+    public async Task RefreshNowAsync_LogsProviderDiagnosticsWithRedaction()
+    {
+        var config = DisabledDefaultConfig();
+        Enable(config, ProviderId.Codex);
+        var diagnostics = new RecordingDiagnosticsLog();
+        var refreshService = new UsageRefreshService(
+            new InMemoryConfigStore(config),
+            new InMemorySnapshotStore(),
+            new FakeProviderSource(
+                [ProviderDescriptors.Get(ProviderId.Codex)],
+                descriptor => new DiagnosticProviderAdapter(
+                    descriptor,
+                    [
+                        "authorization: bearer sk-provider-secret",
+                        "started local app-server"
+                    ])),
+            TestPaths(),
+            new RecordingNotificationService(),
+            diagnosticsLog: diagnostics);
+
+        await refreshService.RefreshNowAsync(CancellationToken.None);
+
+        Assert.Contains(diagnostics.InfoMessages, message => message.Contains("Codex provider diagnostic", StringComparison.Ordinal));
+        Assert.Contains(diagnostics.InfoMessages, message => message.Contains("started local app-server", StringComparison.Ordinal));
+        Assert.DoesNotContain(diagnostics.InfoMessages, message => message.Contains("sk-provider-secret", StringComparison.Ordinal));
+        Assert.Contains(diagnostics.InfoMessages, message => message.Contains("[REDACTED]", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task RefreshNowAsync_ContinuesWhenDiagnosticLoggingFails()
+    {
+        var config = DisabledDefaultConfig();
+        Enable(config, ProviderId.Codex);
+        var snapshotStore = new InMemorySnapshotStore();
+        var refreshService = new UsageRefreshService(
+            new InMemoryConfigStore(config),
+            snapshotStore,
+            new FakeProviderSource(
+                [ProviderDescriptors.Get(ProviderId.Codex)],
+                descriptor => new DiagnosticProviderAdapter(descriptor, ["diagnostic"])),
+            TestPaths(),
+            new RecordingNotificationService(),
+            diagnosticsLog: new ThrowingInfoDiagnosticsLog());
+
+        await refreshService.RefreshNowAsync(CancellationToken.None);
+
+        Assert.Single(snapshotStore.Saved);
+    }
+
     private static AppConfig DisabledDefaultConfig()
     {
         var config = AppConfig.CreateDefault();
@@ -333,6 +383,32 @@ public sealed class UsageRefreshServiceTests
         }
     }
 
+    private sealed class DiagnosticProviderAdapter(
+        ProviderDescriptor descriptor,
+        IReadOnlyList<string> diagnostics) : IProviderAdapter
+    {
+        public ProviderDescriptor Descriptor { get; } = descriptor;
+
+        public Task<ProviderFetchResult> FetchAsync(ProviderFetchContext context, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var snapshot = new UsageSnapshot(
+                Descriptor.Id,
+                Descriptor.DisplayName,
+                ProviderHealth.Ok,
+                Identity: null,
+                new UsageWindow("Test", 25, 75, null, "test reset", "%", 25, 100),
+                SecondaryWindow: null,
+                Credits: null,
+                DataSourceKind.Manual,
+                context.Now,
+                "OK",
+                ErrorMessage: null);
+
+            return Task.FromResult(ProviderFetchResult.FromSnapshot(snapshot, diagnostics.ToArray()));
+        }
+    }
+
     private sealed class RecordingNotificationService : IAppNotificationService
     {
         public List<UsageSnapshot> Snapshots { get; } = [];
@@ -352,11 +428,14 @@ public sealed class UsageRefreshServiceTests
 
     private sealed class RecordingDiagnosticsLog : IAppDiagnosticsLog
     {
+        public List<string> InfoMessages { get; } = [];
+
         public List<(string Message, Exception Exception)> Errors { get; } = [];
 
         public Task InfoAsync(string message, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            InfoMessages.Add(message);
             return Task.CompletedTask;
         }
 
@@ -364,6 +443,19 @@ public sealed class UsageRefreshServiceTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             Errors.Add((message, exception));
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class ThrowingInfoDiagnosticsLog : IAppDiagnosticsLog
+    {
+        public Task InfoAsync(string message, CancellationToken cancellationToken)
+        {
+            throw new InvalidOperationException("simulated diagnostics failure");
+        }
+
+        public Task ErrorAsync(string message, Exception exception, CancellationToken cancellationToken)
+        {
             return Task.CompletedTask;
         }
     }

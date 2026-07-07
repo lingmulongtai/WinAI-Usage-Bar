@@ -111,6 +111,8 @@ public sealed class UsageRefreshService(
                     providerTimeout.Token,
                     cancellationToken).ConfigureAwait(false);
 
+                await LogProviderDiagnosticsAsync(descriptor, result.Diagnostics).ConfigureAwait(false);
+
                 if (result.Snapshot is null)
                 {
                     continue;
@@ -198,6 +200,31 @@ public sealed class UsageRefreshService(
                 await LogLoopFailureAsync(ex).ConfigureAwait(false);
                 // A refresh-level failure should not permanently stop future timer ticks.
             }
+        }
+    }
+
+    private async Task LogProviderDiagnosticsAsync(
+        ProviderDescriptor descriptor,
+        IReadOnlyList<string> diagnostics)
+    {
+        if (diagnosticsLog is null || diagnostics.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            foreach (var diagnostic in diagnostics.Where(diagnostic => !string.IsNullOrWhiteSpace(diagnostic)).Take(10))
+            {
+                var safeDiagnostic = DiagnosticRedactor.Redact(diagnostic);
+                await diagnosticsLog.InfoAsync(
+                    $"{descriptor.DisplayName} provider diagnostic: {safeDiagnostic}",
+                    CancellationToken.None).ConfigureAwait(false);
+            }
+        }
+        catch
+        {
+            // Provider diagnostics are helpful but must never fail refresh.
         }
     }
 
