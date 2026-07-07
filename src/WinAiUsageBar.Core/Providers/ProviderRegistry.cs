@@ -2,6 +2,7 @@ using WinAiUsageBar.Core.Abstractions;
 using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Core.Models;
 using WinAiUsageBar.Core.Providers.Codex;
+using WinAiUsageBar.Core.Providers.GitHubCopilot;
 using WinAiUsageBar.Core.Providers.Manual;
 using WinAiUsageBar.Core.Providers.Mock;
 
@@ -16,7 +17,9 @@ public interface IProviderAdapterSource
 
 public sealed class ProviderRegistry(
     ICommandProbe? commandProbe = null,
-    ICodexAppServerClient? codexAppServerClient = null) : IProviderAdapterSource
+    ICodexAppServerClient? codexAppServerClient = null,
+    ISecretResolver? secretResolver = null,
+    IGitHubCopilotMetricsClient? gitHubCopilotMetricsClient = null) : IProviderAdapterSource
 {
     public IReadOnlyList<ProviderDescriptor> GetDescriptors()
     {
@@ -54,10 +57,7 @@ public sealed class ProviderRegistry(
                     DataSourceKind.OfficialApi,
                     "OpenCode Zen balance API support is a TODO until a documented endpoint is confirmed."),
             DataSourceKind.OfficialApi when descriptor.Id == ProviderId.GitHubCopilot =>
-                new UnsupportedProviderAdapter(
-                    descriptor,
-                    DataSourceKind.OfficialApi,
-                    "GitHub Copilot organization or enterprise metrics require permissions; personal use remains Manual mode in the MVP."),
+                CreateGitHubCopilotAdapter(descriptor),
             _ => new UnsupportedProviderAdapter(
                 descriptor,
                 config.SourceKind,
@@ -112,5 +112,21 @@ public sealed class ProviderRegistry(
             "claude",
             "Claude CLI is installed, but automatic usage retrieval is not implemented in the MVP. Use Manual mode or configure future telemetry support.",
             "Claude CLI was not found. Manual mode is available.");
+    }
+
+    private IProviderAdapter CreateGitHubCopilotAdapter(ProviderDescriptor descriptor)
+    {
+        if (secretResolver is null || gitHubCopilotMetricsClient is null)
+        {
+            return new UnsupportedProviderAdapter(
+                descriptor,
+                DataSourceKind.OfficialApi,
+                "GitHub Copilot organization or enterprise metrics need secret and HTTP services; personal use remains Manual mode.");
+        }
+
+        return new GitHubCopilotMetricsProviderAdapter(
+            descriptor,
+            secretResolver,
+            gitHubCopilotMetricsClient);
     }
 }

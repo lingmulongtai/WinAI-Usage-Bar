@@ -3,6 +3,7 @@ using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Core.Models;
 using WinAiUsageBar.Core.Providers;
 using WinAiUsageBar.Core.Providers.Codex;
+using WinAiUsageBar.Core.Providers.GitHubCopilot;
 using WinAiUsageBar.Core.Providers.Manual;
 using WinAiUsageBar.Core.Providers.Mock;
 
@@ -136,6 +137,56 @@ public sealed class ProviderAdapterTests
         Assert.Equal("Codex app-server requires authentication.", result.ErrorMessage);
     }
 
+    [Fact]
+    public async Task GitHubCopilotMetricsProviderAdapter_ReturnsAuthRequiredWhenSecretIsMissing()
+    {
+        var descriptor = ProviderDescriptors.Get(ProviderId.GitHubCopilot);
+        var adapter = new GitHubCopilotMetricsProviderAdapter(
+            descriptor,
+            new FixedSecretResolver(null),
+            new RecordingGitHubCopilotMetricsClient());
+        var config = ProviderConfig.CreateDefault(descriptor);
+        config.SourceKind = DataSourceKind.OfficialApi;
+        config.GitHubCopilot.Organization = "octo-org";
+        config.GitHubCopilot.PatSecretName = "copilot-pat";
+
+        var result = await adapter.FetchAsync(
+            new ProviderFetchContext(config, DateTimeOffset.UtcNow, "test"),
+            CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(ProviderHealth.AuthRequired, result.Snapshot?.Health);
+        Assert.Contains("PAT secret", result.ErrorMessage, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GitHubCopilotMetricsProviderAdapter_ReturnsReportSnapshotWithoutLeakingToken()
+    {
+        var descriptor = ProviderDescriptors.Get(ProviderId.GitHubCopilot);
+        var metricsClient = new RecordingGitHubCopilotMetricsClient();
+        var adapter = new GitHubCopilotMetricsProviderAdapter(
+            descriptor,
+            new FixedSecretResolver("ghp_secret_token"),
+            metricsClient);
+        var config = ProviderConfig.CreateDefault(descriptor);
+        config.SourceKind = DataSourceKind.OfficialApi;
+        config.GitHubCopilot.Organization = "octo-org";
+        config.GitHubCopilot.PatSecretName = "copilot-pat";
+
+        var result = await adapter.FetchAsync(
+            new ProviderFetchContext(config, new DateTimeOffset(2026, 7, 8, 0, 0, 0, TimeSpan.Zero), "test"),
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal(ProviderHealth.Ok, result.Snapshot?.Health);
+        Assert.Equal(DataSourceKind.OfficialApi, result.Snapshot?.SourceKind);
+        Assert.Equal("octo-org", result.Snapshot?.Identity?.Organization);
+        Assert.Equal(2, result.Snapshot?.PrimaryWindow?.Used);
+        Assert.Equal("2026-06-01 to 2026-06-28", result.Snapshot?.PrimaryWindow?.ResetDescription);
+        Assert.Equal(GitHubCopilotMetricsScope.Organization, metricsClient.LastRequest?.Scope);
+        Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Contains("ghp_secret_token", StringComparison.Ordinal));
+    }
+
     private sealed class FixedCommandProbe(bool exists) : ICommandProbe
     {
         public Task<bool> ExistsAsync(string commandName, CancellationToken cancellationToken)
@@ -150,6 +201,34 @@ public sealed class ProviderAdapterTests
         public Task<CodexAppServerData> FetchAccountUsageAsync(CancellationToken cancellationToken)
         {
             throw exception;
+        }
+    }
+
+    private sealed class FixedSecretResolver(string? secret) : ISecretResolver
+    {
+        public Task<string?> ResolveSecretAsync(string name, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(secret);
+        }
+    }
+
+    private sealed class RecordingGitHubCopilotMetricsClient : IGitHubCopilotMetricsClient
+    {
+        public GitHubCopilotMetricsRequest? LastRequest { get; private set; }
+
+        public Task<GitHubCopilotMetricsFetchResult> FetchLatestReportAsync(
+            GitHubCopilotMetricsRequest request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            LastRequest = request;
+            var report = new GitHubCopilotMetricsReport(
+                new DateOnly(2026, 6, 1),
+                new DateOnly(2026, 6, 28),
+                ReportDay: null,
+                DownloadLinkCount: 2);
+            return Task.FromResult(GitHubCopilotMetricsFetchResult.FromReport(report, "report ok"));
         }
     }
 }

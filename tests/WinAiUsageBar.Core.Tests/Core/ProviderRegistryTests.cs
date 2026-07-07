@@ -1,6 +1,8 @@
 using WinAiUsageBar.Core.Configuration;
+using WinAiUsageBar.Core.Abstractions;
 using WinAiUsageBar.Core.Models;
 using WinAiUsageBar.Core.Providers;
+using WinAiUsageBar.Core.Providers.GitHubCopilot;
 using WinAiUsageBar.Core.Providers.Manual;
 using WinAiUsageBar.Core.Providers.Mock;
 
@@ -44,5 +46,42 @@ public sealed class ProviderRegistryTests
 
         Assert.IsType<ManualProviderAdapter>(manual);
         Assert.IsType<MockProviderAdapter>(mock);
+    }
+
+    [Fact]
+    public void CreateAdapter_UsesGitHubCopilotMetricsAdapterWhenServicesExist()
+    {
+        var registry = new ProviderRegistry(
+            secretResolver: new NullSecretResolver(),
+            gitHubCopilotMetricsClient: new NullGitHubCopilotMetricsClient());
+        var descriptor = ProviderDescriptors.Get(ProviderId.GitHubCopilot);
+
+        var adapter = registry.CreateAdapter(descriptor, new ProviderConfig
+        {
+            ProviderId = ProviderId.GitHubCopilot,
+            SourceKind = DataSourceKind.OfficialApi
+        });
+
+        Assert.IsType<GitHubCopilotMetricsProviderAdapter>(adapter);
+    }
+
+    private sealed class NullSecretResolver : ISecretResolver
+    {
+        public Task<string?> ResolveSecretAsync(string name, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult<string?>(null);
+        }
+    }
+
+    private sealed class NullGitHubCopilotMetricsClient : IGitHubCopilotMetricsClient
+    {
+        public Task<GitHubCopilotMetricsFetchResult> FetchLatestReportAsync(
+            GitHubCopilotMetricsRequest request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(GitHubCopilotMetricsFetchResult.Failure("not used"));
+        }
     }
 }

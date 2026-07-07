@@ -64,7 +64,7 @@ The default output is `artifacts\publish\WinAIUsageBar-win-x64`. Run `WinAiUsage
 - Claude / Claude Code: CLI presence probe only; no private file scraping.
 - Gemini: API key secret-name setting; no unofficial usage endpoint.
 - OpenCode Zen: API key secret-name setting, manual balance mode, and documented TODO for future official balance API.
-- GitHub Copilot: manual mode plus organization/enterprise settings placeholder.
+- GitHub Copilot: manual mode plus organization/enterprise metrics report metadata via the GitHub Copilot usage metrics API.
 
 ## Roadmap
 
