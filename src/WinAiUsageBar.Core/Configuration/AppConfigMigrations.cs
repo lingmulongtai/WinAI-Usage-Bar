@@ -1,0 +1,77 @@
+using WinAiUsageBar.Core.Models;
+using WinAiUsageBar.Core.Providers;
+
+namespace WinAiUsageBar.Core.Configuration;
+
+public static class AppConfigMigrations
+{
+    public const int CurrentVersion = 1;
+
+    public static AppConfig Migrate(AppConfig? config)
+    {
+        config ??= AppConfig.CreateDefault();
+        config.Version = CurrentVersion;
+        config.Providers ??= [];
+        config.Refresh ??= new RefreshSettings();
+        config.Widget ??= new WidgetSettings();
+        config.Appearance ??= new AppearanceSettings();
+        config.Notifications ??= new NotificationSettings();
+
+        NormalizeProviders(config);
+        NormalizeWidget(config.Widget);
+        NormalizeAppearance(config.Appearance);
+
+        return config;
+    }
+
+    private static void NormalizeProviders(AppConfig config)
+    {
+        config.Providers = config.Providers
+            .Where(provider => Enum.IsDefined(provider.ProviderId))
+            .GroupBy(provider => provider.ProviderId)
+            .Select(group => group.First())
+            .ToList();
+
+        foreach (var descriptor in ProviderDescriptors.All)
+        {
+            var provider = config.GetOrCreateProvider(descriptor);
+            provider.Manual ??= ManualUsageSettings.CreateDefault(descriptor);
+            provider.ApiKey ??= new ApiKeySettings();
+            provider.GitHubCopilot ??= new GitHubCopilotSettings();
+
+            if (!descriptor.SupportedSources.Contains(provider.SourceKind))
+            {
+                provider.SourceKind = DataSourceKind.Manual;
+            }
+
+            provider.Manual.Currency = string.IsNullOrWhiteSpace(provider.Manual.Currency)
+                ? "USD"
+                : provider.Manual.Currency;
+        }
+    }
+
+    private static void NormalizeWidget(WidgetSettings widget)
+    {
+        widget.Width = Math.Max(280, widget.Width);
+        widget.Height = Math.Max(160, widget.Height);
+        widget.ProviderIds ??= [];
+        widget.ProviderIds = widget.ProviderIds
+            .Where(providerId => Enum.IsDefined(providerId))
+            .Distinct()
+            .Take(3)
+            .ToList();
+
+        if (widget.ProviderIds.Count == 0)
+        {
+            widget.ProviderIds.Add(ProviderId.Codex);
+            widget.ProviderIds.Add(ProviderId.ChatGPT);
+        }
+    }
+
+    private static void NormalizeAppearance(AppearanceSettings appearance)
+    {
+        appearance.Theme = string.IsNullOrWhiteSpace(appearance.Theme)
+            ? "System"
+            : appearance.Theme;
+    }
+}

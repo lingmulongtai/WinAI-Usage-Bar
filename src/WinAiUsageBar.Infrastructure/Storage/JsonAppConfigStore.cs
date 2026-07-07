@@ -1,6 +1,5 @@
 using System.Text.Json;
 using WinAiUsageBar.Core.Configuration;
-using WinAiUsageBar.Core.Providers;
 
 namespace WinAiUsageBar.Infrastructure.Storage;
 
@@ -21,21 +20,30 @@ public sealed class JsonAppConfigStore(AppDataPaths paths) : IAppConfigStore
 
         if (!File.Exists(paths.ConfigPath))
         {
-            var defaultConfig = AppConfig.CreateDefault();
+            var defaultConfig = AppConfigMigrations.Migrate(null);
             await SaveAsync(defaultConfig, cancellationToken).ConfigureAwait(false);
             return defaultConfig;
         }
 
-        await using var stream = File.OpenRead(paths.ConfigPath);
-        var config = await JsonSerializer.DeserializeAsync<AppConfig>(stream, options, cancellationToken).ConfigureAwait(false)
-            ?? AppConfig.CreateDefault();
-
-        foreach (var descriptor in ProviderDescriptors.All)
+        try
         {
-            config.GetOrCreateProvider(descriptor);
-        }
+            AppConfig? config;
+            await using (var stream = File.OpenRead(paths.ConfigPath))
+            {
+                config = await JsonSerializer.DeserializeAsync<AppConfig>(stream, options, cancellationToken).ConfigureAwait(false);
+            }
 
-        return config;
+            var migrated = AppConfigMigrations.Migrate(config);
+            await SaveAsync(migrated, cancellationToken).ConfigureAwait(false);
+            return migrated;
+        }
+        catch (Exception ex) when (ex is JsonException or NotSupportedException)
+        {
+            BackupInvalidConfig();
+            var defaultConfig = AppConfigMigrations.Migrate(null);
+            await SaveAsync(defaultConfig, cancellationToken).ConfigureAwait(false);
+            return defaultConfig;
+        }
     }
 
     public async Task SaveAsync(AppConfig config, CancellationToken cancellationToken)
@@ -49,5 +57,20 @@ public sealed class JsonAppConfigStore(AppDataPaths paths) : IAppConfigStore
         }
 
         File.Move(tempPath, paths.ConfigPath, overwrite: true);
+    }
+
+    private void BackupInvalidConfig()
+    {
+        if (!File.Exists(paths.ConfigPath))
+        {
+            return;
+        }
+
+        var timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMddHHmmssfff");
+        var backupPath = Path.Combine(
+            paths.RootDirectory,
+            $"config.invalid.{timestamp}.json");
+
+        File.Move(paths.ConfigPath, backupPath, overwrite: false);
     }
 }

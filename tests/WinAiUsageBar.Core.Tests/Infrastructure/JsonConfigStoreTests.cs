@@ -1,4 +1,6 @@
+using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Core.Models;
+using WinAiUsageBar.Core.Providers;
 using WinAiUsageBar.Infrastructure.Storage;
 
 namespace WinAiUsageBar.Core.Tests.Infrastructure;
@@ -27,5 +29,131 @@ public sealed class JsonConfigStoreTests
         Assert.Equal(52, reloadedCodex.Manual.RemainingPercent);
 
         Directory.Delete(root, recursive: true);
+    }
+
+    [Fact]
+    public async Task JsonAppConfigStore_LoadAsync_MigratesMissingSectionsAndPreservesUserValues()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        Directory.CreateDirectory(root);
+        await File.WriteAllTextAsync(paths.ConfigPath, """
+        {
+          "version": 0,
+          "providers": [
+            {
+              "providerId": "Codex",
+              "isEnabled": true,
+              "sourceKind": "Manual",
+              "manual": {
+                "remainingPercent": 42,
+                "notes": "keep me"
+              }
+            }
+          ],
+          "widget": {
+            "left": 123,
+            "top": 456,
+            "width": 200,
+            "height": 100,
+            "providerIds": ["Gemini", "Gemini"]
+          }
+        }
+        """);
+
+        try
+        {
+            var store = new JsonAppConfigStore(paths);
+            var config = await store.LoadAsync(CancellationToken.None);
+            var codex = config.Providers.Single(provider => provider.ProviderId == ProviderId.Codex);
+
+            Assert.Equal(AppConfigMigrations.CurrentVersion, config.Version);
+            Assert.Equal(ProviderDescriptors.All.Count, config.Providers.Count);
+            Assert.True(codex.IsEnabled);
+            Assert.Equal(DataSourceKind.Manual, codex.SourceKind);
+            Assert.Equal(42, codex.Manual.RemainingPercent);
+            Assert.Equal("keep me", codex.Manual.Notes);
+            Assert.NotNull(config.Refresh);
+            Assert.NotNull(config.Appearance);
+            Assert.NotNull(config.Notifications);
+            Assert.Equal(123, config.Widget.Left);
+            Assert.Equal(456, config.Widget.Top);
+            Assert.Equal(280, config.Widget.Width);
+            Assert.Equal(160, config.Widget.Height);
+            Assert.Equal([ProviderId.Gemini], config.Widget.ProviderIds);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task JsonAppConfigStore_LoadAsync_RemovesInvalidProvidersAndNormalizesUnsupportedSources()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        Directory.CreateDirectory(root);
+        await File.WriteAllTextAsync(paths.ConfigPath, """
+        {
+          "version": 1,
+          "providers": [
+            {
+              "providerId": 999,
+              "isEnabled": true,
+              "sourceKind": "Manual"
+            },
+            {
+              "providerId": "Codex",
+              "isEnabled": true,
+              "sourceKind": 999
+            }
+          ],
+          "widget": {
+            "providerIds": [999, "Codex", "Codex"]
+          }
+        }
+        """);
+
+        try
+        {
+            var store = new JsonAppConfigStore(paths);
+            var config = await store.LoadAsync(CancellationToken.None);
+            var codex = config.Providers.Single(provider => provider.ProviderId == ProviderId.Codex);
+
+            Assert.Equal(ProviderDescriptors.All.Count, config.Providers.Count);
+            Assert.DoesNotContain(config.Providers, provider => !Enum.IsDefined(provider.ProviderId));
+            Assert.Equal(DataSourceKind.Manual, codex.SourceKind);
+            Assert.Equal([ProviderId.Codex], config.Widget.ProviderIds);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task JsonAppConfigStore_LoadAsync_BacksUpCorruptConfigAndCreatesDefault()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        Directory.CreateDirectory(root);
+        await File.WriteAllTextAsync(paths.ConfigPath, "{ this is not json");
+
+        try
+        {
+            var store = new JsonAppConfigStore(paths);
+            var config = await store.LoadAsync(CancellationToken.None);
+            var backups = Directory.GetFiles(root, "config.invalid.*.json");
+
+            Assert.Equal(ProviderDescriptors.All.Count, config.Providers.Count);
+            Assert.True(File.Exists(paths.ConfigPath));
+            Assert.Single(backups);
+            Assert.Contains("this is not json", await File.ReadAllTextAsync(backups.Single()));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 }
