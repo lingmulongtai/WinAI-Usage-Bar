@@ -34,11 +34,15 @@ public static class CodexJsonRpcParser
         DateTimeOffset now)
     {
         var account = ParseAccount(data.AccountJson);
-        var usageWindow = ParseUsageWindow(data.UsageJson)
-            ?? ParseUsageWindow(data.RateLimitsJson);
+        var usageWindow = ParseUsageWindow(data.UsageJson, "Codex usage");
+        var rateLimitWindow = ParseUsageWindow(data.RateLimitsJson, "Codex rate limit");
+        var primaryWindow = usageWindow ?? rateLimitWindow;
+        var secondaryWindow = usageWindow is not null && rateLimitWindow is not null
+            ? rateLimitWindow
+            : null;
         var credits = ParseCredits(data.UsageJson);
 
-        var health = usageWindow?.RemainingPercent switch
+        var health = primaryWindow?.RemainingPercent switch
         {
             null => ProviderHealth.Warning,
             < 10 => ProviderHealth.Error,
@@ -46,7 +50,7 @@ public static class CodexJsonRpcParser
             _ => ProviderHealth.Ok
         };
 
-        var status = usageWindow is null
+        var status = primaryWindow is null
             ? "Codex app-server responded, but no usage window was recognized."
             : "Loaded from Codex app-server.";
 
@@ -55,8 +59,8 @@ public static class CodexJsonRpcParser
             descriptor.DisplayName,
             health,
             account,
-            usageWindow,
-            SecondaryWindow: null,
+            primaryWindow,
+            secondaryWindow,
             credits,
             DataSourceKind.LocalAppServer,
             now,
@@ -97,7 +101,7 @@ public static class CodexJsonRpcParser
         return new ProviderIdentity(email, accountName, planName, organization);
     }
 
-    public static UsageWindow? ParseUsageWindow(string? json)
+    public static UsageWindow? ParseUsageWindow(string? json, string label = "Codex usage")
     {
         if (!TryGetResult(json, out var result))
         {
@@ -129,7 +133,7 @@ public static class CodexJsonRpcParser
         var resetsAt = TryGetDateTime(result, ["resetsAt", "resetAt", "resetTime", "resets_at"]);
 
         return new UsageWindow(
-            "Codex usage",
+            label,
             UsageSnapshotMapper.NormalizePercent(usedPercent),
             UsageSnapshotMapper.NormalizePercent(remainingPercent),
             resetsAt,
