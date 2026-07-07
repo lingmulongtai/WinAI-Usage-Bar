@@ -36,14 +36,17 @@ public static class AppCompositionRoot
         var refreshService = new UsageRefreshService(configStore, snapshotStore, registry, paths, notifications);
         var widgetPlacementStore = new WidgetPlacementStore(configStore);
         var tray = new TrayIconService();
+        var windowActivator = new WinUiWindowActivator(widgetPlacementStore);
+        var exitService = new WinUiApplicationExitService();
 
         return new AppHostServices(
             paths,
             configStore,
             refreshService,
-            widgetPlacementStore,
             tray,
-            diagnosticsLog);
+            diagnosticsLog,
+            windowActivator,
+            exitService);
     }
 }
 
@@ -51,9 +54,10 @@ public sealed record AppHostServices(
     AppDataPaths Paths,
     IAppConfigStore ConfigStore,
     IUsageRefreshService RefreshService,
-    WidgetPlacementStore WidgetPlacementStore,
     ITrayIconService TrayIconService,
-    IAppDiagnosticsLog DiagnosticsLog);
+    IAppDiagnosticsLog DiagnosticsLog,
+    IAppWindowActivator WindowActivator,
+    IApplicationExitService ExitService);
 
 public interface IAppDispatcher
 {

@@ -27,6 +27,8 @@ Every provider supports Manual mode first. Automatic integrations are best-effor
 - Compact panel shows enabled provider cards.
 - Widget window shows one to three provider cards and remembers size and position.
 
+Tray command routing is covered with fake services. Real `NotifyIcon` rendering, WinUI window activation, and operating-system left-click behavior remain manual verification points because they require the Windows shell and WinUI runtime.
+
 Provider cards show:
 
 - Display name

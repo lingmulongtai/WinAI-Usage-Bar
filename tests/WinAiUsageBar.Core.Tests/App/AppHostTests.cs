@@ -5,7 +5,6 @@ using WinAiUsageBar.Infrastructure.Diagnostics;
 using WinAiUsageBar.Infrastructure.Scheduling;
 using WinAiUsageBar.Infrastructure.Storage;
 using WinAiUsageBar.Infrastructure.Tray;
-using WinAiUsageBar.Infrastructure.Windows;
 
 namespace WinAiUsageBar.Core.Tests.App;
 
@@ -20,15 +19,17 @@ public sealed class AppHostTests
         var refreshService = new FakeRefreshService([Snapshot(ProviderId.Codex, "Codex", 75)]);
         var tray = new FakeTrayIconService();
         var diagnostics = new RecordingDiagnosticsLog();
+        var windowActivator = new FakeWindowActivator();
         var host = new AppHost(
             new ImmediateDispatcher(),
             new AppHostServices(
                 paths,
                 configStore,
                 refreshService,
-                new WidgetPlacementStore(configStore),
                 tray,
-                diagnostics));
+                diagnostics,
+                windowActivator,
+                new FakeExitService()));
 
         await host.InitializeAsync(CancellationToken.None);
         refreshService.Emit([Snapshot(ProviderId.ChatGPT, "ChatGPT", 64)]);
@@ -43,6 +44,68 @@ public sealed class AppHostTests
 
         Assert.True(tray.Disposed);
         Assert.True(refreshService.Disposed);
+        Assert.True(windowActivator.Disposed);
+    }
+
+    [Fact]
+    public async Task TrayCommands_RouteToInjectedWindowAndExitServices()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        var configStore = new InMemoryConfigStore(AppConfig.CreateDefault());
+        var refreshService = new FakeRefreshService([]);
+        var tray = new FakeTrayIconService();
+        var windowActivator = new FakeWindowActivator();
+        var exitService = new FakeExitService();
+        var host = new AppHost(
+            new ImmediateDispatcher(),
+            new AppHostServices(
+                paths,
+                configStore,
+                refreshService,
+                tray,
+                new RecordingDiagnosticsLog(),
+                windowActivator,
+                exitService));
+
+        await host.InitializeAsync(CancellationToken.None);
+
+        tray.RaiseShow();
+        tray.RaiseSettings();
+        tray.RaiseShowWidget();
+        tray.RaiseExit();
+
+        Assert.Equal(1, windowActivator.ShowCompactCount);
+        Assert.Equal(1, windowActivator.ShowSettingsCount);
+        Assert.Equal(1, windowActivator.ShowWidgetCount);
+        Assert.Equal(1, exitService.ExitCount);
+    }
+
+    [Fact]
+    public async Task TrayRefreshCommand_RunsRefreshThroughInjectedService()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        var configStore = new InMemoryConfigStore(AppConfig.CreateDefault());
+        var refreshService = new FakeRefreshService([]);
+        var tray = new FakeTrayIconService();
+        var host = new AppHost(
+            new ImmediateDispatcher(),
+            new AppHostServices(
+                paths,
+                configStore,
+                refreshService,
+                tray,
+                new RecordingDiagnosticsLog(),
+                new FakeWindowActivator(),
+                new FakeExitService()));
+
+        await host.InitializeAsync(CancellationToken.None);
+        tray.RaiseRefreshNow();
+
+        await refreshService.RefreshObserved.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal(1, refreshService.RefreshCount);
     }
 
     private static UsageSnapshot Snapshot(ProviderId providerId, string displayName, double remainingPercent)
@@ -96,6 +159,10 @@ public sealed class AppHostTests
 
         public bool Disposed { get; private set; }
 
+        public int RefreshCount { get; private set; }
+
+        public TaskCompletionSource RefreshObserved { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         public Task InitializeAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -112,6 +179,8 @@ public sealed class AppHostTests
         public Task RefreshNowAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            RefreshCount++;
+            RefreshObserved.TrySetResult();
             return Task.CompletedTask;
         }
 
@@ -130,35 +199,15 @@ public sealed class AppHostTests
 
     private sealed class FakeTrayIconService : ITrayIconService
     {
-        public event EventHandler? ShowRequested
-        {
-            add { }
-            remove { }
-        }
+        public event EventHandler? ShowRequested;
 
-        public event EventHandler? ShowWidgetRequested
-        {
-            add { }
-            remove { }
-        }
+        public event EventHandler? ShowWidgetRequested;
 
-        public event EventHandler? RefreshNowRequested
-        {
-            add { }
-            remove { }
-        }
+        public event EventHandler? RefreshNowRequested;
 
-        public event EventHandler? SettingsRequested
-        {
-            add { }
-            remove { }
-        }
+        public event EventHandler? SettingsRequested;
 
-        public event EventHandler? ExitRequested
-        {
-            add { }
-            remove { }
-        }
+        public event EventHandler? ExitRequested;
 
         public string Tooltip { get; private set; } = string.Empty;
 
@@ -172,6 +221,31 @@ public sealed class AppHostTests
         public void Dispose()
         {
             Disposed = true;
+        }
+
+        public void RaiseShow()
+        {
+            ShowRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void RaiseShowWidget()
+        {
+            ShowWidgetRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void RaiseRefreshNow()
+        {
+            RefreshNowRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void RaiseSettings()
+        {
+            SettingsRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void RaiseExit()
+        {
+            ExitRequested?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -190,6 +264,59 @@ public sealed class AppHostTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FakeWindowActivator : IAppWindowActivator
+    {
+        public int ShowCompactCount { get; private set; }
+
+        public int ShowSettingsCount { get; private set; }
+
+        public int ShowWidgetCount { get; private set; }
+
+        public bool Disposed { get; private set; }
+
+        public void ShowCompactPanel(AppHost host)
+        {
+            ShowCompactCount++;
+        }
+
+        public void ShowSettings(AppHost host)
+        {
+            ShowSettingsCount++;
+        }
+
+        public void ShowWidget(AppHost host)
+        {
+            ShowWidgetCount++;
+        }
+
+        public void OnSettingsClosed()
+        {
+        }
+
+        public void OnCompactClosed()
+        {
+        }
+
+        public void OnWidgetClosed()
+        {
+        }
+
+        public void Dispose()
+        {
+            Disposed = true;
+        }
+    }
+
+    private sealed class FakeExitService : IApplicationExitService
+    {
+        public int ExitCount { get; private set; }
+
+        public void Exit()
+        {
+            ExitCount++;
         }
     }
 }

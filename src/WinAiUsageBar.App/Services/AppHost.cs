@@ -1,14 +1,11 @@
 using Microsoft.UI.Dispatching;
-using Microsoft.UI.Xaml;
 using WinAiUsageBar.App.ViewModels;
-using WinAiUsageBar.App.Windows;
 using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Core.Models;
 using WinAiUsageBar.Infrastructure.Diagnostics;
 using WinAiUsageBar.Infrastructure.Scheduling;
 using WinAiUsageBar.Infrastructure.Storage;
 using WinAiUsageBar.Infrastructure.Tray;
-using WinAiUsageBar.Infrastructure.Windows;
 
 namespace WinAiUsageBar.App.Services;
 
@@ -17,10 +14,8 @@ public sealed class AppHost : IAsyncDisposable
     private readonly IAppDispatcher dispatcher;
     private readonly ITrayIconService trayIconService;
     private readonly IUsageRefreshService refreshService;
-    private readonly WidgetPlacementStore widgetPlacementStore;
-    private MainWindow? mainWindow;
-    private CompactUsageWindow? compactUsageWindow;
-    private WidgetWindow? widgetWindow;
+    private readonly IAppWindowActivator windowActivator;
+    private readonly IApplicationExitService exitService;
 
     public AppHost(IAppDispatcher dispatcher, AppHostServices services)
     {
@@ -28,9 +23,10 @@ public sealed class AppHost : IAsyncDisposable
         Paths = services.Paths;
         ConfigStore = services.ConfigStore;
         refreshService = services.RefreshService;
-        widgetPlacementStore = services.WidgetPlacementStore;
         trayIconService = services.TrayIconService;
         DiagnosticsLog = services.DiagnosticsLog;
+        windowActivator = services.WindowActivator;
+        exitService = services.ExitService;
     }
 
     public ShellViewModel ViewModel { get; } = new();
@@ -87,8 +83,7 @@ public sealed class AppHost : IAsyncDisposable
     {
         try
         {
-            compactUsageWindow ??= new CompactUsageWindow(this);
-            compactUsageWindow.Activate();
+            windowActivator.ShowCompactPanel(this);
         }
         catch (Exception ex)
         {
@@ -103,8 +98,7 @@ public sealed class AppHost : IAsyncDisposable
     {
         try
         {
-            mainWindow ??= new MainWindow(this);
-            mainWindow.Activate();
+            windowActivator.ShowSettings(this);
         }
         catch (Exception ex)
         {
@@ -119,8 +113,7 @@ public sealed class AppHost : IAsyncDisposable
     {
         try
         {
-            widgetWindow ??= new WidgetWindow(this, widgetPlacementStore);
-            widgetWindow.Activate();
+            windowActivator.ShowWidget(this);
         }
         catch (Exception ex)
         {
@@ -133,22 +126,23 @@ public sealed class AppHost : IAsyncDisposable
 
     internal void OnSettingsClosed()
     {
-        mainWindow = null;
+        windowActivator.OnSettingsClosed();
     }
 
     internal void OnCompactClosed()
     {
-        compactUsageWindow = null;
+        windowActivator.OnCompactClosed();
     }
 
     internal void OnWidgetClosed()
     {
-        widgetWindow = null;
+        windowActivator.OnWidgetClosed();
     }
 
     public async ValueTask DisposeAsync()
     {
         trayIconService.Dispose();
+        windowActivator.Dispose();
         await refreshService.DisposeAsync().ConfigureAwait(false);
     }
 
@@ -161,7 +155,7 @@ public sealed class AppHost : IAsyncDisposable
         trayIconService.RefreshNowRequested += (_, _) => RunLoggedInBackground(
             () => RefreshNowAsync(CancellationToken.None),
             "Tray refresh command failed.");
-        trayIconService.ExitRequested += (_, _) => dispatcher.TryEnqueue(() => Application.Current.Exit());
+        trayIconService.ExitRequested += (_, _) => dispatcher.TryEnqueue(exitService.Exit);
 
         await refreshService.InitializeAsync(cancellationToken).ConfigureAwait(false);
         ApplySnapshots(refreshService.CurrentSnapshots);
