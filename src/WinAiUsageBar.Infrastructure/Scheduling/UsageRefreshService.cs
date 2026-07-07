@@ -1,6 +1,7 @@
 using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Core.Models;
 using WinAiUsageBar.Core.Providers;
+using WinAiUsageBar.Infrastructure.Diagnostics;
 using WinAiUsageBar.Infrastructure.Notifications;
 using WinAiUsageBar.Infrastructure.Security;
 using WinAiUsageBar.Infrastructure.Storage;
@@ -28,7 +29,8 @@ public sealed class UsageRefreshService(
     IProviderAdapterSource providerRegistry,
     AppDataPaths paths,
     IAppNotificationService notificationService,
-    Func<RefreshIntervalKind, TimeSpan?>? intervalMapper = null) : IUsageRefreshService
+    Func<RefreshIntervalKind, TimeSpan?>? intervalMapper = null,
+    IAppDiagnosticsLog? diagnosticsLog = null) : IUsageRefreshService
 {
     private readonly SemaphoreSlim refreshLock = new(1, 1);
     private readonly SemaphoreSlim scheduleLock = new(1, 1);
@@ -191,10 +193,31 @@ public sealed class UsageRefreshService(
             {
                 throw;
             }
-            catch
+            catch (Exception ex)
             {
+                await LogLoopFailureAsync(ex).ConfigureAwait(false);
                 // A refresh-level failure should not permanently stop future timer ticks.
             }
+        }
+    }
+
+    private async Task LogLoopFailureAsync(Exception exception)
+    {
+        if (diagnosticsLog is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await diagnosticsLog.ErrorAsync(
+                "Periodic refresh failed; future ticks will continue.",
+                exception,
+                CancellationToken.None).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Diagnostics must never stop the refresh loop.
         }
     }
 

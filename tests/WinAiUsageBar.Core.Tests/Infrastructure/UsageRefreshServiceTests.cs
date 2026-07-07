@@ -1,6 +1,7 @@
 using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Core.Models;
 using WinAiUsageBar.Core.Providers;
+using WinAiUsageBar.Infrastructure.Diagnostics;
 using WinAiUsageBar.Infrastructure.Notifications;
 using WinAiUsageBar.Infrastructure.Scheduling;
 using WinAiUsageBar.Infrastructure.Storage;
@@ -87,6 +88,7 @@ public sealed class UsageRefreshServiceTests
         Enable(config, ProviderId.Codex);
         config.Refresh.Interval = RefreshIntervalKind.OneMinute;
         var snapshotStore = new InMemorySnapshotStore { ThrowOnNextSave = true };
+        var diagnostics = new RecordingDiagnosticsLog();
         var refreshService = new UsageRefreshService(
             new InMemoryConfigStore(config),
             snapshotStore,
@@ -95,7 +97,8 @@ public sealed class UsageRefreshServiceTests
                 descriptor => new SuccessfulProviderAdapter(descriptor)),
             TestPaths(),
             new RecordingNotificationService(),
-            _ => TimeSpan.FromMilliseconds(10));
+            _ => TimeSpan.FromMilliseconds(10),
+            diagnostics);
 
         await refreshService.StartAsync(CancellationToken.None);
         await WaitUntilAsync(() => snapshotStore.SaveCalls >= 2);
@@ -103,6 +106,7 @@ public sealed class UsageRefreshServiceTests
 
         Assert.True(snapshotStore.SaveCalls >= 2);
         Assert.NotEmpty(snapshotStore.Saved);
+        Assert.Contains(diagnostics.Errors, error => error.Message.Contains("Periodic refresh failed", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -343,6 +347,24 @@ public sealed class UsageRefreshServiceTests
         public ValueTask DisposeAsync()
         {
             return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class RecordingDiagnosticsLog : IAppDiagnosticsLog
+    {
+        public List<(string Message, Exception Exception)> Errors { get; } = [];
+
+        public Task InfoAsync(string message, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
+
+        public Task ErrorAsync(string message, Exception exception, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Errors.Add((message, exception));
+            return Task.CompletedTask;
         }
     }
 }

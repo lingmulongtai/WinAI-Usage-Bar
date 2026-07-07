@@ -34,7 +34,13 @@ public static class AppCompositionRoot
         var registry = new ProviderRegistry(commandProbe, codexClient);
         var notifications = new WindowsAppNotificationService(new WindowsAppNotificationTransport());
         var diagnosticsExportService = new DiagnosticsExportService(paths);
-        var refreshService = new UsageRefreshService(configStore, snapshotStore, registry, paths, notifications);
+        var refreshService = new UsageRefreshService(
+            configStore,
+            snapshotStore,
+            registry,
+            paths,
+            notifications,
+            diagnosticsLog: diagnosticsLog);
         var widgetPlacementStore = new WidgetPlacementStore(configStore);
         var compactPlacementService = new CompactPanelPlacementService();
         var startupRegistrationService = new RunKeyStartupRegistrationService(new RegistryStartupRunKey());
