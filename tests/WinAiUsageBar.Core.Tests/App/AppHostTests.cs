@@ -32,6 +32,7 @@ public sealed class AppHostTests
                 diagnostics,
                 new FakeDiagnosticsExportService(paths),
                 new FakeDiagnosticsSummaryService(paths),
+                new FakeHistorySummaryService(),
                 new FakeSecretStore(),
                 new FakeStartupRegistrationService(),
                 windowActivator,
@@ -73,6 +74,7 @@ public sealed class AppHostTests
                 new RecordingDiagnosticsLog(),
                 new FakeDiagnosticsExportService(paths),
                 new FakeDiagnosticsSummaryService(paths),
+                new FakeHistorySummaryService(),
                 new FakeSecretStore(),
                 new FakeStartupRegistrationService(),
                 windowActivator,
@@ -109,6 +111,7 @@ public sealed class AppHostTests
                 new RecordingDiagnosticsLog(),
                 new FakeDiagnosticsExportService(paths),
                 new FakeDiagnosticsSummaryService(paths),
+                new FakeHistorySummaryService(),
                 new FakeSecretStore(),
                 new FakeStartupRegistrationService(),
                 new FakeWindowActivator(),
@@ -138,6 +141,7 @@ public sealed class AppHostTests
                 new RecordingDiagnosticsLog(),
                 new FakeDiagnosticsExportService(paths),
                 new FakeDiagnosticsSummaryService(paths),
+                new FakeHistorySummaryService(),
                 new FakeSecretStore(),
                 new FakeStartupRegistrationService(),
                 new FakeWindowActivator(),
@@ -166,6 +170,7 @@ public sealed class AppHostTests
                 new RecordingDiagnosticsLog(),
                 new FakeDiagnosticsExportService(paths),
                 new FakeDiagnosticsSummaryService(paths),
+                new FakeHistorySummaryService(),
                 new FakeSecretStore(),
                 startup,
                 new FakeWindowActivator(),
@@ -193,6 +198,7 @@ public sealed class AppHostTests
                 diagnostics,
                 new FakeDiagnosticsExportService(paths),
                 new FakeDiagnosticsSummaryService(paths),
+                new FakeHistorySummaryService(),
                 secrets,
                 new FakeStartupRegistrationService(),
                 new FakeWindowActivator(),
@@ -448,6 +454,20 @@ public sealed class AppHostTests
                 new DiagnosticsFileSummary(paths.SnapshotsPath, Exists: false, SizeBytes: 0, LastWriteTime: null),
                 new DiagnosticsFileSummary(paths.HistoryPath, Exists: false, SizeBytes: 0, LastWriteTime: null),
                 new DiagnosticsFileSummary(paths.DiagnosticsLogPath, Exists: false, SizeBytes: 0, LastWriteTime: null)));
+        }
+    }
+
+    private sealed class FakeHistorySummaryService : IHistorySummaryService
+    {
+        public Task<HistorySummary> GetSummaryAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(new HistorySummary(
+                TotalEntries: 0,
+                InvalidLines: 0,
+                EarliestUpdatedAt: null,
+                LatestUpdatedAt: null,
+                Providers: []));
         }
     }
 

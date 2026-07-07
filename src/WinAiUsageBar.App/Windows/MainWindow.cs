@@ -31,6 +31,7 @@ public sealed class MainWindow : Window
         navigationView.MenuItems.Add(CreateItem("Providers", Symbol.AllApps));
         navigationView.MenuItems.Add(CreateItem("Appearance", Symbol.View));
         navigationView.MenuItems.Add(CreateItem("Widget", Symbol.PreviewLink));
+        navigationView.MenuItems.Add(CreateItem("History", Symbol.Calendar));
         navigationView.MenuItems.Add(CreateItem("Refresh", Symbol.Refresh));
         navigationView.MenuItems.Add(CreateItem("Privacy & Data", Symbol.Setting));
         navigationView.MenuItems.Add(CreateItem("About", Symbol.Help));
@@ -82,6 +83,7 @@ public sealed class MainWindow : Window
             "Providers" => await BuildProvidersPageAsync(),
             "Appearance" => await BuildAppearancePageAsync(),
             "Widget" => await BuildWidgetPageAsync(),
+            "History" => await BuildHistoryPageAsync(),
             "Refresh" => await BuildRefreshPageAsync(),
             "Privacy & Data" => await BuildPrivacyPageAsync(),
             "About" => BuildAboutPage(),
@@ -484,6 +486,65 @@ public sealed class MainWindow : Window
         panel.Children.Add(actions);
 
         return Wrap(panel);
+    }
+
+    private async Task<UIElement> BuildHistoryPageAsync()
+    {
+        var viewModel = new HistorySummaryViewModel(
+            await host.GetHistorySummaryAsync(CancellationToken.None));
+        var panel = PageStack("History");
+        panel.Children.Add(new InfoBar
+        {
+            Severity = InfoBarSeverity.Informational,
+            IsOpen = true,
+            IsClosable = false,
+            Title = "Retained history",
+            Message = viewModel.SummaryText
+        });
+
+        panel.Children.Add(new InfoBar
+        {
+            Severity = viewModel.InvalidLines == 0 ? InfoBarSeverity.Informational : InfoBarSeverity.Warning,
+            IsOpen = true,
+            IsClosable = false,
+            Title = "History integrity",
+            Message = viewModel.InvalidLineText
+        });
+
+        if (viewModel.Providers.Count == 0)
+        {
+            panel.Children.Add(UiFactory.Text("No provider history has been retained yet.", 14));
+        }
+        else
+        {
+            foreach (var provider in viewModel.Providers)
+            {
+                panel.Children.Add(CreateHistoryProviderRow(provider));
+            }
+        }
+
+        return Wrap(panel);
+    }
+
+    private static Border CreateHistoryProviderRow(ProviderHistoryRowViewModel provider)
+    {
+        var stack = new StackPanel { Spacing = 4 };
+        stack.Children.Add(UiFactory.Text(provider.DisplayName, 15, FontWeights.SemiBold));
+        stack.Children.Add(UiFactory.Text(provider.EntryText, 12));
+        stack.Children.Add(UiFactory.Text(provider.LatestText, 12));
+        stack.Children.Add(UiFactory.Text(provider.HealthText, 12));
+        stack.Children.Add(UiFactory.Text(provider.RemainingText, 12));
+        stack.Children.Add(UiFactory.Text(provider.SourceText, 12));
+
+        return new Border
+        {
+            Padding = new Thickness(12),
+            Margin = new Thickness(0, 0, 0, 8),
+            CornerRadius = new CornerRadius(6),
+            BorderThickness = new Thickness(1),
+            BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(global::Windows.UI.Color.FromArgb(80, 120, 120, 120)),
+            Child = stack
+        };
     }
 
     private async Task<UIElement> BuildWidgetPageAsync()

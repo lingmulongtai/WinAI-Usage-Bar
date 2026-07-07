@@ -18,6 +18,7 @@ public sealed class AppHost : IAsyncDisposable
     private readonly IUsageRefreshService refreshService;
     private readonly IDiagnosticsExportService diagnosticsExportService;
     private readonly IDiagnosticsSummaryService diagnosticsSummaryService;
+    private readonly IHistorySummaryService historySummaryService;
     private readonly ISecretStore secretStore;
     private readonly IStartupRegistrationService startupRegistrationService;
     private readonly IAppWindowActivator windowActivator;
@@ -33,6 +34,7 @@ public sealed class AppHost : IAsyncDisposable
         DiagnosticsLog = services.DiagnosticsLog;
         diagnosticsExportService = services.DiagnosticsExportService;
         diagnosticsSummaryService = services.DiagnosticsSummaryService;
+        historySummaryService = services.HistorySummaryService;
         secretStore = services.SecretStore;
         startupRegistrationService = services.StartupRegistrationService;
         windowActivator = services.WindowActivator;
@@ -126,6 +128,11 @@ public sealed class AppHost : IAsyncDisposable
     public async Task<DiagnosticsSummary> GetDiagnosticsSummaryAsync(CancellationToken cancellationToken)
     {
         return await diagnosticsSummaryService.GetSummaryAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<HistorySummary> GetHistorySummaryAsync(CancellationToken cancellationToken)
+    {
+        return await historySummaryService.GetSummaryAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<bool> HasSecretAsync(string name, CancellationToken cancellationToken)

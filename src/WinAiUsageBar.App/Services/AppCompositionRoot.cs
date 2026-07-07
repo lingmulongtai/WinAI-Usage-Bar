@@ -43,6 +43,7 @@ public static class AppCompositionRoot
         var notifications = new WindowsAppNotificationService(new WindowsAppNotificationTransport());
         var diagnosticsExportService = new DiagnosticsExportService(paths);
         var diagnosticsSummaryService = new DiagnosticsSummaryService(paths, configStore, snapshotStore);
+        var historySummaryService = new HistorySummaryService(paths);
         var refreshService = new UsageRefreshService(
             configStore,
             snapshotStore,
@@ -65,6 +66,7 @@ public static class AppCompositionRoot
             diagnosticsLog,
             diagnosticsExportService,
             diagnosticsSummaryService,
+            historySummaryService,
             secretStore,
             startupRegistrationService,
             windowActivator,
@@ -80,6 +82,7 @@ public sealed record AppHostServices(
     IAppDiagnosticsLog DiagnosticsLog,
     IDiagnosticsExportService DiagnosticsExportService,
     IDiagnosticsSummaryService DiagnosticsSummaryService,
+    IHistorySummaryService HistorySummaryService,
     ISecretStore SecretStore,
     IStartupRegistrationService StartupRegistrationService,
     IAppWindowActivator WindowActivator,

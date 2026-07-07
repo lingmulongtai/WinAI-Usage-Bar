@@ -14,6 +14,7 @@ Current app version: `0.1.0`.
 - Settings window uses WinUI `NavigationView`.
 - Desktop widget window shows up to three selected providers, remembers placement, and has settings for startup/topmost/provider selection.
 - Provider cards show health, usage percentage, reset text, status messages, credits/costs, source, update time, and errors.
+- History page summarizes retained `history.ndjson` entries by provider without showing raw snapshot messages.
 - Refresh settings include interval, notification enablement, and history retention limits.
 - Appearance settings apply System, Light, or Dark theme to app windows.
 - Privacy & Data shows a diagnostics summary with local file paths, config version, cached snapshot count, latest update time, and tracked file sizes.
