@@ -2,6 +2,14 @@
 
 Use this checklist before dogfooding builds and before tagging a release. Do not paste API keys, tokens, cookies, `auth.json` contents, or secret values into notes.
 
+Create a timestamped local report from this checklist before a run:
+
+```powershell
+.\scripts\new-windows-verification-report.ps1
+```
+
+Reports are written under `artifacts\verification` by default so local run notes do not become accidental source changes.
+
 ## Test Matrix
 
 Record the environment for each run.

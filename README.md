@@ -6,6 +6,7 @@ Current app version: `0.1.0`.
 
 For a strict status check, see [docs/current-state-audit.md](docs/current-state-audit.md).
 For Windows shell dogfooding checks, see [docs/windows-manual-verification.md](docs/windows-manual-verification.md).
+Create a timestamped local verification report with `.\scripts\new-windows-verification-report.ps1`.
 
 ## Features
 
@@ -103,13 +104,19 @@ To create a draft GitHub Release:
 
 1. Update the app version in `src\WinAiUsageBar.App\WinAiUsageBar.App.csproj`.
 2. Commit the version change.
-3. Verify release metadata:
+3. Generate and complete a Windows verification report:
+
+```powershell
+.\scripts\new-windows-verification-report.ps1
+```
+
+4. Verify release metadata:
 
 ```powershell
 .\scripts\verify-release.ps1 -TagName v0.1.0
 ```
 
-4. Create and push a version tag:
+5. Create and push a version tag:
 
 ```powershell
 git tag v0.1.0

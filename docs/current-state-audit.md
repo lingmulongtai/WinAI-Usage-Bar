@@ -11,7 +11,7 @@ This audit is intentionally strict. The repository has moved past a throwaway sc
 | Architecture foundation | 8/10 | The layer split is real, testable, and mostly respected. |
 | Provider extensibility | 7/10 | Descriptors, adapters, manual mode, and safe failure states are in place. Real provider depth is still thin. |
 | Security posture | 7/10 | Good defaults around DPAPI, redaction, and no cookie scraping. Needs more adversarial review before wider distribution. |
-| Windows shell integration | 5/10 | Tray, windows, placement, startup registration, and notifications exist, with a manual verification checklist now available. Actual shell behavior still needs hands-on runs. |
+| Windows shell integration | 5/10 | Tray, windows, placement, startup registration, and notifications exist, with a manual verification checklist and report scaffold now available. Actual shell behavior still needs hands-on runs. |
 | Product usability | 6/10 | The app now has first-run setup state, provider details, backup export, and CLI recovery checks, but it is still mostly useful with Mock/Manual data today. |
 | Packaging and release | 6/10 | Self-contained publish, zip packaging, checksums, artifacts, and draft release workflow exist. No installer, signing, or update path yet. |
 | Test confidence | 8/10 | Core, infrastructure, view model, CLI, storage, parser, refresh, and packaging smoke paths are covered without external CLIs. UI runtime coverage remains limited. |
@@ -35,7 +35,7 @@ Overall:
 - CI now builds, tests, publishes, smoke-tests, packages, and uploads artifacts on `main`.
 - The CLI surface gives useful non-UI checks: help, version, smoke test, diagnostics export, and health report.
 - First-run setup state, Provider Details, config backup export, backup validation, and confirmed CLI restore are implemented.
-- Windows shell dogfooding now has a concrete manual verification checklist in `docs/windows-manual-verification.md`.
+- Windows shell dogfooding now has a concrete manual verification checklist and a timestamped local report script.
 - The issue and commit history is becoming meaningful rather than fake contribution noise.
 
 ## What Is Weak
@@ -58,7 +58,7 @@ Overall:
 | --- | --- | --- | --- |
 | Provider APIs are undocumented or unstable | High | Manual mode and unsupported states | Track documented endpoints only and isolate each integration behind tests. |
 | Secret leakage through diagnostics | High | DPAPI store, redactor, export exclusions | Add more redaction test cases and review every provider diagnostic path. |
-| Tray/window behavior differs across Windows setups | Medium | Placement service, single-instance guard tests, and manual checklist | Run and record the checklist across taskbar edges, DPI, multi-monitor, startup, and theme modes. |
+| Tray/window behavior differs across Windows setups | Medium | Placement service, single-instance guard tests, manual checklist, and report scaffold | Run and record the checklist across taskbar edges, DPI, multi-monitor, startup, and theme modes. |
 | CI restore flakiness blocks progress | Medium | Retry script and NuGet audit disabled by default | Keep restore helper simple and inspect future failures quickly. |
 | App feels like a demo because provider data is manual | High | Mock, Manual, Codex parser tests, and provider details are stable | Prioritize one reliable real provider path end to end. |
 | Public binaries are not trusted by Windows | High | Zip and checksum exist | Add signing or at least documented install warnings before public release. |
