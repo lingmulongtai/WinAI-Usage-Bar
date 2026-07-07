@@ -21,6 +21,8 @@ public sealed class AppConfig
 
     public HistoryRetentionSettings HistoryRetention { get; set; } = new();
 
+    public OnboardingSettings Onboarding { get; set; } = new();
+
     public static AppConfig CreateDefault()
     {
         var config = new AppConfig();
@@ -179,4 +181,11 @@ public sealed class HistoryRetentionSettings
     public int MaxDays { get; set; } = 30;
 
     public long MaxBytes { get; set; } = 5_000_000;
+}
+
+public sealed class OnboardingSettings
+{
+    public bool HasCompletedFirstRun { get; set; }
+
+    public DateTimeOffset? CompletedAt { get; set; }
 }

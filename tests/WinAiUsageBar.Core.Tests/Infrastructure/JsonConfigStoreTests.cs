@@ -88,6 +88,9 @@ public sealed class JsonConfigStoreTests
             Assert.False(config.Startup.LaunchOnLogin);
             Assert.NotNull(config.HistoryRetention);
             Assert.Equal(30, config.HistoryRetention.MaxDays);
+            Assert.NotNull(config.Onboarding);
+            Assert.False(config.Onboarding.HasCompletedFirstRun);
+            Assert.Null(config.Onboarding.CompletedAt);
             Assert.Equal(123, config.Widget.Left);
             Assert.Equal(456, config.Widget.Top);
             Assert.Equal(280, config.Widget.Width);

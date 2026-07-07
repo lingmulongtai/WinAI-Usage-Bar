@@ -81,7 +81,7 @@ public sealed class MainWindow : Window
     {
         navigationView.Content = tag switch
         {
-            "Overview" => BuildOverviewPage(),
+            "Overview" => await BuildOverviewPageAsync(),
             "Providers" => await BuildProvidersPageAsync(),
             "Provider Details" => BuildProviderDetailsPage(),
             "Appearance" => await BuildAppearancePageAsync(),
@@ -90,13 +90,21 @@ public sealed class MainWindow : Window
             "Refresh" => await BuildRefreshPageAsync(),
             "Privacy & Data" => await BuildPrivacyPageAsync(),
             "About" => BuildAboutPage(),
-            _ => BuildOverviewPage()
+            _ => await BuildOverviewPageAsync()
         };
     }
 
-    private UIElement BuildOverviewPage()
+    private async Task<UIElement> BuildOverviewPageAsync()
     {
+        var config = await host.LoadConfigAsync(CancellationToken.None);
+        var firstRun = new FirstRunSetupViewModel(config, ProviderDescriptors.All);
         var panel = PageStack("Overview");
+
+        if (firstRun.IsVisible)
+        {
+            panel.Children.Add(CreateFirstRunSetupPanel(firstRun, config));
+        }
+
         panel.Children.Add(new InfoBar
         {
             Severity = InfoBarSeverity.Informational,
@@ -137,6 +145,64 @@ public sealed class MainWindow : Window
         }
 
         return Wrap(panel);
+    }
+
+    private Border CreateFirstRunSetupPanel(
+        FirstRunSetupViewModel viewModel,
+        AppConfig config)
+    {
+        var stack = new StackPanel { Spacing = 8 };
+        stack.Children.Add(UiFactory.Text("First-run setup", 16, FontWeights.SemiBold));
+        stack.Children.Add(UiFactory.Text(viewModel.SummaryText, 13));
+
+        foreach (var line in viewModel.ProviderLines)
+        {
+            stack.Children.Add(UiFactory.Text(line, 12));
+        }
+
+        var actions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8
+        };
+
+        var providersButton = new Button { Content = "Open Providers" };
+        providersButton.Click += (_, _) => SelectNavigationItem("Providers");
+        actions.Children.Add(providersButton);
+
+        var completeButton = new Button { Content = "Mark Setup Complete" };
+        completeButton.Click += async (_, _) =>
+        {
+            viewModel.MarkComplete();
+            await host.SaveConfigAsync(config, CancellationToken.None);
+            navigationView.Content = await BuildOverviewPageAsync();
+        };
+        actions.Children.Add(completeButton);
+        stack.Children.Add(actions);
+
+        return new Border
+        {
+            Padding = new Thickness(12),
+            Margin = new Thickness(0, 0, 0, 8),
+            CornerRadius = new CornerRadius(6),
+            BorderThickness = new Thickness(1),
+            BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(global::Windows.UI.Color.FromArgb(80, 120, 120, 120)),
+            Child = stack
+        };
+    }
+
+    private void SelectNavigationItem(string tag)
+    {
+        foreach (var item in navigationView.MenuItems.OfType<NavigationViewItem>())
+        {
+            if (string.Equals(item.Tag as string, tag, StringComparison.Ordinal))
+            {
+                navigationView.SelectedItem = item;
+                return;
+            }
+        }
+
+        _ = NavigateAsync(tag);
     }
 
     private UIElement BuildProviderDetailsPage()

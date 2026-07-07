@@ -31,6 +31,7 @@ Gemini and OpenCode Zen support provider-specific API settings for future integr
 - Tray left-click opens a compact panel.
 - Tray right-click menu includes Show, Show Widget, Refresh Now, Settings, Exit.
 - Main settings window contains Overview, Providers, Provider Details, Appearance, Widget, History, Refresh, Privacy & Data, and About pages.
+- Overview shows a first-run setup section until the user marks setup complete.
 - Compact panel shows enabled provider cards.
 - Widget window shows one to three provider cards and remembers size and position.
 - Widget settings validate that one to three providers are selected and expose show-on-startup and always-on-top toggles.
@@ -72,6 +73,8 @@ Files are stored under `%AppData%\WinAiUsageBar`:
 - `history.ndjson`
 - `config-backups/`
 - `secrets/`
+
+`config.json` also stores non-secret onboarding state, including whether first-run setup has been completed and when it was completed.
 
 Secrets must go through `ISecretStore`; the DPAPI implementation protects values for the current Windows user.
 

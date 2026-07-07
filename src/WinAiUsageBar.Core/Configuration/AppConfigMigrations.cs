@@ -18,6 +18,7 @@ public static class AppConfigMigrations
         config.Notifications ??= new NotificationSettings();
         config.Startup ??= new StartupSettings();
         config.HistoryRetention ??= new HistoryRetentionSettings();
+        config.Onboarding ??= new OnboardingSettings();
 
         NormalizeProviders(config);
         NormalizeWidget(config.Widget);
