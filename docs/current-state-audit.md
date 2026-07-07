@@ -12,15 +12,15 @@ This audit is intentionally strict. The repository has moved past a throwaway sc
 | Provider extensibility | 7/10 | Descriptors, adapters, manual mode, and safe failure states are in place. Real provider depth is still thin. |
 | Security posture | 7/10 | Good defaults around DPAPI, redaction, and no cookie scraping. Needs more adversarial review before wider distribution. |
 | Windows shell integration | 5/10 | Tray, windows, placement, startup registration, and notifications exist, with a manual verification checklist now available. Actual shell behavior still needs hands-on runs. |
-| Product usability | 5/10 | The app can be dogfooded, but it is mostly useful with Mock/Manual data today. |
+| Product usability | 6/10 | The app now has first-run setup state, provider details, backup export, and CLI recovery checks, but it is still mostly useful with Mock/Manual data today. |
 | Packaging and release | 6/10 | Self-contained publish, zip packaging, checksums, artifacts, and draft release workflow exist. No installer, signing, or update path yet. |
 | Test confidence | 8/10 | Core, infrastructure, view model, CLI, storage, parser, refresh, and packaging smoke paths are covered without external CLIs. UI runtime coverage remains limited. |
 | Observability and support | 7/10 | Diagnostics summary, redacted export, health report, and logs are solid for an MVP. No structured crash reports or user-facing repair flow yet. |
 
 Overall:
 
-- Design foundation: about 75-80% of the intended MVP foundation.
-- Personal dogfooding readiness: about 55-60%.
+- Design foundation: about 80-85% of the intended MVP foundation.
+- Personal dogfooding readiness: about 60-65%.
 - Public release readiness: about 35-40%.
 
 ## What Is Strong
@@ -34,6 +34,7 @@ Overall:
 - Config, snapshots, history, diagnostics, and maintenance flows are all represented in code and tests.
 - CI now builds, tests, publishes, smoke-tests, packages, and uploads artifacts on `main`.
 - The CLI surface gives useful non-UI checks: help, version, smoke test, diagnostics export, and health report.
+- First-run setup state, Provider Details, config backup export, backup validation, and confirmed CLI restore are implemented.
 - Windows shell dogfooding now has a concrete manual verification checklist in `docs/windows-manual-verification.md`.
 - The issue and commit history is becoming meaningful rather than fake contribution noise.
 
@@ -46,8 +47,9 @@ Overall:
 - The UI is functional but still not visually or ergonomically proven with extended daily use.
 - Tray behavior, taskbar-near placement, topmost widget behavior, and notification delivery need real Windows manual testing.
 - There is no installer, MSIX, code signing, auto-update, or uninstall story.
-- There is no first-run onboarding or guided setup for providers.
+- First-run setup is a useful state surface, not yet a full guided wizard with provider-specific decisions.
 - Config backup and confirmed CLI restore exist, but there is no in-app restore or reset-to-known-good flow.
+- Local CLI discovery can still be messy on Windows. A command can be present on `PATH` but fail at startup because of package alias or permissions issues.
 - There is no visual regression or automated UI smoke test for WinUI windows.
 
 ## Risk Register
@@ -58,10 +60,11 @@ Overall:
 | Secret leakage through diagnostics | High | DPAPI store, redactor, export exclusions | Add more redaction test cases and review every provider diagnostic path. |
 | Tray/window behavior differs across Windows setups | Medium | Placement service, single-instance guard tests, and manual checklist | Run and record the checklist across taskbar edges, DPI, multi-monitor, startup, and theme modes. |
 | CI restore flakiness blocks progress | Medium | Retry script and NuGet audit disabled by default | Keep restore helper simple and inspect future failures quickly. |
-| App feels like a demo because provider data is manual | High | Mock and Manual are stable | Prioritize one reliable real provider path end to end. |
+| App feels like a demo because provider data is manual | High | Mock, Manual, Codex parser tests, and provider details are stable | Prioritize one reliable real provider path end to end. |
 | Public binaries are not trusted by Windows | High | Zip and checksum exist | Add signing or at least documented install warnings before public release. |
 | Local data files grow too much | Medium | History retention by days and bytes | Add UI display for current storage pressure and backup/compact actions. |
-| Config corruption causes user confusion | Medium | Corrupt config backup and default migration | Add visible recovery messaging and backup export/import. |
+| Config corruption causes user confusion | Medium | Corrupt config backup, default migration, config export, validation, and confirmed CLI restore | Add visible in-app recovery messaging and restore. |
+| CLI availability is ambiguous on Windows | Medium | Safe health report checks command discovery and short startup | Surface provider-specific repair guidance when a discovered CLI cannot start. |
 
 ## Current MVP Reality
 
@@ -75,32 +78,35 @@ The foundation is good because the hardest long-term boundaries are already pres
 - history and diagnostics instead of invisible local state
 - CI and package artifacts instead of local-only builds
 
-The weak point is value density. A usage bar is only as useful as the data it can fetch automatically. Today the app has strong plumbing, but only partial real-world data acquisition.
+The weak point is value density. A usage bar is only as useful as the data it can fetch automatically. Today the app has strong plumbing, useful recovery and diagnostic tools, and decent provider-state visibility, but only partial real-world data acquisition.
 
 ## Next Work, In Priority Order
 
-1. Pick one real provider path and make it genuinely useful.
-   Codex/ChatGPT is the best candidate because the local app-server path already exists.
-
-2. Run the Provider Details page through dogfooding.
-   The page exists now, but it needs real snapshot data and daily-use feedback.
-
-3. Add a first-run setup flow.
-   A new user should see enabled providers, source mode, and manual fallback without digging through settings.
-
-4. Dogfood config backup and restore.
-   The CLI flow exists now, but it needs repeated real-use recovery checks before it becomes a comfort feature.
-
-5. Run the manual Windows verification checklist.
+1. Run the manual Windows verification checklist.
    Cover tray click, context menu, widget placement, topmost behavior, notifications, startup registration, DPI, taskbar position, and multi-monitor.
 
-6. Add one automated UI launch check if feasible.
+2. Pick one real provider path and make it genuinely useful.
+   Codex/ChatGPT is the best candidate because the local app-server path already exists.
+
+3. Run the Provider Details page through dogfooding.
+   The page exists now, but it needs real snapshot data and daily-use feedback.
+
+4. Turn first-run setup into a guided provider setup flow.
+   A new user should choose enabled providers, source mode, and manual fallback without digging through settings.
+
+5. Dogfood config backup and restore.
+   The CLI flow exists now, but it needs repeated real-use recovery checks before it becomes a comfort feature.
+
+6. Add in-app restore or reset-to-known-good recovery.
+   CLI restore is good for power users, but recovery should be discoverable from Privacy & Data.
+
+7. Add one automated UI launch check if feasible.
    Even a minimal app-start plus window activation check would catch major WinUI regressions.
 
-7. Add installer or MSIX investigation.
+8. Add installer or MSIX investigation.
    Zip artifacts are fine for development, but not a smooth Windows app distribution path.
 
-8. Add release readiness gates.
+9. Add release readiness gates.
    Require changelog entry, version consistency, package checksum, smoke test, and a current audit update before tags.
 
 ## Contribution Strategy Assessment
