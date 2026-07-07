@@ -4,6 +4,8 @@ WinAI Usage Bar is a personal Windows notification-area app for watching AI prov
 
 Current app version: `0.1.0`.
 
+For a strict status check, see [docs/current-state-audit.md](docs/current-state-audit.md).
+
 ## Features
 
 - Starts minimized to the Windows tray.
