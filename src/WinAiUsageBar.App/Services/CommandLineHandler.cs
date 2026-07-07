@@ -13,6 +13,7 @@ public static class CommandLineHandler
         Func<CancellationToken, Task<int>> smokeTest,
         Func<CancellationToken, Task<string>> diagnosticsExport,
         Func<CancellationToken, Task<string>> healthReport,
+        Func<string> providerCatalog,
         Func<AppInfo> appInfoProvider,
         CancellationToken cancellationToken)
     {
@@ -65,6 +66,12 @@ public static class CommandLineHandler
             return new CommandLineHandleResult(Handled: true, ExitCode: 0);
         }
 
+        if (string.Equals(command, "--provider-catalog", StringComparison.OrdinalIgnoreCase))
+        {
+            await output.WriteLineAsync(providerCatalog().AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, ExitCode: 0);
+        }
+
         await WriteUnknownArgumentsAsync(args, error, cancellationToken).ConfigureAwait(false);
         return new CommandLineHandleResult(Handled: true, ExitCode: 2);
     }
@@ -75,7 +82,7 @@ public static class CommandLineHandler
         WinAI Usage Bar
 
         Usage:
-          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--health-report]
+          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--health-report|--provider-catalog]
 
         Options:
           --help                Show this help text without launching the app.
@@ -83,6 +90,7 @@ public static class CommandLineHandler
           --smoke-test          Run packaged-app startup checks without launching UI.
           --export-diagnostics  Write a redacted diagnostics export without launching UI.
           --health-report       Print local config, cache, and history health without launching UI.
+          --provider-catalog    Print supported provider descriptors without launching UI.
         """;
     }
 

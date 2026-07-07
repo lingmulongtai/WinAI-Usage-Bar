@@ -1,3 +1,4 @@
+using WinAiUsageBar.Core.Providers;
 using WinAiUsageBar.Infrastructure.Diagnostics;
 using WinAiUsageBar.Infrastructure.Storage;
 
@@ -29,5 +30,10 @@ public static class CommandLineActions
             diagnostics,
             history,
             DateTimeOffset.Now);
+    }
+
+    public static string CreateProviderCatalog()
+    {
+        return CommandLineProviderCatalogFormatter.Format(ProviderDescriptors.All);
     }
 }

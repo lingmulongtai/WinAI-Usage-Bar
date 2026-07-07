@@ -14,6 +14,7 @@ public sealed class CommandLineHandlerTests
             _ => Task.FromResult(0),
             ExportDiagnostics,
             HealthReport,
+            ProviderCatalog,
             AppInfo,
             CancellationToken.None);
 
@@ -37,12 +38,14 @@ public sealed class CommandLineHandlerTests
             _ => Task.FromResult(1),
             ExportDiagnostics,
             HealthReport,
+            ProviderCatalog,
             AppInfo,
             CancellationToken.None);
 
         Assert.True(result.Handled);
         Assert.Equal(0, result.ExitCode);
         Assert.Contains("--version", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--provider-catalog", output.ToString(), StringComparison.Ordinal);
         Assert.Equal(string.Empty, error.ToString());
     }
 
@@ -58,6 +61,7 @@ public sealed class CommandLineHandlerTests
             _ => Task.FromResult(1),
             ExportDiagnostics,
             HealthReport,
+            ProviderCatalog,
             AppInfo,
             CancellationToken.None);
 
@@ -82,6 +86,7 @@ public sealed class CommandLineHandlerTests
             },
             ExportDiagnostics,
             HealthReport,
+            ProviderCatalog,
             AppInfo,
             CancellationToken.None);
 
@@ -107,6 +112,7 @@ public sealed class CommandLineHandlerTests
                 return Task.FromResult(@"C:\Temp\diagnostics-export.txt");
             },
             HealthReport,
+            ProviderCatalog,
             AppInfo,
             CancellationToken.None);
 
@@ -133,6 +139,7 @@ public sealed class CommandLineHandlerTests
                 healthReportCount++;
                 return Task.FromResult("health report body");
             },
+            ProviderCatalog,
             AppInfo,
             CancellationToken.None);
 
@@ -140,6 +147,33 @@ public sealed class CommandLineHandlerTests
         Assert.Equal(0, result.ExitCode);
         Assert.Equal(1, healthReportCount);
         Assert.Contains("health report body", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_WritesProviderCatalog()
+    {
+        using var output = new StringWriter();
+        var providerCatalogCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--provider-catalog"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            () =>
+            {
+                providerCatalogCount++;
+                return "provider catalog body";
+            },
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(1, providerCatalogCount);
+        Assert.Contains("provider catalog body", output.ToString(), StringComparison.Ordinal);
     }
 
     [Theory]
@@ -156,6 +190,7 @@ public sealed class CommandLineHandlerTests
             _ => Task.FromResult(0),
             ExportDiagnostics,
             HealthReport,
+            ProviderCatalog,
             AppInfo,
             CancellationToken.None);
 
@@ -180,5 +215,10 @@ public sealed class CommandLineHandlerTests
     {
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult("health report");
+    }
+
+    private static string ProviderCatalog()
+    {
+        return "provider catalog";
     }
 }

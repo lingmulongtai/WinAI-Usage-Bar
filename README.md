@@ -83,9 +83,10 @@ Published builds also support lightweight command-line checks:
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --smoke-test
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --export-diagnostics
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --health-report
+.\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --provider-catalog
 ```
 
-Use `--export-diagnostics` when you want a redacted support bundle on disk. Use `--health-report` when you want a quick non-secret summary printed to the console.
+Use `--export-diagnostics` when you want a redacted support bundle on disk. Use `--health-report` when you want a quick non-secret summary printed to the console. Use `--provider-catalog` to inspect the built-in provider descriptors without reading local config.
 
 ## Release
 
