@@ -746,9 +746,11 @@ public sealed class MainWindow : Window
 
     private UIElement BuildAboutPage()
     {
+        var appInfo = AppInfoProvider.Get();
         var panel = PageStack("About");
         panel.Children.Add(UiFactory.Text("WinAI Usage Bar", 22, FontWeights.SemiBold));
         panel.Children.Add(UiFactory.Text("MVP desktop usage monitor for AI providers.", 14));
+        panel.Children.Add(UiFactory.Text($"Version {appInfo.InformationalVersion}", 14));
         panel.Children.Add(UiFactory.Text("Built with C#, WinUI 3, and Windows App SDK.", 14));
         return Wrap(panel);
     }
