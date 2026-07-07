@@ -141,6 +141,7 @@ public sealed class UsageRefreshService(
             }
         }
 
+        await notificationService.DisposeAsync().ConfigureAwait(false);
         refreshLock.Dispose();
     }
 

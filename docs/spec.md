@@ -63,6 +63,10 @@ Supported intervals:
 
 The refresh service updates enabled providers asynchronously, caches snapshots, appends history, and keeps the previous successful usage data visible when a provider reports an error.
 
+## Notifications
+
+When notifications are enabled, auth-required snapshots and providers with less than 20% remaining quota can emit Windows App SDK local app notifications. The notification service registers lazily and falls back silently when the current Windows runtime does not support app notifications, so refreshes do not fail because toast delivery failed.
+
 ## Manual Input Validation
 
 Manual provider values are validated before saving:

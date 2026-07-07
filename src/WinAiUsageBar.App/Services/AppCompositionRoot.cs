@@ -32,7 +32,7 @@ public static class AppCompositionRoot
         var commandProbe = new CliCommandProbe();
         var codexClient = new CodexAppServerClient();
         var registry = new ProviderRegistry(commandProbe, codexClient);
-        var notifications = new NoOpAppNotificationService();
+        var notifications = new WindowsAppNotificationService(new WindowsAppNotificationTransport());
         var refreshService = new UsageRefreshService(configStore, snapshotStore, registry, paths, notifications);
         var widgetPlacementStore = new WidgetPlacementStore(configStore);
         var tray = new TrayIconService();

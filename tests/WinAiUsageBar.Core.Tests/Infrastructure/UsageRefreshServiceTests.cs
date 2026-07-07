@@ -105,6 +105,27 @@ public sealed class UsageRefreshServiceTests
         Assert.NotEmpty(snapshotStore.Saved);
     }
 
+    [Fact]
+    public async Task RefreshNowAsync_DoesNotNotifyWhenNotificationsAreDisabled()
+    {
+        var config = DisabledDefaultConfig();
+        Enable(config, ProviderId.Codex);
+        config.Notifications.IsEnabled = false;
+        var notifications = new RecordingNotificationService();
+        var refreshService = new UsageRefreshService(
+            new InMemoryConfigStore(config),
+            new InMemorySnapshotStore(),
+            new FakeProviderSource(
+                [ProviderDescriptors.Get(ProviderId.Codex)],
+                descriptor => new LowQuotaProviderAdapter(descriptor)),
+            TestPaths(),
+            notifications);
+
+        await refreshService.RefreshNowAsync(CancellationToken.None);
+
+        Assert.Empty(notifications.Snapshots);
+    }
+
     private static AppConfig DisabledDefaultConfig()
     {
         var config = AppConfig.CreateDefault();
@@ -248,12 +269,44 @@ public sealed class UsageRefreshServiceTests
         }
     }
 
+    private sealed class LowQuotaProviderAdapter(ProviderDescriptor descriptor) : IProviderAdapter
+    {
+        public ProviderDescriptor Descriptor { get; } = descriptor;
+
+        public Task<ProviderFetchResult> FetchAsync(ProviderFetchContext context, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var snapshot = new UsageSnapshot(
+                Descriptor.Id,
+                Descriptor.DisplayName,
+                ProviderHealth.Warning,
+                Identity: null,
+                new UsageWindow("Test", 85, 15, null, "test reset", "%", 85, 100),
+                SecondaryWindow: null,
+                Credits: null,
+                DataSourceKind.Manual,
+                context.Now,
+                "Low",
+                ErrorMessage: null);
+
+            return Task.FromResult(ProviderFetchResult.FromSnapshot(snapshot));
+        }
+    }
+
     private sealed class RecordingNotificationService : IAppNotificationService
     {
+        public List<UsageSnapshot> Snapshots { get; } = [];
+
         public Task NotifyAsync(UsageSnapshot snapshot, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            Snapshots.Add(snapshot);
             return Task.CompletedTask;
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            return ValueTask.CompletedTask;
         }
     }
 }
