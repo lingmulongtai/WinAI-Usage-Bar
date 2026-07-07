@@ -79,6 +79,7 @@ Published builds also support lightweight command-line checks:
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --help
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --version
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --smoke-test
+.\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --export-diagnostics
 ```
 
 ## Release

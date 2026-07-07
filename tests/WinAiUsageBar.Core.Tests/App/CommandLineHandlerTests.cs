@@ -12,6 +12,7 @@ public sealed class CommandLineHandlerTests
             new StringWriter(),
             new StringWriter(),
             _ => Task.FromResult(0),
+            ExportDiagnostics,
             AppInfo,
             CancellationToken.None);
 
@@ -33,6 +34,7 @@ public sealed class CommandLineHandlerTests
             output,
             error,
             _ => Task.FromResult(1),
+            ExportDiagnostics,
             AppInfo,
             CancellationToken.None);
 
@@ -52,6 +54,7 @@ public sealed class CommandLineHandlerTests
             output,
             new StringWriter(),
             _ => Task.FromResult(1),
+            ExportDiagnostics,
             AppInfo,
             CancellationToken.None);
 
@@ -74,12 +77,38 @@ public sealed class CommandLineHandlerTests
                 smokeTestCount++;
                 return Task.FromResult(42);
             },
+            ExportDiagnostics,
             AppInfo,
             CancellationToken.None);
 
         Assert.True(result.Handled);
         Assert.Equal(42, result.ExitCode);
         Assert.Equal(1, smokeTestCount);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ExportsDiagnostics()
+    {
+        using var output = new StringWriter();
+        var exportCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--export-diagnostics"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            _ =>
+            {
+                exportCount++;
+                return Task.FromResult(@"C:\Temp\diagnostics-export.txt");
+            },
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(1, exportCount);
+        Assert.Contains("Diagnostics exported to C:\\Temp\\diagnostics-export.txt", output.ToString(), StringComparison.Ordinal);
     }
 
     [Theory]
@@ -94,6 +123,7 @@ public sealed class CommandLineHandlerTests
             new StringWriter(),
             error,
             _ => Task.FromResult(0),
+            ExportDiagnostics,
             AppInfo,
             CancellationToken.None);
 
@@ -106,5 +136,11 @@ public sealed class CommandLineHandlerTests
     private static AppInfo AppInfo()
     {
         return new AppInfo("WinAI Usage Bar", "9.8.7.0", "9.8.7");
+    }
+
+    private static Task<string> ExportDiagnostics(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(@"C:\Temp\diagnostics-export.txt");
     }
 }

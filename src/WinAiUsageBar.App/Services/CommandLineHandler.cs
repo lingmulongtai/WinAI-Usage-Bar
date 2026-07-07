@@ -11,6 +11,7 @@ public static class CommandLineHandler
         TextWriter output,
         TextWriter error,
         Func<CancellationToken, Task<int>> smokeTest,
+        Func<CancellationToken, Task<string>> diagnosticsExport,
         Func<AppInfo> appInfoProvider,
         CancellationToken cancellationToken)
     {
@@ -47,6 +48,15 @@ public static class CommandLineHandler
             return new CommandLineHandleResult(Handled: true, exitCode);
         }
 
+        if (string.Equals(command, "--export-diagnostics", StringComparison.OrdinalIgnoreCase))
+        {
+            var path = await diagnosticsExport(cancellationToken).ConfigureAwait(false);
+            await output.WriteLineAsync(
+                $"Diagnostics exported to {path}".AsMemory(),
+                cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, ExitCode: 0);
+        }
+
         await WriteUnknownArgumentsAsync(args, error, cancellationToken).ConfigureAwait(false);
         return new CommandLineHandleResult(Handled: true, ExitCode: 2);
     }
@@ -57,12 +67,13 @@ public static class CommandLineHandler
         WinAI Usage Bar
 
         Usage:
-          WinAiUsageBar.App.exe [--help|--version|--smoke-test]
+          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics]
 
         Options:
-          --help        Show this help text without launching the app.
-          --version     Print the app version without launching the app.
-          --smoke-test  Run packaged-app startup checks without launching UI.
+          --help                Show this help text without launching the app.
+          --version             Print the app version without launching the app.
+          --smoke-test          Run packaged-app startup checks without launching UI.
+          --export-diagnostics  Write a redacted diagnostics export without launching UI.
         """;
     }
 
