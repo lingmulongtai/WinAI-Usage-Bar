@@ -1,0 +1,58 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  draft-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore .\WinAIUsageBar.sln
+
+      - name: Build
+        run: dotnet build .\WinAIUsageBar.sln --configuration Release -p:Platform=x64 --no-restore
+
+      - name: Test
+        run: dotnet test .\tests\WinAiUsageBar.Core.Tests\WinAiUsageBar.Core.Tests.csproj --configuration Release -p:Platform=x64 --no-build --verbosity normal
+
+      - name: Publish app
+        run: .\scripts\publish.ps1 -Configuration Release -Runtime win-x64 -OutputPath .\artifacts\publish\WinAIUsageBar-win-x64
+
+      - name: Smoke test published app
+        run: .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --smoke-test
+
+      - name: Package app
+        run: .\scripts\package.ps1 -PublishPath .\artifacts\publish\WinAIUsageBar-win-x64 -OutputDirectory .\artifacts\packages -Runtime win-x64
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $assets = @()
+          $assets += Get-ChildItem -LiteralPath .\artifacts\packages -Filter "*.zip" | Select-Object -ExpandProperty FullName
+          $assets += Get-ChildItem -LiteralPath .\artifacts\packages -Filter "*.zip.sha256" | Select-Object -ExpandProperty FullName
+
+          if ($assets.Count -lt 2) {
+            throw "Expected zip and checksum assets under artifacts\packages."
+          }
+
+          gh release create $env:GITHUB_REF_NAME @assets `
+            --repo $env:GITHUB_REPOSITORY `
+            --draft `
+            --title "WinAI Usage Bar $env:GITHUB_REF_NAME" `
+            --generate-notes

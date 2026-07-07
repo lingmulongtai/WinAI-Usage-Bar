@@ -71,6 +71,21 @@ Run the published-app smoke test without opening UI:
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --smoke-test
 ```
 
+## Release
+
+To create a draft GitHub Release:
+
+1. Update the app version in `src\WinAiUsageBar.App\WinAiUsageBar.App.csproj`.
+2. Commit the version change.
+3. Create and push a version tag:
+
+```powershell
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The release workflow builds, tests, publishes, smoke-tests, packages the app, and creates a draft release with the versioned zip and checksum attached. Review the draft in GitHub before publishing it.
+
 ## Privacy
 
 - API keys, tokens, cookies, and auth file contents are not stored in plain text.
