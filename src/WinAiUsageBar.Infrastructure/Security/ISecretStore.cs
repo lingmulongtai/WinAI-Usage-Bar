@@ -6,5 +6,7 @@ public interface ISecretStore
 
     Task<string?> GetSecretAsync(string name, CancellationToken cancellationToken);
 
+    Task<bool> HasSecretAsync(string name, CancellationToken cancellationToken);
+
     Task DeleteSecretAsync(string name, CancellationToken cancellationToken);
 }

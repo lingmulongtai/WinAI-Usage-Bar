@@ -54,4 +54,37 @@ public sealed class SecurityTests
             }
         }
     }
+
+    [Fact]
+    public async Task DpapiSecretStore_SetGetHasDelete_RoundTripsWithoutPlaintextFileName()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        var store = new DpapiSecretStore(paths);
+
+        try
+        {
+            await store.SetSecretAsync("gemini-api-key", "secret-value", CancellationToken.None);
+            var exists = await store.HasSecretAsync("gemini-api-key", CancellationToken.None);
+            var value = await store.GetSecretAsync("gemini-api-key", CancellationToken.None);
+            var files = Directory.GetFiles(paths.SecretsDirectory);
+
+            Assert.True(exists);
+            Assert.Equal("secret-value", value);
+            Assert.Single(files);
+            Assert.DoesNotContain("gemini-api-key", Path.GetFileName(files.Single()), StringComparison.OrdinalIgnoreCase);
+
+            await store.DeleteSecretAsync("gemini-api-key", CancellationToken.None);
+
+            Assert.False(await store.HasSecretAsync("gemini-api-key", CancellationToken.None));
+            Assert.Null(await store.GetSecretAsync("gemini-api-key", CancellationToken.None));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
 }

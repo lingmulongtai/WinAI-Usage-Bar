@@ -3,6 +3,7 @@ using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Core.Models;
 using WinAiUsageBar.Infrastructure.Diagnostics;
 using WinAiUsageBar.Infrastructure.Scheduling;
+using WinAiUsageBar.Infrastructure.Security;
 using WinAiUsageBar.Infrastructure.Storage;
 using WinAiUsageBar.Infrastructure.Tray;
 using WinAiUsageBar.Infrastructure.Windows;
@@ -30,6 +31,7 @@ public sealed class AppHostTests
                 tray,
                 diagnostics,
                 new FakeDiagnosticsExportService(paths),
+                new FakeSecretStore(),
                 new FakeStartupRegistrationService(),
                 windowActivator,
                 new FakeExitService()));
@@ -69,6 +71,7 @@ public sealed class AppHostTests
                 tray,
                 new RecordingDiagnosticsLog(),
                 new FakeDiagnosticsExportService(paths),
+                new FakeSecretStore(),
                 new FakeStartupRegistrationService(),
                 windowActivator,
                 exitService));
@@ -103,6 +106,7 @@ public sealed class AppHostTests
                 tray,
                 new RecordingDiagnosticsLog(),
                 new FakeDiagnosticsExportService(paths),
+                new FakeSecretStore(),
                 new FakeStartupRegistrationService(),
                 new FakeWindowActivator(),
                 new FakeExitService()));
@@ -130,6 +134,7 @@ public sealed class AppHostTests
                 new FakeTrayIconService(),
                 new RecordingDiagnosticsLog(),
                 new FakeDiagnosticsExportService(paths),
+                new FakeSecretStore(),
                 new FakeStartupRegistrationService(),
                 new FakeWindowActivator(),
                 new FakeExitService()));
@@ -156,6 +161,7 @@ public sealed class AppHostTests
                 new FakeTrayIconService(),
                 new RecordingDiagnosticsLog(),
                 new FakeDiagnosticsExportService(paths),
+                new FakeSecretStore(),
                 startup,
                 new FakeWindowActivator(),
                 new FakeExitService()));
@@ -163,6 +169,38 @@ public sealed class AppHostTests
         await host.StartAsync(CancellationToken.None);
 
         Assert.True(startup.LastSetEnabled);
+    }
+
+    [Fact]
+    public async Task SecretMethods_UseInjectedSecretStoreWithoutLoggingValues()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        var secrets = new FakeSecretStore();
+        var diagnostics = new RecordingDiagnosticsLog();
+        var host = new AppHost(
+            new ImmediateDispatcher(),
+            new AppHostServices(
+                paths,
+                new InMemoryConfigStore(AppConfig.CreateDefault()),
+                new FakeRefreshService([]),
+                new FakeTrayIconService(),
+                diagnostics,
+                new FakeDiagnosticsExportService(paths),
+                secrets,
+                new FakeStartupRegistrationService(),
+                new FakeWindowActivator(),
+                new FakeExitService()));
+
+        await host.SetSecretAsync("  gemini-api-key  ", "sk-test-secret", CancellationToken.None);
+        var existsAfterSave = await host.HasSecretAsync("gemini-api-key", CancellationToken.None);
+        await host.DeleteSecretAsync("gemini-api-key", CancellationToken.None);
+        var existsAfterDelete = await host.HasSecretAsync("gemini-api-key", CancellationToken.None);
+
+        Assert.True(existsAfterSave);
+        Assert.False(existsAfterDelete);
+        Assert.DoesNotContain(diagnostics.InfoMessages, message => message.Contains("sk-test-secret", StringComparison.Ordinal));
+        Assert.Equal("gemini-api-key", secrets.LastSetName);
     }
 
     private static UsageSnapshot Snapshot(ProviderId providerId, string displayName, double remainingPercent)
@@ -329,6 +367,40 @@ public sealed class AppHostTests
         public Task ErrorAsync(string message, Exception exception, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FakeSecretStore : ISecretStore
+    {
+        private readonly Dictionary<string, string> secrets = [];
+
+        public string? LastSetName { get; private set; }
+
+        public Task SetSecretAsync(string name, string value, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            LastSetName = name;
+            secrets[name] = value;
+            return Task.CompletedTask;
+        }
+
+        public Task<string?> GetSecretAsync(string name, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(secrets.GetValueOrDefault(name));
+        }
+
+        public Task<bool> HasSecretAsync(string name, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(secrets.ContainsKey(name));
+        }
+
+        public Task DeleteSecretAsync(string name, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            secrets.Remove(name);
             return Task.CompletedTask;
         }
     }

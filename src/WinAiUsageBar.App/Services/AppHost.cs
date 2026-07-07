@@ -4,6 +4,7 @@ using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Core.Models;
 using WinAiUsageBar.Infrastructure.Diagnostics;
 using WinAiUsageBar.Infrastructure.Scheduling;
+using WinAiUsageBar.Infrastructure.Security;
 using WinAiUsageBar.Infrastructure.Storage;
 using WinAiUsageBar.Infrastructure.Tray;
 using WinAiUsageBar.Infrastructure.Windows;
@@ -16,6 +17,7 @@ public sealed class AppHost : IAsyncDisposable
     private readonly ITrayIconService trayIconService;
     private readonly IUsageRefreshService refreshService;
     private readonly IDiagnosticsExportService diagnosticsExportService;
+    private readonly ISecretStore secretStore;
     private readonly IStartupRegistrationService startupRegistrationService;
     private readonly IAppWindowActivator windowActivator;
     private readonly IApplicationExitService exitService;
@@ -29,6 +31,7 @@ public sealed class AppHost : IAsyncDisposable
         trayIconService = services.TrayIconService;
         DiagnosticsLog = services.DiagnosticsLog;
         diagnosticsExportService = services.DiagnosticsExportService;
+        secretStore = services.SecretStore;
         startupRegistrationService = services.StartupRegistrationService;
         windowActivator = services.WindowActivator;
         exitService = services.ExitService;
@@ -116,6 +119,29 @@ public sealed class AppHost : IAsyncDisposable
             await DiagnosticsLog.ErrorAsync("Diagnostics export failed.", ex, CancellationToken.None).ConfigureAwait(false);
             throw;
         }
+    }
+
+    public async Task<bool> HasSecretAsync(string name, CancellationToken cancellationToken)
+    {
+        return await secretStore.HasSecretAsync(RequireSecretName(name), cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task SetSecretAsync(string name, string value, CancellationToken cancellationToken)
+    {
+        var secretName = RequireSecretName(name);
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new ArgumentException("Secret value is required.", nameof(value));
+        }
+
+        await secretStore.SetSecretAsync(secretName, value, cancellationToken).ConfigureAwait(false);
+        await DiagnosticsLog.InfoAsync("Secret value saved.", cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task DeleteSecretAsync(string name, CancellationToken cancellationToken)
+    {
+        await secretStore.DeleteSecretAsync(RequireSecretName(name), cancellationToken).ConfigureAwait(false);
+        await DiagnosticsLog.InfoAsync("Secret value deleted.", cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<StartupRegistrationStatus> GetStartupRegistrationStatusAsync(CancellationToken cancellationToken)
@@ -246,5 +272,15 @@ public sealed class AppHost : IAsyncDisposable
                 await DiagnosticsLog.ErrorAsync(failureMessage, ex, CancellationToken.None).ConfigureAwait(false);
             }
         });
+    }
+
+    private static string RequireSecretName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("Secret name is required.", nameof(name));
+        }
+
+        return name.Trim();
     }
 }

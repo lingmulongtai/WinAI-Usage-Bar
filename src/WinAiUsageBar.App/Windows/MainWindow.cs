@@ -560,6 +560,138 @@ public sealed class MainWindow : Window
         panel.Children.Add(UiFactory.Text("Secrets are stored through the secret store abstraction and are not written to config.json.", 14));
         panel.Children.Add(UiFactory.Text("Browser cookie scraping is not implemented in this MVP.", 14));
 
+        var secretEditor = new SecretEditorViewModel();
+        var secretInfo = new InfoBar
+        {
+            IsOpen = false,
+            IsClosable = true
+        };
+        panel.Children.Add(secretInfo);
+
+        var secretGrid = new Grid
+        {
+            ColumnSpacing = 8,
+            RowSpacing = 8
+        };
+        secretGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        secretGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var secretNameBox = TextBox("Secret name", string.Empty);
+        var secretValueBox = new PasswordBox
+        {
+            Header = "Secret value",
+            MinWidth = 160
+        };
+        AddToGrid(secretGrid, secretNameBox, 0, 0);
+        AddToGrid(secretGrid, secretValueBox, 0, 1);
+        panel.Children.Add(secretGrid);
+
+        var secretActions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8
+        };
+        var saveSecretButton = new Button { Content = "Save Secret" };
+        saveSecretButton.Click += async (_, _) =>
+        {
+            secretEditor.SecretNameText = secretNameBox.Text;
+            secretEditor.SecretValueText = secretValueBox.Password;
+            var result = secretEditor.ValidateSave();
+            if (!result.IsValid || result.SecretName is null || result.SecretValue is null)
+            {
+                secretInfo.Severity = InfoBarSeverity.Error;
+                secretInfo.Title = "Invalid secret";
+                secretInfo.Message = string.Join(Environment.NewLine, result.Errors);
+                secretInfo.IsOpen = true;
+                return;
+            }
+
+            try
+            {
+                await host.SetSecretAsync(result.SecretName, result.SecretValue, CancellationToken.None);
+                secretValueBox.Password = string.Empty;
+                secretInfo.Severity = InfoBarSeverity.Success;
+                secretInfo.Title = "Secret saved";
+                secretInfo.Message = "The secret value was stored in the Windows user-protected secret store.";
+                secretInfo.IsOpen = true;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                secretInfo.Severity = InfoBarSeverity.Error;
+                secretInfo.Title = "Secret save failed";
+                secretInfo.Message = ex.Message;
+                secretInfo.IsOpen = true;
+            }
+        };
+        secretActions.Children.Add(saveSecretButton);
+
+        var checkSecretButton = new Button { Content = "Check Secret" };
+        checkSecretButton.Click += async (_, _) =>
+        {
+            secretEditor.SecretNameText = secretNameBox.Text;
+            var result = secretEditor.ValidateDelete();
+            if (!result.IsValid || result.SecretName is null)
+            {
+                secretInfo.Severity = InfoBarSeverity.Error;
+                secretInfo.Title = "Invalid secret";
+                secretInfo.Message = string.Join(Environment.NewLine, result.Errors);
+                secretInfo.IsOpen = true;
+                return;
+            }
+
+            try
+            {
+                var exists = await host.HasSecretAsync(result.SecretName, CancellationToken.None);
+                secretInfo.Severity = exists ? InfoBarSeverity.Success : InfoBarSeverity.Warning;
+                secretInfo.Title = exists ? "Secret found" : "Secret missing";
+                secretInfo.Message = exists
+                    ? "A value exists for that secret name."
+                    : "No value exists for that secret name.";
+                secretInfo.IsOpen = true;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                secretInfo.Severity = InfoBarSeverity.Error;
+                secretInfo.Title = "Secret check failed";
+                secretInfo.Message = ex.Message;
+                secretInfo.IsOpen = true;
+            }
+        };
+        secretActions.Children.Add(checkSecretButton);
+
+        var deleteSecretButton = new Button { Content = "Delete Secret" };
+        deleteSecretButton.Click += async (_, _) =>
+        {
+            secretEditor.SecretNameText = secretNameBox.Text;
+            var result = secretEditor.ValidateDelete();
+            if (!result.IsValid || result.SecretName is null)
+            {
+                secretInfo.Severity = InfoBarSeverity.Error;
+                secretInfo.Title = "Invalid secret";
+                secretInfo.Message = string.Join(Environment.NewLine, result.Errors);
+                secretInfo.IsOpen = true;
+                return;
+            }
+
+            try
+            {
+                await host.DeleteSecretAsync(result.SecretName, CancellationToken.None);
+                secretValueBox.Password = string.Empty;
+                secretInfo.Severity = InfoBarSeverity.Success;
+                secretInfo.Title = "Secret deleted";
+                secretInfo.Message = "The secret value was removed from the secret store.";
+                secretInfo.IsOpen = true;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                secretInfo.Severity = InfoBarSeverity.Error;
+                secretInfo.Title = "Secret delete failed";
+                secretInfo.Message = ex.Message;
+                secretInfo.IsOpen = true;
+            }
+        };
+        secretActions.Children.Add(deleteSecretButton);
+        panel.Children.Add(secretActions);
+
         var exportInfo = new InfoBar
         {
             IsOpen = false,

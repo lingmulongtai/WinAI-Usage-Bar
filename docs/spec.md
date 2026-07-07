@@ -59,6 +59,8 @@ Files are stored under `%AppData%\WinAiUsageBar`:
 
 Secrets must go through `ISecretStore`; the DPAPI implementation protects values for the current Windows user.
 
+The Privacy & Data page provides secret management by secret name. Users can save, check, and delete secret values. Secret values are never displayed back to the user, written to config, logged, or included in diagnostics exports.
+
 ## Refresh
 
 Supported intervals:

@@ -4,6 +4,7 @@ using WinAiUsageBar.Infrastructure.Diagnostics;
 using WinAiUsageBar.Infrastructure.Notifications;
 using WinAiUsageBar.Infrastructure.Process;
 using WinAiUsageBar.Infrastructure.Scheduling;
+using WinAiUsageBar.Infrastructure.Security;
 using WinAiUsageBar.Infrastructure.Storage;
 using WinAiUsageBar.Infrastructure.Tray;
 using WinAiUsageBar.Infrastructure.Windows;
@@ -27,6 +28,7 @@ public static class AppCompositionRoot
     public static AppHostServices CreateServices(AppDataPaths paths)
     {
         var diagnosticsLog = new FileAppDiagnosticsLog(paths);
+        var secretStore = new DpapiSecretStore(paths);
         var configStore = new JsonAppConfigStore(paths);
         var snapshotStore = new JsonSnapshotStore(paths);
         var commandProbe = new CliCommandProbe();
@@ -55,6 +57,7 @@ public static class AppCompositionRoot
             tray,
             diagnosticsLog,
             diagnosticsExportService,
+            secretStore,
             startupRegistrationService,
             windowActivator,
             exitService);
@@ -68,6 +71,7 @@ public sealed record AppHostServices(
     ITrayIconService TrayIconService,
     IAppDiagnosticsLog DiagnosticsLog,
     IDiagnosticsExportService DiagnosticsExportService,
+    ISecretStore SecretStore,
     IStartupRegistrationService StartupRegistrationService,
     IAppWindowActivator WindowActivator,
     IApplicationExitService ExitService);

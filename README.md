@@ -52,6 +52,7 @@ The default output is `artifacts\publish\WinAIUsageBar-win-x64`. Run `WinAiUsage
 - `DpapiSecretStore` stores secrets in protected files under `%AppData%\WinAiUsageBar\secrets`.
 - Diagnostics pass through redaction before being stored or surfaced.
 - Diagnostics can be exported from Privacy & Data; exports redact common secret shapes and never include files under `secrets/`.
+- Secret values can be saved or deleted by secret name from Privacy & Data; values are never displayed back.
 - Browser cookie scraping is intentionally not implemented in this MVP.
 - Codex integration never reads or displays `auth.json` contents.
 

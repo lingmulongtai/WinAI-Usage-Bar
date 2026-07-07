@@ -30,6 +30,13 @@ public sealed class DpapiSecretStore(AppDataPaths paths) : ISecretStore
         return Encoding.UTF8.GetString(bytes);
     }
 
+    public Task<bool> HasSecretAsync(string name, CancellationToken cancellationToken)
+    {
+        paths.EnsureCreated();
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(File.Exists(GetPath(name)));
+    }
+
     public Task DeleteSecretAsync(string name, CancellationToken cancellationToken)
     {
         paths.EnsureCreated();
