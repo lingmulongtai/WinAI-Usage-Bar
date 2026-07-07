@@ -11,6 +11,7 @@ WinAI Usage Bar is a personal Windows notification-area app for watching AI prov
 - Settings window uses WinUI `NavigationView`.
 - Desktop widget window shows up to three selected providers, remembers placement, and has settings for startup/topmost/provider selection.
 - Provider cards show health, usage percentage, reset text, credits/costs, source, update time, and errors.
+- Refresh settings include interval, notification enablement, and history retention limits.
 - Mock and Manual provider modes are implemented.
 - Codex/ChatGPT app-server probing is isolated behind safe abstractions.
 - Claude, Claude Code, Gemini, OpenCode Zen, and GitHub Copilot have MVP-safe descriptors and manual mode support.

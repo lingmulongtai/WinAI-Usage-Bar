@@ -71,6 +71,8 @@ Supported intervals:
 
 The refresh service updates enabled providers asynchronously, caches snapshots, appends history, and keeps the previous successful usage data visible when a provider reports an error.
 
+Refresh settings also expose notification enablement and history retention limits. History max days is clamped to 1-3650 and max bytes is clamped to 100000-500000000 before saving.
+
 ## Notifications
 
 When notifications are enabled, auth-required snapshots and providers with less than 20% remaining quota can emit Windows App SDK local app notifications. The notification service registers lazily and falls back silently when the current Windows runtime does not support app notifications, so refreshes do not fail because toast delivery failed.

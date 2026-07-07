@@ -80,7 +80,13 @@ public static class AppConfigMigrations
 
     private static void NormalizeHistoryRetention(HistoryRetentionSettings retention)
     {
-        retention.MaxDays = Math.Clamp(retention.MaxDays, 1, 3650);
-        retention.MaxBytes = Math.Clamp(retention.MaxBytes, 100_000, 500_000_000);
+        retention.MaxDays = Math.Clamp(
+            retention.MaxDays,
+            HistoryRetentionSettings.MinDays,
+            HistoryRetentionSettings.MaxDaysLimit);
+        retention.MaxBytes = Math.Clamp(
+            retention.MaxBytes,
+            HistoryRetentionSettings.MinBytes,
+            HistoryRetentionSettings.MaxBytesLimit);
     }
 }

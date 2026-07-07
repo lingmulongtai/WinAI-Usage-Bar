@@ -171,6 +171,11 @@ public sealed class StartupSettings
 
 public sealed class HistoryRetentionSettings
 {
+    public const int MinDays = 1;
+    public const int MaxDaysLimit = 3650;
+    public const long MinBytes = 100_000;
+    public const long MaxBytesLimit = 500_000_000;
+
     public int MaxDays { get; set; } = 30;
 
     public long MaxBytes { get; set; } = 5_000_000;

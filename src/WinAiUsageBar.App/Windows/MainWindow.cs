@@ -377,7 +377,15 @@ public sealed class MainWindow : Window
     private async Task<UIElement> BuildRefreshPageAsync()
     {
         var config = await host.LoadConfigAsync(CancellationToken.None);
+        var viewModel = new RefreshSettingsPageViewModel(config);
         var panel = PageStack("Refresh");
+        var validationInfo = new InfoBar
+        {
+            IsOpen = false,
+            IsClosable = true
+        };
+        panel.Children.Add(validationInfo);
+
         var combo = new ComboBox
         {
             Header = "Interval",
@@ -389,8 +397,28 @@ public sealed class MainWindow : Window
             combo.Items.Add(value.ToString());
         }
 
-        combo.SelectedItem = config.Refresh.Interval.ToString();
+        combo.SelectedItem = viewModel.IntervalText;
         panel.Children.Add(combo);
+
+        var notifications = new ToggleSwitch
+        {
+            Header = "Enable notifications",
+            IsOn = viewModel.NotificationsEnabled
+        };
+        panel.Children.Add(notifications);
+
+        var retentionGrid = new Grid
+        {
+            ColumnSpacing = 8,
+            RowSpacing = 8
+        };
+        retentionGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        retentionGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var maxDaysBox = TextBox("History max days", viewModel.HistoryMaxDaysText);
+        var maxBytesBox = TextBox("History max bytes", viewModel.HistoryMaxBytesText);
+        AddToGrid(retentionGrid, maxDaysBox, 0, 0);
+        AddToGrid(retentionGrid, maxBytesBox, 0, 1);
+        panel.Children.Add(retentionGrid);
 
         var actions = new StackPanel
         {
@@ -400,11 +428,30 @@ public sealed class MainWindow : Window
         var save = new Button { Content = "Save Refresh" };
         save.Click += async (_, _) =>
         {
-            if (Enum.TryParse<RefreshIntervalKind>(combo.SelectedItem?.ToString(), out var interval))
+            viewModel.IntervalText = combo.SelectedItem?.ToString() ?? string.Empty;
+            viewModel.NotificationsEnabled = notifications.IsOn;
+            viewModel.HistoryMaxDaysText = maxDaysBox.Text;
+            viewModel.HistoryMaxBytesText = maxBytesBox.Text;
+
+            var result = viewModel.TryApply();
+            if (!result.IsValid)
             {
-                config.Refresh.Interval = interval;
-                await host.SaveConfigAsync(config, CancellationToken.None);
+                validationInfo.Severity = InfoBarSeverity.Error;
+                validationInfo.Title = "Invalid refresh settings";
+                validationInfo.Message = string.Join(Environment.NewLine, result.Errors);
+                validationInfo.IsOpen = true;
+                return;
             }
+
+            await host.SaveConfigAsync(config, CancellationToken.None);
+            validationInfo.Severity = result.Warnings.Count > 0
+                ? InfoBarSeverity.Warning
+                : InfoBarSeverity.Success;
+            validationInfo.Title = "Refresh settings saved";
+            validationInfo.Message = result.Warnings.Count > 0
+                ? string.Join(Environment.NewLine, result.Warnings)
+                : "Refresh, notification, and history settings were saved.";
+            validationInfo.IsOpen = true;
         };
         actions.Children.Add(save);
 
