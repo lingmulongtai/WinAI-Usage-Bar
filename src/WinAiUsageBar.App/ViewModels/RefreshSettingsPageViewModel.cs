@@ -99,6 +99,9 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
         var latest = string.IsNullOrWhiteSpace(updates.LastLatestVersion)
             ? "n/a"
             : updates.LastLatestVersion;
+        var current = string.IsNullOrWhiteSpace(updates.LastCurrentVersion)
+            ? null
+            : updates.LastCurrentVersion;
         var message = string.IsNullOrWhiteSpace(updates.LastMessage)
             ? "No update status has been recorded yet."
             : updates.LastMessage;
@@ -109,14 +112,36 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
             ? "Last launched install: n/a"
             : $"Last launched install: {updates.LastInstallLaunchedVersion}";
 
-        return string.Join(
-            Environment.NewLine,
+        var lines = new List<string>
+        {
             checkedText,
             interval,
             $"Status: {status}",
-            $"Latest version: {latest}",
-            launchedVersion,
-            $"Message: {message}");
+            $"Latest version: {latest}"
+        };
+
+        if (current is not null)
+        {
+            lines.Add($"Current version: {current}");
+        }
+
+        lines.Add(launchedVersion);
+
+        if (!string.IsNullOrWhiteSpace(updates.LastPackagePath))
+        {
+            lines.Add($"Package path: {updates.LastPackagePath}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(updates.LastInstallScriptPath))
+        {
+            lines.Add($"Install script: {updates.LastInstallScriptPath}");
+        }
+
+        lines.Add($"Message: {message}");
+
+        return string.Join(
+            Environment.NewLine,
+            lines);
     }
 
     private static int? ParseInt(string text, string label, ICollection<string> errors)
