@@ -23,6 +23,7 @@ All notable changes to WinAI Usage Bar are documented here.
 - Latest-release checks now persist observed zip package and checksum asset names for Refresh settings and health reports.
 - Latest-release checks now persist observed setup installer asset status for Refresh settings and health reports.
 - Real-version `--download-update` runs now persist downloaded package/checksum paths for Refresh settings and health reports without persisting dogfood version override paths.
+- Real-version `--install-latest-update` runs now persist install status, staged package/checksum paths, prepared script/result paths, and launched version details without overwriting real install state during dogfood version override runs.
 - Update checks now report setup installer and setup checksum asset availability alongside the zip package assets.
 - Published release dogfooding can now exercise the startup update policy path with isolated app data.
 - Reconcile app-owned update `install-result.json` files into saved update status during startup checks and health reports.

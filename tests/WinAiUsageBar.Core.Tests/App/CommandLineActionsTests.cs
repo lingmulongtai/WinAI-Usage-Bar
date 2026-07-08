@@ -1185,6 +1185,216 @@ public sealed class CommandLineActionsTests
     }
 
     [Fact]
+    public async Task InstallLatestUpdateAsync_PersistsLaunchedRealVersionStatus()
+    {
+        var paths = TestPaths();
+        var service = new FakeLatestUpdateInstallService(LaunchedLatestUpdate(paths));
+
+        try
+        {
+            var result = await CommandLineActions.InstallLatestUpdateAsync(
+                new CommandLineInstallLatestUpdateOptions(RestartAfterInstall: true),
+                service,
+                new AppInfo("WinAI Usage Bar", "0.1.0.0", "0.1.0"),
+                installDirectory: @"C:\App",
+                processIdToWait: 777,
+                CancellationToken.None,
+                paths);
+            var config = await new JsonAppConfigStore(paths).LoadAsync(CancellationToken.None);
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal(1, service.InstallCount);
+            Assert.Equal("0.1.0", service.LastRequest?.CurrentVersion);
+            Assert.Equal("InstallLaunched", config.Updates.LastStatus);
+            Assert.Equal("Latest update install script launched.", config.Updates.LastMessage);
+            Assert.Equal("0.1.0", config.Updates.LastCurrentVersion);
+            Assert.Equal("0.2.0", config.Updates.LastLatestVersion);
+            Assert.Equal("https://example.test/releases/v0.2.0", config.Updates.LastReleasePageUrl);
+            Assert.Equal("WinAIUsageBar-0.2.0-win-x64.zip", config.Updates.LastPackageAssetName);
+            Assert.Equal("WinAIUsageBar-0.2.0-win-x64.zip.sha256", config.Updates.LastPackageChecksumAssetName);
+            Assert.Equal(Path.Combine(paths.UpdatesDirectory, "WinAIUsageBar-0.2.0-win-x64.zip"), config.Updates.LastPackagePath);
+            Assert.Equal(Path.Combine(paths.UpdatesDirectory, "WinAIUsageBar-0.2.0-win-x64.zip.sha256"), config.Updates.LastPackageChecksumPath);
+            Assert.Equal(Path.Combine(paths.UpdatesDirectory, "install-1", "apply-update.ps1"), config.Updates.LastInstallScriptPath);
+            Assert.Equal(Path.Combine(paths.UpdatesDirectory, "install-1", "install-result.json"), config.Updates.LastInstallResultPath);
+            Assert.Equal("0.2.0", config.Updates.LastInstallLaunchedVersion);
+            Assert.NotNull(config.Updates.LastCheckedAt);
+        }
+        finally
+        {
+            if (Directory.Exists(paths.RootDirectory))
+            {
+                Directory.Delete(paths.RootDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task InstallLatestUpdateAsync_PersistsNoUpdateAndClearsStagedPaths()
+    {
+        var paths = TestPaths();
+        var configStore = new JsonAppConfigStore(paths);
+        var config = AppConfig.CreateDefault();
+        config.Updates.LastPackagePath = @"C:\Updates\old.zip";
+        config.Updates.LastPackageChecksumPath = @"C:\Updates\old.zip.sha256";
+        config.Updates.LastInstallScriptPath = @"C:\Updates\old\apply-update.ps1";
+        config.Updates.LastInstallResultPath = @"C:\Updates\old\install-result.json";
+        config.Updates.LastInstallResultStatus = "Succeeded";
+        config.Updates.LastInstallResultMessage = "old result";
+        config.Updates.LastInstallResultCompletedAt = DateTimeOffset.Now.AddHours(-1);
+        var service = new FakeLatestUpdateInstallService(new LatestUpdateInstallResult(
+            LatestUpdateInstallStatus.SkippedNoUpdate,
+            "The current app version is up to date.",
+            UpToDateUpdate(),
+            Download: null,
+            Preparation: null,
+            Launch: null));
+
+        try
+        {
+            await configStore.SaveAsync(config, CancellationToken.None);
+
+            var result = await CommandLineActions.InstallLatestUpdateAsync(
+                new CommandLineInstallLatestUpdateOptions(RestartAfterInstall: false),
+                service,
+                new AppInfo("WinAI Usage Bar", "0.1.0.0", "0.1.0"),
+                installDirectory: @"C:\App",
+                processIdToWait: 777,
+                CancellationToken.None,
+                paths);
+            var reloaded = await configStore.LoadAsync(CancellationToken.None);
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal("NoUpdate", reloaded.Updates.LastStatus);
+            Assert.Equal("The current app version is up to date.", reloaded.Updates.LastMessage);
+            Assert.Equal("0.1.0", reloaded.Updates.LastCurrentVersion);
+            Assert.Equal("0.1.0", reloaded.Updates.LastLatestVersion);
+            Assert.Null(reloaded.Updates.LastPackagePath);
+            Assert.Null(reloaded.Updates.LastPackageChecksumPath);
+            Assert.Null(reloaded.Updates.LastInstallScriptPath);
+            Assert.Null(reloaded.Updates.LastInstallResultPath);
+            Assert.Null(reloaded.Updates.LastInstallResultStatus);
+            Assert.Null(reloaded.Updates.LastInstallResultMessage);
+            Assert.Null(reloaded.Updates.LastInstallResultCompletedAt);
+            Assert.NotNull(reloaded.Updates.LastCheckedAt);
+        }
+        finally
+        {
+            if (Directory.Exists(paths.RootDirectory))
+            {
+                Directory.Delete(paths.RootDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task InstallLatestUpdateAsync_PersistsFailedRealVersionStatusWithoutStagedPaths()
+    {
+        var paths = TestPaths();
+        var service = new FakeLatestUpdateInstallService(new LatestUpdateInstallResult(
+            LatestUpdateInstallStatus.DownloadFailed,
+            "hash mismatch",
+            AvailableUpdate(),
+            new UpdateDownloadResult(
+                UpdateDownloadStatus.ChecksumMismatch,
+                "hash mismatch",
+                PackagePath: null,
+                ChecksumPath: null,
+                ExpectedSha256: new string('a', 64),
+                ActualSha256: new string('b', 64)),
+            Preparation: null,
+            Launch: null));
+
+        try
+        {
+            var result = await CommandLineActions.InstallLatestUpdateAsync(
+                new CommandLineInstallLatestUpdateOptions(RestartAfterInstall: false),
+                service,
+                new AppInfo("WinAI Usage Bar", "0.1.0.0", "0.1.0"),
+                installDirectory: @"C:\App",
+                processIdToWait: 777,
+                CancellationToken.None,
+                paths);
+            var config = await new JsonAppConfigStore(paths).LoadAsync(CancellationToken.None);
+
+            Assert.Equal(1, result.ExitCode);
+            Assert.Equal("DownloadFailed", config.Updates.LastStatus);
+            Assert.Equal("hash mismatch", config.Updates.LastMessage);
+            Assert.Equal("0.1.0", config.Updates.LastCurrentVersion);
+            Assert.Equal("0.2.0", config.Updates.LastLatestVersion);
+            Assert.Equal("https://example.test/releases/v0.2.0", config.Updates.LastReleasePageUrl);
+            Assert.Equal("WinAIUsageBar-0.2.0-win-x64.zip", config.Updates.LastPackageAssetName);
+            Assert.Equal("WinAIUsageBar-0.2.0-win-x64.zip.sha256", config.Updates.LastPackageChecksumAssetName);
+            Assert.Null(config.Updates.LastPackagePath);
+            Assert.Null(config.Updates.LastPackageChecksumPath);
+            Assert.Null(config.Updates.LastInstallScriptPath);
+            Assert.Null(config.Updates.LastInstallResultPath);
+            Assert.NotNull(config.Updates.LastCheckedAt);
+        }
+        finally
+        {
+            if (Directory.Exists(paths.RootDirectory))
+            {
+                Directory.Delete(paths.RootDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task InstallLatestUpdateAsync_DoesNotPersistDogfoodInstallState()
+    {
+        var paths = TestPaths();
+        var configStore = new JsonAppConfigStore(paths);
+        var config = AppConfig.CreateDefault();
+        config.Updates.LastStatus = "Downloaded";
+        config.Updates.LastMessage = "previous real status";
+        config.Updates.LastCurrentVersion = "0.1.0";
+        config.Updates.LastPackagePath = @"C:\Updates\real.zip";
+        config.Updates.LastPackageChecksumPath = @"C:\Updates\real.zip.sha256";
+        config.Updates.LastInstallScriptPath = @"C:\Updates\real\apply-update.ps1";
+        config.Updates.LastInstallResultPath = @"C:\Updates\real\install-result.json";
+        config.Updates.LastInstallLaunchedVersion = "0.1.9";
+        var service = new FakeLatestUpdateInstallService(LaunchedLatestUpdate(paths));
+
+        try
+        {
+            await configStore.SaveAsync(config, CancellationToken.None);
+
+            var result = await CommandLineActions.InstallLatestUpdateAsync(
+                new CommandLineInstallLatestUpdateOptions(
+                    RestartAfterInstall: true,
+                    CurrentVersionOverride: "0.1.2"),
+                service,
+                new AppInfo("WinAI Usage Bar", "0.1.0.0", "0.1.0"),
+                installDirectory: @"C:\App",
+                processIdToWait: 777,
+                CancellationToken.None,
+                paths);
+            var reloaded = await configStore.LoadAsync(CancellationToken.None);
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal("0.1.2", service.LastRequest?.CurrentVersion);
+            Assert.Equal("Downloaded", reloaded.Updates.LastStatus);
+            Assert.Equal("previous real status", reloaded.Updates.LastMessage);
+            Assert.Equal("0.1.0", reloaded.Updates.LastCurrentVersion);
+            Assert.Equal(@"C:\Updates\real.zip", reloaded.Updates.LastPackagePath);
+            Assert.Equal(@"C:\Updates\real.zip.sha256", reloaded.Updates.LastPackageChecksumPath);
+            Assert.Equal(@"C:\Updates\real\apply-update.ps1", reloaded.Updates.LastInstallScriptPath);
+            Assert.Equal(@"C:\Updates\real\install-result.json", reloaded.Updates.LastInstallResultPath);
+            Assert.Equal("0.1.9", reloaded.Updates.LastInstallLaunchedVersion);
+            Assert.Equal("0.2.0", reloaded.Updates.LastLatestVersion);
+            Assert.Equal("WinAIUsageBar-0.2.0-win-x64.zip", reloaded.Updates.LastPackageAssetName);
+            Assert.NotNull(reloaded.Updates.LastCheckedAt);
+        }
+        finally
+        {
+            if (Directory.Exists(paths.RootDirectory))
+            {
+                Directory.Delete(paths.RootDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task RunStartupUpdateAsync_FormatsDisabledResultWithCurrentVersion()
     {
         var service = new FakeStartupUpdateService(new StartupUpdateResult(
@@ -1334,6 +1544,57 @@ public sealed class CommandLineActionsTests
                 "WinAIUsageBar-0.2.0-win-x64.zip.sha256",
                 new Uri("https://example.test/package.zip.sha256"),
                 128));
+    }
+
+    private static ReleaseUpdateCheckResult UpToDateUpdate()
+    {
+        return new ReleaseUpdateCheckResult(
+            UpdateCheckStatus.UpToDate,
+            CurrentVersion: "0.1.0",
+            LatestVersion: "0.1.0",
+            "The current app version is up to date.",
+            IsUpdateAvailable: false,
+            ReleasePageUrl: null,
+            Package: null,
+            Checksum: null);
+    }
+
+    private static LatestUpdateInstallResult LaunchedLatestUpdate(AppDataPaths paths)
+    {
+        var packagePath = Path.Combine(paths.UpdatesDirectory, "WinAIUsageBar-0.2.0-win-x64.zip");
+        var checksumPath = Path.Combine(paths.UpdatesDirectory, "WinAIUsageBar-0.2.0-win-x64.zip.sha256");
+        var scriptPath = Path.Combine(paths.UpdatesDirectory, "install-1", "apply-update.ps1");
+        var resultPath = Path.Combine(paths.UpdatesDirectory, "install-1", "install-result.json");
+
+        return new LatestUpdateInstallResult(
+            LatestUpdateInstallStatus.Launched,
+            "Latest update install script launched.",
+            AvailableUpdate(),
+            new UpdateDownloadResult(
+                UpdateDownloadStatus.Downloaded,
+                "downloaded",
+                packagePath,
+                checksumPath,
+                ExpectedSha256: new string('a', 64),
+                ActualSha256: new string('a', 64)),
+            new UpdateInstallPreparationResult(
+                UpdateInstallPreparationStatus.Prepared,
+                "prepared",
+                scriptPath,
+                $@"powershell -ExecutionPolicy Bypass -File ""{scriptPath}""",
+                packagePath,
+                @"C:\App",
+                Path.Combine(paths.UpdatesDirectory, "install-1", "staging"),
+                Path.Combine(paths.UpdatesDirectory, "install-1", "backup"))
+            {
+                ResultPath = resultPath
+            },
+            new UpdateInstallLaunchResult(
+                UpdateInstallLaunchStatus.Launched,
+                "launched",
+                scriptPath,
+                $@"powershell -NoProfile -ExecutionPolicy Bypass -File ""{scriptPath}""",
+                ProcessId: 1234));
     }
 
     private sealed class FakeUpdateInstallPreparationService(

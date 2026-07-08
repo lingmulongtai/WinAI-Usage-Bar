@@ -392,7 +392,8 @@ public static class CommandLineActions
             AppInfoProvider.Get(),
             installDirectory: AppContext.BaseDirectory,
             processIdToWait: Environment.ProcessId,
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken,
+            paths).ConfigureAwait(false);
     }
 
     public static async Task<CommandLineActionResult> InstallLatestUpdateAsync(
@@ -401,15 +402,27 @@ public static class CommandLineActions
         AppInfo appInfo,
         string installDirectory,
         int processIdToWait,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        AppDataPaths? paths = null)
     {
+        var currentVersion = ResolveCurrentVersion(appInfo, options.CurrentVersionOverride);
         var result = await service.InstallLatestAsync(
             new LatestUpdateInstallRequest(
-                ResolveCurrentVersion(appInfo, options.CurrentVersionOverride),
+                currentVersion,
                 installDirectory,
                 processIdToWait,
                 options.RestartAfterInstall),
             cancellationToken).ConfigureAwait(false);
+        if (paths is not null)
+        {
+            await SaveCliLatestUpdateInstallStatusAsync(
+                result,
+                currentVersion,
+                paths,
+                persistInstallStatus: string.IsNullOrWhiteSpace(options.CurrentVersionOverride),
+                cancellationToken).ConfigureAwait(false);
+        }
+
         var isFailure = result.Status is not LatestUpdateInstallStatus.SkippedNoUpdate
             and not LatestUpdateInstallStatus.Launched;
         return new CommandLineActionResult(
@@ -488,10 +501,7 @@ public static class CommandLineActions
 
         config.Updates.LastLatestVersion = result.LatestVersion;
         config.Updates.LastReleasePageUrl = result.ReleasePageUrl?.ToString();
-        config.Updates.LastPackageAssetName = result.Package?.Name;
-        config.Updates.LastPackageChecksumAssetName = result.Checksum?.Name;
-        config.Updates.LastInstallerAssetName = result.Installer?.Name;
-        config.Updates.LastInstallerChecksumAssetName = result.InstallerChecksum?.Name;
+        SaveReleaseAssetStatus(config.Updates, result);
         config.Updates.LastCheckedAt = DateTimeOffset.Now;
         await configStore.SaveAsync(config, cancellationToken).ConfigureAwait(false);
     }
@@ -524,11 +534,87 @@ public static class CommandLineActions
 
         config.Updates.LastLatestVersion = update.LatestVersion;
         config.Updates.LastReleasePageUrl = update.ReleasePageUrl?.ToString();
-        config.Updates.LastPackageAssetName = update.Package?.Name;
-        config.Updates.LastPackageChecksumAssetName = update.Checksum?.Name;
-        config.Updates.LastInstallerAssetName = update.Installer?.Name;
-        config.Updates.LastInstallerChecksumAssetName = update.InstallerChecksum?.Name;
+        SaveReleaseAssetStatus(config.Updates, update);
         config.Updates.LastCheckedAt = DateTimeOffset.Now;
+        await configStore.SaveAsync(config, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task SaveCliLatestUpdateInstallStatusAsync(
+        LatestUpdateInstallResult result,
+        string fallbackCurrentVersion,
+        AppDataPaths paths,
+        bool persistInstallStatus,
+        CancellationToken cancellationToken)
+    {
+        var configStore = new JsonAppConfigStore(paths);
+        var config = await configStore.LoadAsync(cancellationToken).ConfigureAwait(false);
+
+        if (result.UpdateCheck is not null)
+        {
+            config.Updates.LastLatestVersion = result.UpdateCheck.LatestVersion;
+            config.Updates.LastReleasePageUrl = result.UpdateCheck.ReleasePageUrl?.ToString();
+            SaveReleaseAssetStatus(config.Updates, result.UpdateCheck);
+            config.Updates.LastCheckedAt = DateTimeOffset.Now;
+        }
+
+        if (persistInstallStatus)
+        {
+            config.Updates.LastStatus = ToStartupUpdateInstallStatus(result.Status).ToString();
+            config.Updates.LastMessage = result.Message;
+            config.Updates.LastCurrentVersion = result.UpdateCheck?.CurrentVersion ?? fallbackCurrentVersion;
+
+            if (result.UpdateCheck is null)
+            {
+                config.Updates.LastLatestVersion = null;
+                config.Updates.LastReleasePageUrl = null;
+                config.Updates.LastPackageAssetName = null;
+                config.Updates.LastPackageChecksumAssetName = null;
+                config.Updates.LastInstallerAssetName = null;
+                config.Updates.LastInstallerChecksumAssetName = null;
+            }
+
+            if (result.Download?.Status is UpdateDownloadStatus.Downloaded)
+            {
+                config.Updates.LastPackagePath = result.Download.PackagePath;
+                config.Updates.LastPackageChecksumPath = result.Download.ChecksumPath;
+            }
+            else
+            {
+                config.Updates.LastPackagePath = null;
+                config.Updates.LastPackageChecksumPath = null;
+            }
+
+            var nextInstallScriptPath = result.Preparation?.ScriptPath ?? result.Launch?.ScriptPath;
+            if (!string.IsNullOrWhiteSpace(nextInstallScriptPath))
+            {
+                var previousResultPath = config.Updates.LastInstallResultPath;
+                var nextResultPath = result.Preparation?.ResultPath
+                    ?? GetInstallResultPath(nextInstallScriptPath);
+                config.Updates.LastInstallScriptPath = nextInstallScriptPath;
+                config.Updates.LastInstallResultPath = nextResultPath;
+                if (!SamePath(previousResultPath, nextResultPath))
+                {
+                    config.Updates.LastInstallResultStatus = null;
+                    config.Updates.LastInstallResultMessage = null;
+                    config.Updates.LastInstallResultCompletedAt = null;
+                }
+            }
+            else
+            {
+                config.Updates.LastInstallScriptPath = null;
+                config.Updates.LastInstallResultPath = null;
+                config.Updates.LastInstallResultStatus = null;
+                config.Updates.LastInstallResultMessage = null;
+                config.Updates.LastInstallResultCompletedAt = null;
+            }
+
+            if (result.Status is LatestUpdateInstallStatus.Launched
+                && !string.IsNullOrWhiteSpace(result.UpdateCheck?.LatestVersion))
+            {
+                config.Updates.LastInstallLaunchedVersion = result.UpdateCheck.LatestVersion;
+            }
+        }
+
         await configStore.SaveAsync(config, cancellationToken).ConfigureAwait(false);
     }
 
@@ -546,6 +632,68 @@ public static class CommandLineActions
         return download.Status is UpdateDownloadStatus.Downloaded
             ? StartupUpdateStatus.Downloaded
             : StartupUpdateStatus.DownloadFailed;
+    }
+
+    private static StartupUpdateStatus ToStartupUpdateInstallStatus(LatestUpdateInstallStatus status)
+    {
+        return status switch
+        {
+            LatestUpdateInstallStatus.SkippedNoUpdate => StartupUpdateStatus.NoUpdate,
+            LatestUpdateInstallStatus.Launched => StartupUpdateStatus.InstallLaunched,
+            LatestUpdateInstallStatus.UpdateCheckFailed => StartupUpdateStatus.UpdateCheckFailed,
+            LatestUpdateInstallStatus.DownloadFailed => StartupUpdateStatus.DownloadFailed,
+            LatestUpdateInstallStatus.PreparationFailed => StartupUpdateStatus.PreparationFailed,
+            LatestUpdateInstallStatus.LaunchFailed => StartupUpdateStatus.LaunchFailed,
+            LatestUpdateInstallStatus.Error => StartupUpdateStatus.Error,
+            _ => StartupUpdateStatus.Error
+        };
+    }
+
+    private static void SaveReleaseAssetStatus(
+        UpdateSettings settings,
+        ReleaseUpdateCheckResult result)
+    {
+        settings.LastPackageAssetName = result.Package?.Name;
+        settings.LastPackageChecksumAssetName = result.Checksum?.Name;
+        settings.LastInstallerAssetName = result.Installer?.Name;
+        settings.LastInstallerChecksumAssetName = result.InstallerChecksum?.Name;
+    }
+
+    private static string? GetInstallResultPath(string? installScriptPath)
+    {
+        if (string.IsNullOrWhiteSpace(installScriptPath))
+        {
+            return null;
+        }
+
+        try
+        {
+            var directory = Path.GetDirectoryName(Path.GetFullPath(installScriptPath));
+            return string.IsNullOrWhiteSpace(directory)
+                ? null
+                : Path.Combine(directory, "install-result.json");
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return null;
+        }
+    }
+
+    private static bool SamePath(string? left, string? right)
+    {
+        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+        {
+            return string.IsNullOrWhiteSpace(left) && string.IsNullOrWhiteSpace(right);
+        }
+
+        try
+        {
+            return string.Equals(Path.GetFullPath(left), Path.GetFullPath(right), StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     public static async Task<CommandLineActionResult> PruneSupportArtifactsAsync(
