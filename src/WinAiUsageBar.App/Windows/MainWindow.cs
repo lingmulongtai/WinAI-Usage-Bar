@@ -8,6 +8,7 @@ using WinAiUsageBar.App.ViewModels;
 using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Core.Models;
 using WinAiUsageBar.Core.Providers;
+using WinAiUsageBar.Infrastructure.Storage;
 
 namespace WinAiUsageBar.App.Windows;
 
@@ -1081,6 +1082,50 @@ public sealed class MainWindow : Window
         backupActions.Children.Add(restoreLatestBackupButton);
         panel.Children.Add(backupActions);
 
+        var resetActions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8
+        };
+        var resetConfigButton = new Button
+        {
+            Content = "Reset Config To Defaults",
+            IsEnabled = false
+        };
+        var resetConfirm = new CheckBox
+        {
+            Content = "Confirm reset",
+            MinWidth = 120
+        };
+        resetConfirm.Checked += (_, _) => resetConfigButton.IsEnabled = true;
+        resetConfirm.Unchecked += (_, _) => resetConfigButton.IsEnabled = false;
+        resetConfigButton.Click += async (_, _) =>
+        {
+            try
+            {
+                resetConfigButton.IsEnabled = false;
+                var result = await host.ResetConfigToDefaultsAsync(CancellationToken.None);
+                maintenanceInfo.Severity = result.Reset ? InfoBarSeverity.Success : InfoBarSeverity.Error;
+                maintenanceInfo.Title = result.Reset ? "Config reset to defaults" : "Config reset did not run";
+                maintenanceInfo.Message = FormatConfigResetResult(result);
+                maintenanceInfo.IsOpen = true;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                maintenanceInfo.Severity = InfoBarSeverity.Error;
+                maintenanceInfo.Title = "Config reset failed";
+                maintenanceInfo.Message = ex.Message;
+                maintenanceInfo.IsOpen = true;
+            }
+            finally
+            {
+                resetConfirm.IsChecked = false;
+            }
+        };
+        resetActions.Children.Add(resetConfirm);
+        resetActions.Children.Add(resetConfigButton);
+        panel.Children.Add(resetActions);
+
         var exportInfo = new InfoBar
         {
             IsOpen = false,
@@ -1178,6 +1223,25 @@ public sealed class MainWindow : Window
         Grid.SetRow(element, row);
         Grid.SetColumn(element, column);
         grid.Children.Add(element);
+    }
+
+    private static string FormatConfigResetResult(ConfigResetResult result)
+    {
+        var lines = new List<string>
+        {
+            result.Reset ? "Config reset: reset" : "Config reset: not reset",
+            $"Rollback backup: {result.RollbackBackupPath}",
+            $"Config version: {result.ConfigVersion}",
+            $"Providers: {result.EnabledProviderCount} enabled / {result.ProviderCount} configured",
+            "Reopen settings to see default values."
+        };
+
+        foreach (var warning in result.Warnings)
+        {
+            lines.Add($"Warning: {warning}");
+        }
+
+        return string.Join(Environment.NewLine, lines);
     }
 
     private sealed record ProviderEditor(

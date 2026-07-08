@@ -94,6 +94,8 @@ The CLI can restore a config backup with `--restore-config-backup <path> --confi
 
 The Privacy & Data page can validate and restore the latest config backup from `config-backups/`. In-app restore must require explicit confirmation, use the same validation and rollback restore services as the CLI, leave `secrets/` untouched, and restart the refresh schedule after a successful restore.
 
+The Privacy & Data page can reset `config.json` to the app defaults. In-app reset must require explicit confirmation, create a rollback backup of the current `config.json` under `config-backups/`, save only default configuration settings, leave `secrets/` untouched, and restart the refresh schedule after a successful reset.
+
 ## Refresh
 
 Supported intervals:

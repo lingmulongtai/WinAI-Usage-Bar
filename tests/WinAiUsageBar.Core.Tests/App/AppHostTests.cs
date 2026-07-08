@@ -373,6 +373,81 @@ public sealed class AppHostTests
             StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task ResetConfigToDefaultsAsync_UsesResetServiceAndRestartsRefresh()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        var reset = new FakeConfigResetService(paths);
+        var refresh = new FakeRefreshService([]);
+        var diagnostics = new RecordingDiagnosticsLog();
+        var host = new AppHost(
+            new ImmediateDispatcher(),
+            new AppHostServices(
+                paths,
+                new InMemoryConfigStore(AppConfig.CreateDefault()),
+                refresh,
+                new FakeTrayIconService(),
+                diagnostics,
+                new FakeDiagnosticsExportService(paths),
+                new FakeDiagnosticsSummaryService(paths),
+                new FakeHistorySummaryService(),
+                new FakeDataMaintenanceService(paths),
+                new FakeSecretStore(),
+                new FakeStartupRegistrationService(),
+                new FakeWindowActivator(),
+                new FakeExitService(),
+                new FakeConfigBackupValidationService(),
+                new FakeConfigBackupRestoreService(paths),
+                reset));
+
+        var result = await host.ResetConfigToDefaultsAsync(CancellationToken.None);
+
+        Assert.True(result.Reset);
+        Assert.Equal(1, reset.CallCount);
+        Assert.Equal(1, refresh.RestartCount);
+        Assert.Contains(diagnostics.InfoMessages, message => message.StartsWith(
+            "Config reset to defaults; rollback saved to ",
+            StringComparison.Ordinal));
+        Assert.Contains("Refresh schedule restarted after config reset.", diagnostics.InfoMessages);
+    }
+
+    [Fact]
+    public async Task ResetConfigToDefaultsAsync_ReturnsResetWhenRefreshRestartFails()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        var reset = new FakeConfigResetService(paths);
+        var diagnostics = new RecordingDiagnosticsLog();
+        var host = new AppHost(
+            new ImmediateDispatcher(),
+            new AppHostServices(
+                paths,
+                new InMemoryConfigStore(AppConfig.CreateDefault()),
+                new FakeRefreshService([], throwOnRestart: true),
+                new FakeTrayIconService(),
+                diagnostics,
+                new FakeDiagnosticsExportService(paths),
+                new FakeDiagnosticsSummaryService(paths),
+                new FakeHistorySummaryService(),
+                new FakeDataMaintenanceService(paths),
+                new FakeSecretStore(),
+                new FakeStartupRegistrationService(),
+                new FakeWindowActivator(),
+                new FakeExitService(),
+                new FakeConfigBackupValidationService(),
+                new FakeConfigBackupRestoreService(paths),
+                reset));
+
+        var result = await host.ResetConfigToDefaultsAsync(CancellationToken.None);
+
+        Assert.True(result.Reset);
+        Assert.Equal(1, reset.CallCount);
+        Assert.Contains(diagnostics.ErrorMessages, message => message.StartsWith(
+            "Config reset completed, but refresh schedule restart failed.",
+            StringComparison.Ordinal));
+    }
+
     private static UsageSnapshot Snapshot(ProviderId providerId, string displayName, double remainingPercent)
     {
         return new UsageSnapshot(
@@ -676,6 +751,24 @@ public sealed class AppHostTests
                 EnabledProviderCount: 2,
                 Errors: [],
                 Warnings: []));
+        }
+    }
+
+    private sealed class FakeConfigResetService(AppDataPaths paths) : IConfigResetService
+    {
+        public int CallCount { get; private set; }
+
+        public Task<ConfigResetResult> ResetToDefaultsAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            CallCount++;
+            return Task.FromResult(new ConfigResetResult(
+                Reset: true,
+                Path.Combine(paths.ConfigBackupsDirectory, "config-backup-before-reset.json"),
+                ConfigVersion: 1,
+                ProviderCount: 7,
+                EnabledProviderCount: 2,
+                Warnings: ["test warning"]));
         }
     }
 

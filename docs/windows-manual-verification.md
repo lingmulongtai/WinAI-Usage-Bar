@@ -95,6 +95,7 @@ Record the environment for each run.
 | Export config backup | Backup includes config only and does not copy `secrets/` |  |  |
 | Validate latest config backup from Privacy & Data | Latest backup is validated and result does not expose secret values |  |  |
 | Restore latest config backup from Privacy & Data | Restore requires confirmation, creates rollback backup, and restarts refresh |  |  |
+| Reset config to defaults from Privacy & Data | Reset requires confirmation, creates rollback backup, keeps `secrets/` unchanged, and restarts refresh |  |  |
 | Restore config backup from CLI with `--confirm` | Current config is backed up before restore and `secrets/` is unchanged |  |  |
 | Attempt restore without `--confirm` | Command exits non-zero and config is unchanged |  |  |
 

@@ -22,6 +22,7 @@ public sealed class AppHost : IAsyncDisposable
     private readonly IDataMaintenanceService dataMaintenanceService;
     private readonly IConfigBackupValidationService configBackupValidationService;
     private readonly IConfigBackupRestoreService configBackupRestoreService;
+    private readonly IConfigResetService configResetService;
     private readonly ISecretStore secretStore;
     private readonly IStartupRegistrationService startupRegistrationService;
     private readonly IAppWindowActivator windowActivator;
@@ -42,6 +43,7 @@ public sealed class AppHost : IAsyncDisposable
         configBackupValidationService = services.ConfigBackupValidationService ?? new ConfigBackupValidationService();
         configBackupRestoreService = services.ConfigBackupRestoreService
             ?? new ConfigBackupRestoreService(Paths, ConfigStore, configBackupValidationService);
+        configResetService = services.ConfigResetService ?? new ConfigResetService(Paths, ConfigStore);
         secretStore = services.SecretStore;
         startupRegistrationService = services.StartupRegistrationService;
         windowActivator = services.WindowActivator;
@@ -253,6 +255,40 @@ public sealed class AppHost : IAsyncDisposable
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             await DiagnosticsLog.ErrorAsync("Config backup restore failed.", ex, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    public async Task<ConfigResetResult> ResetConfigToDefaultsAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await configResetService.ResetToDefaultsAsync(cancellationToken).ConfigureAwait(false);
+            if (result.Reset)
+            {
+                await DiagnosticsLog.InfoAsync(
+                    $"Config reset to defaults; rollback saved to {result.RollbackBackupPath}.",
+                    cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    await refreshService.RestartAsync(cancellationToken).ConfigureAwait(false);
+                    await DiagnosticsLog.InfoAsync("Refresh schedule restarted after config reset.", cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    await DiagnosticsLog.ErrorAsync(
+                        "Config reset completed, but refresh schedule restart failed.",
+                        ex,
+                        CancellationToken.None).ConfigureAwait(false);
+                }
+            }
+
+            return result;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await DiagnosticsLog.ErrorAsync("Config reset failed.", ex, CancellationToken.None).ConfigureAwait(false);
             throw;
         }
     }

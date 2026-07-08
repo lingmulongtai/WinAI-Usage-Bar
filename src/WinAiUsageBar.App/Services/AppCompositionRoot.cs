@@ -50,6 +50,7 @@ public static class AppCompositionRoot
             paths,
             configStore,
             configBackupValidationService);
+        var configResetService = new ConfigResetService(paths, configStore);
         var refreshService = new UsageRefreshService(
             configStore,
             snapshotStore,
@@ -79,7 +80,8 @@ public static class AppCompositionRoot
             windowActivator,
             exitService,
             configBackupValidationService,
-            configBackupRestoreService);
+            configBackupRestoreService,
+            configResetService);
     }
 }
 
@@ -98,7 +100,8 @@ public sealed record AppHostServices(
     IAppWindowActivator WindowActivator,
     IApplicationExitService ExitService,
     IConfigBackupValidationService? ConfigBackupValidationService = null,
-    IConfigBackupRestoreService? ConfigBackupRestoreService = null);
+    IConfigBackupRestoreService? ConfigBackupRestoreService = null,
+    IConfigResetService? ConfigResetService = null);
 
 public interface IAppDispatcher
 {
