@@ -36,6 +36,22 @@ public sealed class VersionDocumentationTests
     }
 
     [Fact]
+    public void Readme_DocumentsWorkingDotnetRunCommand()
+    {
+        var root = FindRepositoryRoot();
+        var readme = File.ReadAllText(Path.Combine(root, "README.md"));
+
+        Assert.Contains(
+            @"dotnet run --project .\src\WinAiUsageBar.App\WinAiUsageBar.App.csproj -c Debug -r win-x64",
+            readme,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            @"dotnet run --project .\src\WinAiUsageBar.App\WinAiUsageBar.App.csproj -p:Platform=x64",
+            readme,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ReleaseNotesScript_GeneratesEnglishNotesFromChangelog()
     {
         var root = FindRepositoryRoot();

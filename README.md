@@ -68,7 +68,7 @@ Requirements:
 dotnet restore
 dotnet build .\WinAIUsageBar.sln -p:Platform=x64
 dotnet test .\tests\WinAiUsageBar.Core.Tests\WinAiUsageBar.Core.Tests.csproj -p:Platform=x64
-dotnet run --project .\src\WinAiUsageBar.App\WinAiUsageBar.App.csproj -p:Platform=x64
+dotnet run --project .\src\WinAiUsageBar.App\WinAiUsageBar.App.csproj -c Debug -r win-x64
 ```
 
 If NuGet restore is flaky, use `.\scripts\restore.ps1` for bounded restore retries.
