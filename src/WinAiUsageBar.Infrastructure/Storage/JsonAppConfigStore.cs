@@ -49,14 +49,47 @@ public sealed class JsonAppConfigStore(AppDataPaths paths) : IAppConfigStore
     public async Task SaveAsync(AppConfig config, CancellationToken cancellationToken)
     {
         paths.EnsureCreated();
-        var tempPath = $"{paths.ConfigPath}.tmp";
+        var tempPath = CreateUniqueTempPath();
 
-        await using (var stream = File.Create(tempPath))
+        try
         {
-            await JsonSerializer.SerializeAsync(stream, config, options, cancellationToken).ConfigureAwait(false);
-        }
+            await using (var stream = new FileStream(
+                tempPath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None))
+            {
+                await JsonSerializer.SerializeAsync(stream, config, options, cancellationToken).ConfigureAwait(false);
+            }
 
-        File.Move(tempPath, paths.ConfigPath, overwrite: true);
+            File.Move(tempPath, paths.ConfigPath, overwrite: true);
+        }
+        finally
+        {
+            TryDeleteTempFile(tempPath);
+        }
+    }
+
+    private string CreateUniqueTempPath()
+    {
+        return Path.Combine(
+            paths.RootDirectory,
+            $"config.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp");
+    }
+
+    private static void TryDeleteTempFile(string tempPath)
+    {
+        try
+        {
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+        }
+        catch
+        {
+            // Failed saves should not be hidden by best-effort temp cleanup.
+        }
     }
 
     private void BackupInvalidConfig()

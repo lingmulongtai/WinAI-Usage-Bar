@@ -171,4 +171,39 @@ public sealed class JsonConfigStoreTests
             Directory.Delete(root, recursive: true);
         }
     }
+
+    [Fact]
+    public async Task JsonAppConfigStore_SaveAsync_IgnoresLockedLegacyTempFile()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        Directory.CreateDirectory(root);
+        var legacyTempPath = $"{paths.ConfigPath}.tmp";
+        await File.WriteAllTextAsync(legacyTempPath, "locked legacy temp");
+
+        var lockStream = new FileStream(
+            legacyTempPath,
+            FileMode.Open,
+            FileAccess.ReadWrite,
+            FileShare.None);
+
+        try
+        {
+            var store = new JsonAppConfigStore(paths);
+            var config = AppConfigMigrations.Migrate(null);
+            config.Startup.LaunchOnLogin = true;
+
+            await store.SaveAsync(config, CancellationToken.None);
+            var reloaded = await store.LoadAsync(CancellationToken.None);
+
+            Assert.True(File.Exists(paths.ConfigPath));
+            Assert.True(reloaded.Startup.LaunchOnLogin);
+            Assert.True(File.Exists(legacyTempPath));
+        }
+        finally
+        {
+            await lockStream.DisposeAsync();
+            Directory.Delete(root, recursive: true);
+        }
+    }
 }

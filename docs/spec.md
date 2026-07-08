@@ -88,6 +88,8 @@ Files are stored under `%AppData%\WinAiUsageBar`:
 
 `config.json` also stores non-secret onboarding state, including whether first-run setup has been completed and when it was completed.
 
+Config saves should write through a per-save unique temporary file before replacing `config.json`, so simultaneous CLI commands or app processes do not collide on a fixed `config.json.tmp` path. Best-effort cleanup should remove abandoned per-save temp files after failed saves when possible.
+
 Secrets must go through `ISecretStore`; the DPAPI implementation protects values for the current Windows user.
 
 The Privacy & Data page provides secret management by secret name. Users can save, check, and delete secret values. Secret values are never displayed back to the user, written to config, logged, or included in diagnostics exports.
