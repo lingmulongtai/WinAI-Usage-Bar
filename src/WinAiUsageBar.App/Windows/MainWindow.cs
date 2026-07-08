@@ -656,6 +656,36 @@ public sealed class MainWindow : Window
         };
         panel.Children.Add(notifications);
 
+        panel.Children.Add(new InfoBar
+        {
+            Severity = InfoBarSeverity.Informational,
+            IsOpen = true,
+            IsClosable = false,
+            Title = "Startup updates",
+            Message = viewModel.UpdateStatusText
+        });
+
+        var checkUpdatesOnStartup = new ToggleSwitch
+        {
+            Header = "Check for updates on startup",
+            IsOn = viewModel.CheckUpdatesOnStartup
+        };
+        panel.Children.Add(checkUpdatesOnStartup);
+
+        var downloadUpdatesAutomatically = new ToggleSwitch
+        {
+            Header = "Download verified updates automatically",
+            IsOn = viewModel.DownloadUpdatesAutomatically
+        };
+        panel.Children.Add(downloadUpdatesAutomatically);
+
+        var installUpdatesAutomatically = new ToggleSwitch
+        {
+            Header = "Launch prepared update install automatically",
+            IsOn = viewModel.InstallUpdatesAutomatically
+        };
+        panel.Children.Add(installUpdatesAutomatically);
+
         var retentionGrid = new Grid
         {
             ColumnSpacing = 8,
@@ -681,6 +711,9 @@ public sealed class MainWindow : Window
             viewModel.NotificationsEnabled = notifications.IsOn;
             viewModel.HistoryMaxDaysText = maxDaysBox.Text;
             viewModel.HistoryMaxBytesText = maxBytesBox.Text;
+            viewModel.CheckUpdatesOnStartup = checkUpdatesOnStartup.IsOn;
+            viewModel.DownloadUpdatesAutomatically = downloadUpdatesAutomatically.IsOn;
+            viewModel.InstallUpdatesAutomatically = installUpdatesAutomatically.IsOn;
 
             var result = viewModel.TryApply();
             if (!result.IsValid)
@@ -700,7 +733,7 @@ public sealed class MainWindow : Window
             validationInfo.Title = "Refresh settings saved";
             validationInfo.Message = result.Warnings.Count > 0
                 ? string.Join(Environment.NewLine, result.Warnings)
-                : "Refresh, notification, and history settings were saved.";
+                : "Refresh, notification, history, and update settings were saved.";
             validationInfo.IsOpen = true;
         };
         actions.Children.Add(save);

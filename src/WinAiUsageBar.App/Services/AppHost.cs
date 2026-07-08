@@ -7,6 +7,7 @@ using WinAiUsageBar.Infrastructure.Scheduling;
 using WinAiUsageBar.Infrastructure.Security;
 using WinAiUsageBar.Infrastructure.Storage;
 using WinAiUsageBar.Infrastructure.Tray;
+using WinAiUsageBar.Infrastructure.Updates;
 using WinAiUsageBar.Infrastructure.Windows;
 
 namespace WinAiUsageBar.App.Services;
@@ -27,6 +28,7 @@ public sealed class AppHost : IAsyncDisposable
     private readonly IStartupRegistrationService startupRegistrationService;
     private readonly IAppWindowActivator windowActivator;
     private readonly IApplicationExitService exitService;
+    private readonly IStartupUpdateService startupUpdateService;
 
     public AppHost(IAppDispatcher dispatcher, AppHostServices services)
     {
@@ -48,6 +50,7 @@ public sealed class AppHost : IAsyncDisposable
         startupRegistrationService = services.StartupRegistrationService;
         windowActivator = services.WindowActivator;
         exitService = services.ExitService;
+        startupUpdateService = services.StartupUpdateService ?? new NoOpStartupUpdateService();
     }
 
     public ShellViewModel ViewModel { get; } = new();
@@ -80,6 +83,10 @@ public sealed class AppHost : IAsyncDisposable
         {
             dispatcher.TryEnqueue(ShowWidget);
         }
+
+        RunLoggedInBackground(
+            () => RunStartupUpdateAsync(CancellationToken.None),
+            "Startup update check failed.");
     }
 
     public async Task<AppConfig> LoadConfigAsync(CancellationToken cancellationToken)
@@ -496,6 +503,20 @@ public sealed class AppHost : IAsyncDisposable
             : summary.LatestConfigBackupPath;
     }
 
+    private async Task RunStartupUpdateAsync(CancellationToken cancellationToken)
+    {
+        var appInfo = AppInfoProvider.Get();
+        var result = await startupUpdateService.RunAsync(
+            new StartupUpdateRequest(
+                appInfo.InformationalVersion,
+                AppContext.BaseDirectory,
+                Environment.ProcessId),
+            cancellationToken).ConfigureAwait(false);
+        await DiagnosticsLog.InfoAsync(
+            $"Startup update result: {result.Status} - {result.Message}",
+            cancellationToken).ConfigureAwait(false);
+    }
+
     private static string RequireSecretName(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -504,5 +525,21 @@ public sealed class AppHost : IAsyncDisposable
         }
 
         return name.Trim();
+    }
+
+    private sealed class NoOpStartupUpdateService : IStartupUpdateService
+    {
+        public Task<StartupUpdateResult> RunAsync(
+            StartupUpdateRequest request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(new StartupUpdateResult(
+                StartupUpdateStatus.Disabled,
+                "Startup update service is unavailable.",
+                LatestVersion: null,
+                PackagePath: null,
+                InstallScriptPath: null));
+        }
     }
 }

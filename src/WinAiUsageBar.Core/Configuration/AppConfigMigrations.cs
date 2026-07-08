@@ -19,11 +19,13 @@ public static class AppConfigMigrations
         config.Startup ??= new StartupSettings();
         config.HistoryRetention ??= new HistoryRetentionSettings();
         config.Onboarding ??= new OnboardingSettings();
+        config.Updates ??= new UpdateSettings();
 
         NormalizeProviders(config);
         NormalizeWidget(config.Widget);
         NormalizeAppearance(config.Appearance);
         NormalizeHistoryRetention(config.HistoryRetention);
+        NormalizeUpdates(config.Updates);
 
         return config;
     }
@@ -89,5 +91,22 @@ public static class AppConfigMigrations
             retention.MaxBytes,
             HistoryRetentionSettings.MinBytes,
             HistoryRetentionSettings.MaxBytesLimit);
+    }
+
+    private static void NormalizeUpdates(UpdateSettings updates)
+    {
+        updates.LastStatus = NullIfWhiteSpace(updates.LastStatus);
+        updates.LastMessage = NullIfWhiteSpace(updates.LastMessage);
+        updates.LastCurrentVersion = NullIfWhiteSpace(updates.LastCurrentVersion);
+        updates.LastLatestVersion = NullIfWhiteSpace(updates.LastLatestVersion);
+        updates.LastPackagePath = NullIfWhiteSpace(updates.LastPackagePath);
+        updates.LastInstallScriptPath = NullIfWhiteSpace(updates.LastInstallScriptPath);
+    }
+
+    private static string? NullIfWhiteSpace(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? null
+            : value;
     }
 }

@@ -91,6 +91,11 @@ public sealed class JsonConfigStoreTests
             Assert.NotNull(config.Onboarding);
             Assert.False(config.Onboarding.HasCompletedFirstRun);
             Assert.Null(config.Onboarding.CompletedAt);
+            Assert.NotNull(config.Updates);
+            Assert.True(config.Updates.CheckOnStartup);
+            Assert.False(config.Updates.DownloadAutomatically);
+            Assert.False(config.Updates.InstallAutomatically);
+            Assert.Null(config.Updates.LastStatus);
             Assert.Equal(123, config.Widget.Left);
             Assert.Equal(456, config.Widget.Top);
             Assert.Equal(280, config.Widget.Width);

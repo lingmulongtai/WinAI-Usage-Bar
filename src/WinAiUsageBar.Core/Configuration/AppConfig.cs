@@ -23,6 +23,8 @@ public sealed class AppConfig
 
     public OnboardingSettings Onboarding { get; set; } = new();
 
+    public UpdateSettings Updates { get; set; } = new();
+
     public static AppConfig CreateDefault()
     {
         var config = new AppConfig();
@@ -188,4 +190,27 @@ public sealed class OnboardingSettings
     public bool HasCompletedFirstRun { get; set; }
 
     public DateTimeOffset? CompletedAt { get; set; }
+}
+
+public sealed class UpdateSettings
+{
+    public bool CheckOnStartup { get; set; } = true;
+
+    public bool DownloadAutomatically { get; set; }
+
+    public bool InstallAutomatically { get; set; }
+
+    public string? LastStatus { get; set; }
+
+    public string? LastMessage { get; set; }
+
+    public string? LastCurrentVersion { get; set; }
+
+    public string? LastLatestVersion { get; set; }
+
+    public string? LastPackagePath { get; set; }
+
+    public string? LastInstallScriptPath { get; set; }
+
+    public DateTimeOffset? LastCheckedAt { get; set; }
 }

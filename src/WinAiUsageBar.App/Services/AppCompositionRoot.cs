@@ -7,6 +7,7 @@ using WinAiUsageBar.Infrastructure.Scheduling;
 using WinAiUsageBar.Infrastructure.Security;
 using WinAiUsageBar.Infrastructure.Storage;
 using WinAiUsageBar.Infrastructure.Tray;
+using WinAiUsageBar.Infrastructure.Updates;
 using WinAiUsageBar.Infrastructure.Windows;
 
 namespace WinAiUsageBar.App.Services;
@@ -55,6 +56,17 @@ public static class AppCompositionRoot
             configStore,
             configBackupValidationService);
         var configResetService = new ConfigResetService(paths, configStore);
+        var updateCheck = new ReleaseUpdateCheckService(new GitHubLatestReleaseClient());
+        var updateDownloader = new UpdatePackageDownloader();
+        var updatePreparation = new UpdateInstallPreparationService(paths);
+        var updateLauncher = new UpdateInstallLaunchService(paths);
+        var startupUpdateService = new StartupUpdateService(
+            configStore,
+            updateCheck,
+            updateDownloader,
+            updatePreparation,
+            updateLauncher,
+            paths);
         var refreshService = new UsageRefreshService(
             configStore,
             snapshotStore,
@@ -85,7 +97,8 @@ public static class AppCompositionRoot
             exitService,
             configBackupValidationService,
             configBackupRestoreService,
-            configResetService);
+            configResetService,
+            startupUpdateService);
     }
 }
 
@@ -105,7 +118,8 @@ public sealed record AppHostServices(
     IApplicationExitService ExitService,
     IConfigBackupValidationService? ConfigBackupValidationService = null,
     IConfigBackupRestoreService? ConfigBackupRestoreService = null,
-    IConfigResetService? ConfigResetService = null);
+    IConfigResetService? ConfigResetService = null,
+    IStartupUpdateService? StartupUpdateService = null);
 
 public interface IAppDispatcher
 {

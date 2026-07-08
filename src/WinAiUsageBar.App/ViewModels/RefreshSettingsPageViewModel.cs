@@ -13,6 +13,14 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
 
     public string HistoryMaxBytesText { get; set; } = config.HistoryRetention.MaxBytes.ToString(CultureInfo.InvariantCulture);
 
+    public bool CheckUpdatesOnStartup { get; set; } = config.Updates.CheckOnStartup;
+
+    public bool DownloadUpdatesAutomatically { get; set; } = config.Updates.DownloadAutomatically;
+
+    public bool InstallUpdatesAutomatically { get; set; } = config.Updates.InstallAutomatically;
+
+    public string UpdateStatusText { get; } = FormatUpdateStatus(config.Updates);
+
     public RefreshSettingsApplyResult TryApply()
     {
         var errors = new List<string>();
@@ -25,6 +33,11 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
 
         var maxDays = ParseInt(HistoryMaxDaysText, "History max days", errors);
         var maxBytes = ParseLong(HistoryMaxBytesText, "History max bytes", errors);
+
+        if (InstallUpdatesAutomatically && !DownloadUpdatesAutomatically)
+        {
+            errors.Add("Automatic install requires automatic download.");
+        }
 
         if (errors.Count > 0 || maxDays is null || maxBytes is null)
         {
@@ -54,8 +67,34 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
         config.Notifications.IsEnabled = NotificationsEnabled;
         config.HistoryRetention.MaxDays = clampedDays;
         config.HistoryRetention.MaxBytes = clampedBytes;
+        config.Updates.CheckOnStartup = CheckUpdatesOnStartup;
+        config.Updates.DownloadAutomatically = DownloadUpdatesAutomatically;
+        config.Updates.InstallAutomatically = InstallUpdatesAutomatically;
 
         return new RefreshSettingsApplyResult(IsValid: true, errors, warnings);
+    }
+
+    private static string FormatUpdateStatus(UpdateSettings updates)
+    {
+        var checkedText = updates.LastCheckedAt is null
+            ? "Last checked: never"
+            : $"Last checked: {updates.LastCheckedAt:yyyy-MM-dd HH:mm:ss zzz}";
+        var status = string.IsNullOrWhiteSpace(updates.LastStatus)
+            ? "Unknown"
+            : updates.LastStatus;
+        var latest = string.IsNullOrWhiteSpace(updates.LastLatestVersion)
+            ? "n/a"
+            : updates.LastLatestVersion;
+        var message = string.IsNullOrWhiteSpace(updates.LastMessage)
+            ? "No update status has been recorded yet."
+            : updates.LastMessage;
+
+        return string.Join(
+            Environment.NewLine,
+            checkedText,
+            $"Status: {status}",
+            $"Latest version: {latest}",
+            $"Message: {message}");
     }
 
     private static int? ParseInt(string text, string label, ICollection<string> errors)

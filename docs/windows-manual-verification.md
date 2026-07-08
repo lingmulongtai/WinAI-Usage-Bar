@@ -59,7 +59,7 @@ Record the environment for each run.
 | Open Appearance | Theme and start-at-login controls render |  |  |
 | Open Widget | Widget settings render and enforce one to three providers |  |  |
 | Open History | History summary renders without raw snapshot messages |  |  |
-| Open Refresh | Interval, notification, and retention settings save |  |  |
+| Open Refresh | Interval, notification, retention, and startup update settings save |  |  |
 | Open Privacy & Data | Diagnostics summary, secret actions, maintenance, and export buttons render |  |  |
 | Open About | Version is shown |  |  |
 
@@ -107,6 +107,9 @@ Record the environment for each run.
 | Run `--prepare-update-install --package <zip>` from CLI with a test install directory | Command creates an apply script under app data and does not execute it automatically |  |  |
 | Run `--launch-prepared-update --script <path>` with an app-owned test apply script | Command launches only an app-owned `apply-update.ps1` under updates and rejects arbitrary script paths |  |  |
 | Run `--install-latest-update` from CLI | Command reports up-to-date safely or runs check/download/verify/prepare/guarded-launch when a newer release exists |  |  |
+| Enable startup update check in Refresh settings and restart the app | Startup latest-release status is recorded without blocking tray startup |  |  |
+| Enable automatic startup download without automatic install and restart the app with a newer release available | Verified package is staged under app data and install is not launched |  |  |
+| Try saving automatic startup install while automatic startup download is off | Refresh settings validation blocks the invalid state |  |  |
 | Run `.\scripts\verify-installer-script.ps1` | Installer scaffold verification passes without requiring Inno Setup |  |  |
 | Run `.\scripts\build-installer.ps1` on a machine with Inno Setup 6 | Setup executable is created under `artifacts\installer` and launches the app after install when selected |  |  |
 | Inspect latest main CI artifacts | `WinAIUsageBar-win-x64-installer` contains setup exe and `.sha256` files |  |  |

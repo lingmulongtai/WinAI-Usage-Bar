@@ -22,7 +22,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - Provider cards show health, usage percentage, reset text, status messages, credits/costs, source, update time, and errors.
 - Provider Details shows non-secret snapshot details for identity, usage windows, credits, status, errors, and repair guidance.
 - History page summarizes retained `history.ndjson` entries by provider without showing raw snapshot messages.
-- Refresh settings include interval, notification enablement, and history retention limits.
+- Refresh settings include interval, notification enablement, history retention limits, startup update checks, and optional verified auto-download/auto-install launch policy.
 - Appearance settings apply System, Light, or Dark theme to app windows.
 - Privacy & Data shows a diagnostics summary with local file paths, config version, cached snapshot count, latest update time, diagnostics export counts, and tracked file sizes.
 - Privacy & Data shows storage pressure guidance for retained history, config backups, diagnostics exports, and diagnostics log growth.
@@ -42,6 +42,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - CLI `--prepare-update-install` can generate a PowerShell script that applies a staged update after the app exits.
 - CLI `--launch-prepared-update` can launch an app-owned prepared update script without accepting arbitrary script paths.
 - CLI `--install-latest-update` can explicitly check, download, verify, prepare, and launch the latest update install script.
+- Startup update checks can record the latest release status and, when enabled in Refresh settings, automatically download verified packages or launch the prepared install script.
 - Codex/ChatGPT app-server probing is isolated behind safe abstractions, and `--health-report` shows storage pressure guidance, recovery guidance, and the resolved CLI launch target used for startup checks.
 - Codex CLI startup uses resolved Windows command paths, including `.cmd` shims and `.exe` paths, and startup failures are classified separately from auth and JSON-RPC errors with repair-oriented messages for Windows app alias or permission problems.
 - Claude, Claude Code, Gemini, OpenCode Zen, and GitHub Copilot have MVP-safe descriptors and manual mode support.

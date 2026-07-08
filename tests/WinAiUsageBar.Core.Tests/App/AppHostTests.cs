@@ -6,6 +6,7 @@ using WinAiUsageBar.Infrastructure.Scheduling;
 using WinAiUsageBar.Infrastructure.Security;
 using WinAiUsageBar.Infrastructure.Storage;
 using WinAiUsageBar.Infrastructure.Tray;
+using WinAiUsageBar.Infrastructure.Updates;
 using WinAiUsageBar.Infrastructure.Windows;
 
 namespace WinAiUsageBar.Core.Tests.App;
@@ -184,6 +185,43 @@ public sealed class AppHostTests
         await host.StartAsync(CancellationToken.None);
 
         Assert.True(startup.LastSetEnabled);
+    }
+
+    [Fact]
+    public async Task StartAsync_RunsStartupUpdateServiceInBackground()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        var diagnostics = new RecordingDiagnosticsLog();
+        var startupUpdate = new FakeStartupUpdateService();
+        var host = new AppHost(
+            new ImmediateDispatcher(),
+            new AppHostServices(
+                paths,
+                new InMemoryConfigStore(AppConfig.CreateDefault()),
+                new FakeRefreshService([]),
+                new FakeTrayIconService(),
+                diagnostics,
+                new FakeDiagnosticsExportService(paths),
+                new FakeDiagnosticsSummaryService(paths),
+                new FakeHistorySummaryService(),
+                new FakeDataMaintenanceService(paths),
+                new FakeSecretStore(),
+                new FakeStartupRegistrationService(),
+                new FakeWindowActivator(),
+                new FakeExitService(),
+                StartupUpdateService: startupUpdate));
+
+        await host.StartAsync(CancellationToken.None);
+        await startupUpdate.Observed.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal(1, startupUpdate.RunCount);
+        Assert.False(string.IsNullOrWhiteSpace(startupUpdate.LastRequest?.CurrentVersion));
+        Assert.False(string.IsNullOrWhiteSpace(startupUpdate.LastRequest?.InstallDirectory));
+        Assert.True(startupUpdate.LastRequest?.ProcessIdToWait > 0);
+        Assert.Contains(diagnostics.InfoMessages, message => message.StartsWith(
+            "Startup update result: NoUpdate - ",
+            StringComparison.Ordinal));
     }
 
     [Fact]
@@ -781,6 +819,31 @@ public sealed class AppHostTests
                 ProviderCount: 7,
                 EnabledProviderCount: 2,
                 Warnings: ["test warning"]));
+        }
+    }
+
+    private sealed class FakeStartupUpdateService : IStartupUpdateService
+    {
+        public TaskCompletionSource Observed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public int RunCount { get; private set; }
+
+        public StartupUpdateRequest? LastRequest { get; private set; }
+
+        public Task<StartupUpdateResult> RunAsync(
+            StartupUpdateRequest request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            RunCount++;
+            LastRequest = request;
+            Observed.TrySetResult();
+            return Task.FromResult(new StartupUpdateResult(
+                StartupUpdateStatus.NoUpdate,
+                "No update from fake service.",
+                LatestVersion: "0.1.0",
+                PackagePath: null,
+                InstallScriptPath: null));
         }
     }
 
