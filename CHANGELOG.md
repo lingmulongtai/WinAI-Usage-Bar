@@ -49,6 +49,10 @@ All notable changes to WinAI Usage Bar are documented here.
 - History summaries now sanitize legacy history snapshots before aggregation.
 - Diagnostics exports now redact account identifiers, organization/workspace scopes, secret reference names, and CLI override paths in addition to common secret shapes.
 
+### Fixed
+
+- Diagnostics export headers now omit the local app-data root path instead of writing a raw absolute path into support bundles.
+
 ## 0.1.4 - 2026-07-08
 
 ### Added

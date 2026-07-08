@@ -32,7 +32,7 @@ Overall:
 - Manual mode is treated as a first-class fallback, which is the right decision for this app category.
 - Provider failures are designed to become visible snapshots instead of crashes.
 - Secrets are stored through an abstraction and DPAPI implementation, not plain config fields.
-- Diagnostics exports redact common secret shapes, account identifiers, scope/reference fields, and CLI override paths while excluding `secrets/`.
+- Diagnostics exports redact common secret shapes, account identifiers, scope/reference fields, and CLI override paths, omit local app-data and secret-store root paths, and exclude `secrets/`.
 - Tests now include a repository-level guard against common secret-shaped fixture strings, so redaction samples should use obvious placeholders or runtime-composed patterns instead of committed key-looking literals.
 - Config, snapshots, history, diagnostics, and maintenance flows are all represented in code and tests.
 - CI now builds, tests, publishes, smoke-tests app service composition, packages, and uploads artifacts on `main`.

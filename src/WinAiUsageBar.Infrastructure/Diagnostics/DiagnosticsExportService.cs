@@ -34,9 +34,9 @@ public sealed class DiagnosticsExportService(
 
         await writer.WriteLineAsync("WinAI Usage Bar Diagnostics Export").ConfigureAwait(false);
         await writer.WriteLineAsync($"CreatedAt: {createdAt:O}").ConfigureAwait(false);
-        await writer.WriteLineAsync($"RootDirectory: {paths.RootDirectory}").ConfigureAwait(false);
+        await writer.WriteLineAsync("RootDirectory: [omitted]").ConfigureAwait(false);
         await writer.WriteLineAsync("SecretsDirectory: [omitted]").ConfigureAwait(false);
-        await writer.WriteLineAsync("Note: file contents are redacted at export time; secret files are never included.").ConfigureAwait(false);
+        await writer.WriteLineAsync("Note: file contents are redacted at export time; local root paths and secret files are never included.").ConfigureAwait(false);
 
         await AppendFileSectionAsync(writer, sections, "config.json", paths.ConfigPath, cancellationToken).ConfigureAwait(false);
         await AppendFileSectionAsync(writer, sections, "snapshots.json", paths.SnapshotsPath, cancellationToken).ConfigureAwait(false);

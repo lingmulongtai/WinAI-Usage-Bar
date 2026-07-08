@@ -8,7 +8,8 @@ public sealed class DiagnosticsExportServiceTests
     [Fact]
     public async Task ExportAsync_WritesRedactedBundleWithoutSecretFiles()
     {
-        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var privatePathSegment = $"private-school-user-{Guid.NewGuid():N}";
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", privatePathSegment);
         var paths = new AppDataPaths(root);
         paths.EnsureCreated();
         await File.WriteAllTextAsync(
@@ -42,7 +43,10 @@ public sealed class DiagnosticsExportServiceTests
             Assert.Equal(["config.json", "snapshots.json", "history.ndjson", "diagnostics.log"], result.IncludedSections);
             Assert.Contains("--- config.json ---", export);
             Assert.Contains("keep this", export);
+            Assert.Contains("RootDirectory: [omitted]", export);
             Assert.Contains("SecretsDirectory: [omitted]", export);
+            Assert.DoesNotContain(root, export, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(privatePathSegment, export, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("sample-api-key-value", export);
             Assert.DoesNotContain("gemini-reference-name", export);
             Assert.DoesNotContain("copilot-reference-name", export);
