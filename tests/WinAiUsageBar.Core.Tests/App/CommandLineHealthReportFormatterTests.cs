@@ -126,12 +126,48 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.Contains("CLI environment", report, StringComparison.Ordinal);
         Assert.Contains(@"codex: startup failed; C:\Tools\codex.exe; launch C:\Tools\codex.exe; Access is denied.", report, StringComparison.Ordinal);
         Assert.Contains("hint check Windows App Execution Aliases", report, StringComparison.Ordinal);
+        Assert.Contains("provider CLI override", report, StringComparison.Ordinal);
         Assert.Contains(@"git: startup ok, exit 0; C:\Tools\git.exe (+1 more); launch C:\Tools\git.exe; git version 2.50.0", report, StringComparison.Ordinal);
         Assert.Contains("claude: not found on PATH", report, StringComparison.Ordinal);
         Assert.Contains("config.json: 2 KB", report, StringComparison.Ordinal);
         Assert.Contains("diagnostics.log: Missing", report, StringComparison.Ordinal);
         Assert.DoesNotContain("secret", report, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("token", report, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Format_IncludesWindowsAppsOverrideHintForCodexStartupDenial()
+    {
+        var generatedAt = new DateTimeOffset(2026, 7, 8, 8, 10, 0, TimeSpan.FromHours(9));
+        var diagnostics = EmptyDiagnostics(generatedAt);
+        var history = EmptyHistory(generatedAt);
+        var windowsAppsPath = @"C:\Program Files\WindowsApps\OpenAI.Codex_26.623.19656.0_x64__2p2nqsd0c76g0\app\resources\codex.exe";
+        var cliEnvironment = new CliEnvironmentReport(
+        [
+            new CliCommandStatus(
+                "codex",
+                IsFound: true,
+                Paths: [windowsAppsPath],
+                CanStart: false,
+                ExitCode: null,
+                TimedOut: false,
+                StatusMessage: "Access is denied.",
+                LaunchTarget: windowsAppsPath)
+        ]);
+
+        var report = CommandLineHealthReportFormatter.Format(
+            new AppInfo("WinAI Usage Bar", "1.2.3.0", "1.2.3"),
+            diagnostics,
+            history,
+            generatedAt,
+            cliEnvironment);
+
+        Assert.Contains("codex: startup failed", report, StringComparison.Ordinal);
+        Assert.Contains("WindowsApps", report, StringComparison.Ordinal);
+        Assert.Contains("Access is denied.", report, StringComparison.Ordinal);
+        Assert.Contains("provider CLI override", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("token", report, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("secret", report, StringComparison.OrdinalIgnoreCase);
     }
 
     private static DiagnosticsFileSummary FileSummary(
@@ -141,5 +177,48 @@ public sealed class CommandLineHealthReportFormatterTests
         DateTimeOffset? lastWriteTime)
     {
         return new DiagnosticsFileSummary(path, exists, sizeBytes, lastWriteTime);
+    }
+
+    private static DiagnosticsSummary EmptyDiagnostics(DateTimeOffset generatedAt)
+    {
+        return new DiagnosticsSummary(
+            @"C:\Users\test\AppData\Roaming\WinAiUsageBar",
+            @"C:\Users\test\AppData\Roaming\WinAiUsageBar\config.json",
+            @"C:\Users\test\AppData\Roaming\WinAiUsageBar\snapshots.json",
+            @"C:\Users\test\AppData\Roaming\WinAiUsageBar\history.ndjson",
+            @"C:\Users\test\AppData\Roaming\WinAiUsageBar\diagnostics.log",
+            @"C:\Users\test\AppData\Roaming\WinAiUsageBar\diagnostics-exports",
+            @"C:\Users\test\AppData\Roaming\WinAiUsageBar\config-backups",
+            ConfigVersion: 7,
+            ConfiguredProviderCount: 8,
+            EnabledProviderCount: 0,
+            RefreshInterval: RefreshIntervalKind.Manual,
+            NotificationsEnabled: false,
+            CachedSnapshotCount: 0,
+            LatestSnapshotUpdatedAt: null,
+            ConfigBackupCount: 0,
+            LatestConfigBackupPath: null,
+            LatestConfigBackupCreatedAt: null,
+            ConfigBackupTotalBytes: 0,
+            DiagnosticsExportCount: 0,
+            LatestDiagnosticsExportPath: null,
+            LatestDiagnosticsExportCreatedAt: null,
+            DiagnosticsExportTotalBytes: 0,
+            HistoryRetentionMaxDays: 30,
+            HistoryRetentionMaxBytes: 1_048_576,
+            ConfigFile: FileSummary("config.json", true, 128, generatedAt),
+            SnapshotsFile: FileSummary("snapshots.json", false, 0, null),
+            HistoryFile: FileSummary("history.ndjson", false, 0, null),
+            DiagnosticsLogFile: FileSummary("diagnostics.log", false, 0, null));
+    }
+
+    private static HistorySummary EmptyHistory(DateTimeOffset generatedAt)
+    {
+        return new HistorySummary(
+            TotalEntries: 0,
+            InvalidLines: 0,
+            EarliestUpdatedAt: null,
+            LatestUpdatedAt: null,
+            Providers: []);
     }
 }

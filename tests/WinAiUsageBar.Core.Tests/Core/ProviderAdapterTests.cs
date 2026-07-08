@@ -227,6 +227,7 @@ public sealed class ProviderAdapterTests
         Assert.Equal(ProviderHealth.Unsupported, result.Snapshot?.Health);
         Assert.Contains("could not start", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("app execution alias", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("provider CLI command override", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Contains("found on PATH", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Contains("startup failed", StringComparison.OrdinalIgnoreCase));
     }

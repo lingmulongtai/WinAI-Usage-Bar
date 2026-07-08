@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using WinAiUsageBar.Infrastructure.Process;
 
 namespace WinAiUsageBar.Core.Tests.Infrastructure;
@@ -59,6 +60,33 @@ public sealed class CliEnvironmentServiceTests
         Assert.True(status.CanStart);
         Assert.Equal(@"C:\Users\me\AppData\Roaming\npm\codex.cmd", status.LaunchTarget);
         Assert.True(status.UsesCommandProcessor);
+    }
+
+    [Fact]
+    public async Task GetReportAsync_ReportsWindowsAppsAccessDeniedStartup()
+    {
+        var paths = new[]
+        {
+            @"C:\Program Files\WindowsApps\OpenAI.Codex_26.623.19656.0_x64__2p2nqsd0c76g0\app\resources\codex",
+            @"C:\Program Files\WindowsApps\OpenAI.Codex_26.623.19656.0_x64__2p2nqsd0c76g0\app\resources\codex.exe"
+        };
+        var service = new CliEnvironmentService(
+            pathResolver: (_, _) => Task.FromResult<IReadOnlyList<string>>(paths),
+            startupRunner: (_, _) => throw new Win32Exception(5, "Access is denied."),
+            startupTimeout: TimeSpan.FromSeconds(1));
+
+        var report = await service.GetReportAsync(
+            [new CliCommandCheck("codex", "--version")],
+            CancellationToken.None);
+
+        var status = Assert.Single(report.Commands);
+        Assert.True(status.IsFound);
+        Assert.False(status.CanStart);
+        Assert.False(status.TimedOut);
+        Assert.Null(status.ExitCode);
+        Assert.Equal(paths, status.Paths);
+        Assert.Equal(paths[1], status.LaunchTarget);
+        Assert.Contains("Access is denied", status.StatusMessage, StringComparison.Ordinal);
     }
 
     [Fact]

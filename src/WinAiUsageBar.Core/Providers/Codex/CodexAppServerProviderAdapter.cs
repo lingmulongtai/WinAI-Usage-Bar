@@ -61,7 +61,7 @@ public sealed class CodexAppServerProviderAdapter(
                 ProviderHealth.Unsupported,
                 DataSourceKind.LocalAppServer,
                 context.Now,
-                $"Codex CLI was found but Windows could not start it. Check the app execution alias or reinstall Codex. Details: {ex.Message}",
+                $"Codex CLI was found but Windows could not start it. Check the app execution alias, reinstall Codex outside WindowsApps, or set a provider CLI command override to a launchable path. Details: {ex.Message}",
                 probe.StatusMessage,
                 $"Codex startup failed: {ex.Message}");
         }

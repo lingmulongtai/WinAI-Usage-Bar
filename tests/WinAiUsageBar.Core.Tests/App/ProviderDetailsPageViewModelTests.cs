@@ -142,6 +142,7 @@ public sealed class ProviderDetailsPageViewModelTests
 
         Assert.Contains("WindowsApps", repairText, StringComparison.Ordinal);
         Assert.Contains("App Execution Alias", repairText, StringComparison.Ordinal);
+        Assert.Contains("CLI command override", repairText, StringComparison.Ordinal);
         Assert.Contains("health report", repairText, StringComparison.Ordinal);
         Assert.DoesNotContain(@"C:\Program Files\WindowsApps", repairText, StringComparison.OrdinalIgnoreCase);
     }

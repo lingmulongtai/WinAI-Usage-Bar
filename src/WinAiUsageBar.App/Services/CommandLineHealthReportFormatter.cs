@@ -158,7 +158,7 @@ public static class CommandLineHealthReportFormatter
 
         if (command.StatusMessage.Contains("Access is denied", StringComparison.OrdinalIgnoreCase))
         {
-            return "; hint check Windows App Execution Aliases, package permissions, or reinstall the CLI outside WindowsApps";
+            return "; hint check Windows App Execution Aliases, package permissions, reinstall the CLI outside WindowsApps, or set a provider CLI override to a launchable path";
         }
 
         if (command.UsesCommandProcessor)

@@ -31,7 +31,7 @@ public static class ProviderRepairGuidanceService
         lines.Add(SourceRepairLine(snapshot.SourceKind));
         if (IsCodexWindowsStartupBlocked(snapshot))
         {
-            lines.Add("For Codex WindowsApps or App Execution Alias startup failures, install a launchable Codex CLI outside WindowsApps or repair package permissions, then rerun the health report.");
+            lines.Add("For Codex WindowsApps or App Execution Alias startup failures, install a launchable Codex CLI outside WindowsApps, set a provider CLI command override to that path, or repair package permissions, then rerun the health report.");
         }
 
         if (snapshot.ProviderId == ProviderId.GitHubCopilot

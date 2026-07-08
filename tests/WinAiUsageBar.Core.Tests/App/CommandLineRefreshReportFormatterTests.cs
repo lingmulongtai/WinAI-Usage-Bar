@@ -75,6 +75,7 @@ public sealed class CommandLineRefreshReportFormatterTests
         Assert.Contains("Switch to Manual mode", report, StringComparison.Ordinal);
         Assert.Contains("local provider command can start", report, StringComparison.Ordinal);
         Assert.Contains("App Execution Alias", report, StringComparison.Ordinal);
+        Assert.Contains("CLI command override", report, StringComparison.Ordinal);
         Assert.Contains("[REDACTED]", report, StringComparison.Ordinal);
         Assert.DoesNotContain("start-secret", report, StringComparison.Ordinal);
         Assert.DoesNotContain("error-secret", report, StringComparison.Ordinal);

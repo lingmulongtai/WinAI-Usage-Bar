@@ -7,6 +7,7 @@ Current app version: `0.1.2`.
 For a strict status check, see [docs/current-state-audit.md](docs/current-state-audit.md).
 For Windows shell dogfooding checks, see [docs/windows-manual-verification.md](docs/windows-manual-verification.md).
 For release-to-release dogfooding notes, see [docs/release-dogfooding.md](docs/release-dogfooding.md).
+For provider integration dogfooding notes, see [docs/provider-dogfooding.md](docs/provider-dogfooding.md).
 Create a timestamped local verification report with `.\scripts\new-windows-verification-report.ps1`.
 
 ## Features
@@ -48,7 +49,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - CLI `--install-latest-update` can explicitly check, download, verify, prepare, and launch the latest update install script.
 - Startup update checks record the latest release status at most once every 24 hours by default and, when enabled in Refresh settings, can automatically download verified packages or launch the prepared install script without relaunching the same release version repeatedly. Refresh settings can also explicitly run the same safe latest-update install flow on demand after in-app confirmation.
 - Codex/ChatGPT app-server probing is isolated behind safe abstractions, and `--health-report` shows storage pressure guidance, recovery guidance, and the resolved CLI launch target used for startup checks.
-- Codex CLI startup uses provider command overrides when configured, otherwise resolved Windows command paths, including `.cmd` shims and `.exe` paths. Startup failures are classified separately from auth and JSON-RPC errors with repair-oriented messages for WindowsApps/App Execution Alias or permission problems.
+- Codex CLI startup uses provider command overrides when configured, otherwise resolved Windows command paths, including `.cmd` shims and `.exe` paths. Startup failures are classified separately from auth and JSON-RPC errors with repair-oriented messages for WindowsApps/App Execution Alias or permission problems, including the option to set a provider CLI override to a launchable path.
 - Claude, Claude Code, Gemini, OpenCode Zen, and GitHub Copilot have MVP-safe descriptors and manual mode support.
 - Gemini and OpenCode Zen expose API key secret-name fields without storing API key values in config.
 - JSON config, snapshot cache, and history are stored under `%AppData%\WinAiUsageBar`; config saves use unique temporary files so parallel CLI commands do not collide on a fixed temp file.
