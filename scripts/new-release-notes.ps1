@@ -87,8 +87,16 @@ function Assert-EnglishReleaseText {
         [string]$Text
     )
 
-    if ([regex]::IsMatch($Text, "[ぁ-ゟ゠-ヿ一-龯]")) {
-        throw "Release notes must be written in English. Japanese/CJK characters were found in the current changelog section."
+    foreach ($character in $Text.ToCharArray()) {
+        $codePoint = [int][char]$character
+        $isJapaneseOrCjk =
+            ($codePoint -ge 0x3040 -and $codePoint -le 0x309F) -or
+            ($codePoint -ge 0x30A0 -and $codePoint -le 0x30FF) -or
+            ($codePoint -ge 0x4E00 -and $codePoint -le 0x9FFF)
+
+        if ($isJapaneseOrCjk) {
+            throw "Release notes must be written in English. Japanese/CJK characters were found in the current changelog section."
+        }
     }
 }
 
