@@ -20,7 +20,12 @@ public sealed record ReleaseUpdateCheckResult(
     bool IsUpdateAvailable,
     Uri? ReleasePageUrl,
     UpdatePackageAsset? Package,
-    UpdatePackageAsset? Checksum);
+    UpdatePackageAsset? Checksum,
+    UpdatePackageAsset? Installer = null,
+    UpdatePackageAsset? InstallerChecksum = null)
+{
+    public bool HasInstallerAssets => Installer is not null && InstallerChecksum is not null;
+}
 
 public enum UpdateCheckStatus
 {
@@ -99,8 +104,12 @@ public sealed class ReleaseUpdateCheckService(
 
         var expectedZipName = $"{packagePrefix}-{latestVersionText}-{runtime}.zip";
         var expectedChecksumName = $"{expectedZipName}.sha256";
+        var expectedInstallerName = $"{packagePrefix}-{latestVersionText}-setup.exe";
+        var expectedInstallerChecksumName = $"{expectedInstallerName}.sha256";
         var package = FindAsset(release.Assets, expectedZipName);
         var checksum = FindAsset(release.Assets, expectedChecksumName);
+        var installer = FindAsset(release.Assets, expectedInstallerName);
+        var installerChecksum = FindAsset(release.Assets, expectedInstallerChecksumName);
         var isNewer = parsedLatestVersion > parsedCurrentVersion;
 
         if (package is null || checksum is null)
@@ -113,7 +122,9 @@ public sealed class ReleaseUpdateCheckService(
                 isUpdateAvailable: false,
                 release.ReleasePageUrl,
                 package,
-                checksum);
+                checksum,
+                installer,
+                installerChecksum);
         }
 
         return Result(
@@ -124,7 +135,9 @@ public sealed class ReleaseUpdateCheckService(
             isNewer,
             release.ReleasePageUrl,
             package,
-            checksum);
+            checksum,
+            installer,
+            installerChecksum);
     }
 
     private static ReleaseUpdateCheckResult Result(
@@ -135,7 +148,9 @@ public sealed class ReleaseUpdateCheckService(
         bool isUpdateAvailable,
         Uri? releasePageUrl = null,
         UpdatePackageAsset? package = null,
-        UpdatePackageAsset? checksum = null)
+        UpdatePackageAsset? checksum = null,
+        UpdatePackageAsset? installer = null,
+        UpdatePackageAsset? installerChecksum = null)
     {
         return new ReleaseUpdateCheckResult(
             status,
@@ -145,7 +160,9 @@ public sealed class ReleaseUpdateCheckService(
             isUpdateAvailable,
             releasePageUrl,
             package,
-            checksum);
+            checksum,
+            installer,
+            installerChecksum);
     }
 
     private static UpdatePackageAsset? FindAsset(

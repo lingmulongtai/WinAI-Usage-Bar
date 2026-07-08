@@ -16,7 +16,9 @@ public static class CommandLineUpdateCheckFormatter
             $"Message: {CommandLineDisplayText.Safe(result.Message)}",
             $"Release page: {CommandLineDisplayText.Safe(result.ReleasePageUrl)}",
             $"Package: {FormatAsset(result.Package)}",
-            $"Checksum: {FormatAsset(result.Checksum)}"
+            $"Checksum: {FormatAsset(result.Checksum)}",
+            $"Installer: {FormatAsset(result.Installer)}",
+            $"Installer checksum: {FormatAsset(result.InstallerChecksum)}"
         };
 
         return string.Join(Environment.NewLine, lines);

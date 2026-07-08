@@ -9,6 +9,7 @@ using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Core.Models;
 using WinAiUsageBar.Core.Providers;
 using WinAiUsageBar.Infrastructure.Diagnostics;
+using WinAiUsageBar.Infrastructure.Security;
 using WinAiUsageBar.Infrastructure.Storage;
 using WinAiUsageBar.Infrastructure.Updates;
 
@@ -1562,18 +1563,26 @@ public sealed class MainWindow : Window
     {
         var lines = new List<string>
         {
-            result.Message,
+            SafeUpdateValue(result.Message),
             $"Status: {result.Status}",
-            $"Current version: {result.CurrentVersion}",
-            $"Latest version: {result.LatestVersion ?? "n/a"}"
+            $"Current version: {SafeUpdateValue(result.CurrentVersion)}",
+            $"Latest version: {SafeUpdateValue(result.LatestVersion)}",
+            $"Installer assets: {(result.HasInstallerAssets ? "available" : "missing or not published")}"
         };
 
         if (result.ReleasePageUrl is not null)
         {
-            lines.Add($"Release: {result.ReleasePageUrl}");
+            lines.Add($"Release: {SafeUpdateValue(result.ReleasePageUrl.ToString())}");
         }
 
         return string.Join(Environment.NewLine, lines);
+    }
+
+    private static string SafeUpdateValue(string? text)
+    {
+        return string.IsNullOrWhiteSpace(text)
+            ? "n/a"
+            : DiagnosticRedactor.RedactForDisplay(text);
     }
 
     private static InfoBarSeverity SeverityForLatestUpdateInstall(LatestUpdateInstallResult result)

@@ -22,6 +22,14 @@ public sealed class CommandLineUpdateFormatterRedactionTests
             new UpdatePackageAsset(
                 "WinAIUsageBar.zip.sha256 secret=checksum-secret",
                 new Uri("https://example.test/package.zip.sha256?cookie=checksum-cookie"),
+                128),
+            new UpdatePackageAsset(
+                "WinAIUsageBar-setup.exe token=installer-secret",
+                new Uri("https://example.test/setup.exe?token=installer-secret"),
+                4096),
+            new UpdatePackageAsset(
+                "WinAIUsageBar-setup.exe.sha256 secret=installer-checksum-secret",
+                new Uri("https://example.test/setup.exe.sha256?cookie=installer-checksum-cookie"),
                 128));
         var download = new UpdateDownloadResult(
             UpdateDownloadStatus.Downloaded,
@@ -112,6 +120,14 @@ public sealed class CommandLineUpdateFormatterRedactionTests
             new UpdatePackageAsset(
                 "WinAIUsageBar-0.2.0-win-x64.zip.sha256",
                 new Uri("https://example.test/package.zip.sha256"),
+                128),
+            new UpdatePackageAsset(
+                "WinAIUsageBar-0.2.0-setup.exe",
+                new Uri("https://example.test/setup.exe"),
+                4096),
+            new UpdatePackageAsset(
+                "WinAIUsageBar-0.2.0-setup.exe.sha256",
+                new Uri("https://example.test/setup.exe.sha256"),
                 128));
 
         var output = CommandLineUpdateCheckFormatter.Format(updateCheck);
@@ -122,6 +138,8 @@ public sealed class CommandLineUpdateFormatterRedactionTests
         Assert.Contains("Latest version: 0.2.0", output, StringComparison.Ordinal);
         Assert.Contains("A newer GitHub release is available.", output, StringComparison.Ordinal);
         Assert.Contains("WinAIUsageBar-0.2.0-win-x64.zip", output, StringComparison.Ordinal);
+        Assert.Contains("Installer: WinAIUsageBar-0.2.0-setup.exe", output, StringComparison.Ordinal);
+        Assert.Contains("Installer checksum: WinAIUsageBar-0.2.0-setup.exe.sha256", output, StringComparison.Ordinal);
         Assert.DoesNotContain("[REDACTED]", output, StringComparison.Ordinal);
     }
 }

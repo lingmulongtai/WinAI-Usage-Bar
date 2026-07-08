@@ -12,7 +12,9 @@ public sealed class ReleaseUpdateCheckServiceTests
             assets:
             [
                 Asset("WinAIUsageBar-0.2.0-win-x64.zip", "https://example.test/WinAIUsageBar-0.2.0-win-x64.zip", 2048),
-                Asset("WinAIUsageBar-0.2.0-win-x64.zip.sha256", "https://example.test/WinAIUsageBar-0.2.0-win-x64.zip.sha256", 128)
+                Asset("WinAIUsageBar-0.2.0-win-x64.zip.sha256", "https://example.test/WinAIUsageBar-0.2.0-win-x64.zip.sha256", 128),
+                Asset("WinAIUsageBar-0.2.0-setup.exe", "https://example.test/WinAIUsageBar-0.2.0-setup.exe", 4096),
+                Asset("WinAIUsageBar-0.2.0-setup.exe.sha256", "https://example.test/WinAIUsageBar-0.2.0-setup.exe.sha256", 128)
             ]);
         var service = new ReleaseUpdateCheckService(new FakeLatestReleaseClient(LatestReleaseResult.Found(release)));
 
@@ -24,7 +26,33 @@ public sealed class ReleaseUpdateCheckServiceTests
         Assert.Equal("0.2.0", result.LatestVersion);
         Assert.Equal("WinAIUsageBar-0.2.0-win-x64.zip", result.Package?.Name);
         Assert.Equal("WinAIUsageBar-0.2.0-win-x64.zip.sha256", result.Checksum?.Name);
+        Assert.Equal("WinAIUsageBar-0.2.0-setup.exe", result.Installer?.Name);
+        Assert.Equal("WinAIUsageBar-0.2.0-setup.exe.sha256", result.InstallerChecksum?.Name);
+        Assert.True(result.HasInstallerAssets);
         Assert.Contains("newer GitHub release", result.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CheckAsync_AllowsUpdateWhenInstallerAssetsAreMissing()
+    {
+        var release = Release(
+            "v0.2.0",
+            assets:
+            [
+                Asset("WinAIUsageBar-0.2.0-win-x64.zip", "https://example.test/WinAIUsageBar-0.2.0-win-x64.zip", 2048),
+                Asset("WinAIUsageBar-0.2.0-win-x64.zip.sha256", "https://example.test/WinAIUsageBar-0.2.0-win-x64.zip.sha256", 128)
+            ]);
+        var service = new ReleaseUpdateCheckService(new FakeLatestReleaseClient(LatestReleaseResult.Found(release)));
+
+        var result = await service.CheckAsync("0.1.0", CancellationToken.None);
+
+        Assert.Equal(UpdateCheckStatus.UpdateAvailable, result.Status);
+        Assert.True(result.IsUpdateAvailable);
+        Assert.NotNull(result.Package);
+        Assert.NotNull(result.Checksum);
+        Assert.Null(result.Installer);
+        Assert.Null(result.InstallerChecksum);
+        Assert.False(result.HasInstallerAssets);
     }
 
     [Fact]
