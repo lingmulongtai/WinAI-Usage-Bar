@@ -3,7 +3,6 @@ using System.Text;
 using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Infrastructure.Diagnostics;
 using WinAiUsageBar.Infrastructure.Process;
-using WinAiUsageBar.Infrastructure.Security;
 using WinAiUsageBar.Infrastructure.Storage;
 
 namespace WinAiUsageBar.App.Services;
@@ -245,6 +244,6 @@ public static class CommandLineHealthReportFormatter
             return "n/a";
         }
 
-        return DiagnosticRedactor.RedactForDisplay(value);
+        return CommandLineDisplayText.Safe(value);
     }
 }

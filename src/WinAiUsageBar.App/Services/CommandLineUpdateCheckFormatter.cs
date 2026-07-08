@@ -10,11 +10,11 @@ public static class CommandLineUpdateCheckFormatter
         {
             "Update check",
             $"Status: {result.Status}",
-            $"Current version: {result.CurrentVersion}",
-            $"Latest version: {result.LatestVersion ?? "n/a"}",
+            $"Current version: {CommandLineDisplayText.Safe(result.CurrentVersion)}",
+            $"Latest version: {CommandLineDisplayText.Safe(result.LatestVersion)}",
             $"Update available: {(result.IsUpdateAvailable ? "yes" : "no")}",
-            $"Message: {result.Message}",
-            $"Release page: {result.ReleasePageUrl?.ToString() ?? "n/a"}",
+            $"Message: {CommandLineDisplayText.Safe(result.Message)}",
+            $"Release page: {CommandLineDisplayText.Safe(result.ReleasePageUrl)}",
             $"Package: {FormatAsset(result.Package)}",
             $"Checksum: {FormatAsset(result.Checksum)}"
         };
@@ -32,7 +32,7 @@ public static class CommandLineUpdateCheckFormatter
         var size = asset.SizeBytes is long sizeBytes
             ? $", {FormatBytes(sizeBytes)}"
             : string.Empty;
-        return $"{asset.Name}{size}, {asset.DownloadUrl}";
+        return $"{CommandLineDisplayText.Safe(asset.Name)}{size}, {CommandLineDisplayText.Safe(asset.DownloadUrl)}";
     }
 
     private static string FormatBytes(long bytes)

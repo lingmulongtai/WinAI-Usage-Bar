@@ -10,9 +10,9 @@ public static class CommandLineUpdateInstallLaunchFormatter
         {
             "Update install launch",
             $"Status: {result.Status}",
-            $"Message: {result.Message}",
-            $"Script: {result.ScriptPath ?? "n/a"}",
-            $"Command: {result.Command ?? "n/a"}",
+            $"Message: {CommandLineDisplayText.Safe(result.Message)}",
+            $"Script: {CommandLineDisplayText.Safe(result.ScriptPath)}",
+            $"Command: {CommandLineDisplayText.Safe(result.Command)}",
             $"Process ID: {result.ProcessId?.ToString() ?? "n/a"}"
         };
 

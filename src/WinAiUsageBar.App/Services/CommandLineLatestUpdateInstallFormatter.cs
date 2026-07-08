@@ -10,23 +10,23 @@ public static class CommandLineLatestUpdateInstallFormatter
         {
             "Latest update install",
             $"Status: {result.Status}",
-            $"Message: {result.Message}"
+            $"Message: {CommandLineDisplayText.Safe(result.Message)}"
         };
 
         if (result.UpdateCheck is not null)
         {
             lines.Add($"Update status: {result.UpdateCheck.Status}");
-            lines.Add($"Current version: {result.UpdateCheck.CurrentVersion}");
-            lines.Add($"Latest version: {result.UpdateCheck.LatestVersion ?? "n/a"}");
+            lines.Add($"Current version: {CommandLineDisplayText.Safe(result.UpdateCheck.CurrentVersion)}");
+            lines.Add($"Latest version: {CommandLineDisplayText.Safe(result.UpdateCheck.LatestVersion)}");
             lines.Add($"Update available: {(result.UpdateCheck.IsUpdateAvailable ? "yes" : "no")}");
-            lines.Add($"Release: {result.UpdateCheck.ReleasePageUrl?.ToString() ?? "n/a"}");
+            lines.Add($"Release: {CommandLineDisplayText.Safe(result.UpdateCheck.ReleasePageUrl)}");
         }
 
         if (result.Download is not null)
         {
             lines.Add($"Download status: {result.Download.Status}");
-            lines.Add($"Package path: {result.Download.PackagePath ?? "n/a"}");
-            lines.Add($"Checksum path: {result.Download.ChecksumPath ?? "n/a"}");
+            lines.Add($"Package path: {CommandLineDisplayText.Safe(result.Download.PackagePath)}");
+            lines.Add($"Checksum path: {CommandLineDisplayText.Safe(result.Download.ChecksumPath)}");
         }
         else
         {
@@ -36,7 +36,7 @@ public static class CommandLineLatestUpdateInstallFormatter
         if (result.Preparation is not null)
         {
             lines.Add($"Preparation status: {result.Preparation.Status}");
-            lines.Add($"Script: {result.Preparation.ScriptPath ?? "n/a"}");
+            lines.Add($"Script: {CommandLineDisplayText.Safe(result.Preparation.ScriptPath)}");
         }
         else
         {

@@ -10,13 +10,13 @@ public static class CommandLineUpdateInstallPreparationFormatter
         {
             "Update install preparation",
             $"Status: {result.Status}",
-            $"Message: {result.Message}",
-            $"Package: {result.PackagePath ?? "n/a"}",
-            $"Install directory: {result.InstallDirectory ?? "n/a"}",
-            $"Staging directory: {result.StagingDirectory ?? "n/a"}",
-            $"Backup directory: {result.BackupDirectory ?? "n/a"}",
-            $"Script: {result.ScriptPath ?? "n/a"}",
-            $"Command: {result.Command ?? "n/a"}"
+            $"Message: {CommandLineDisplayText.Safe(result.Message)}",
+            $"Package: {CommandLineDisplayText.Safe(result.PackagePath)}",
+            $"Install directory: {CommandLineDisplayText.Safe(result.InstallDirectory)}",
+            $"Staging directory: {CommandLineDisplayText.Safe(result.StagingDirectory)}",
+            $"Backup directory: {CommandLineDisplayText.Safe(result.BackupDirectory)}",
+            $"Script: {CommandLineDisplayText.Safe(result.ScriptPath)}",
+            $"Command: {CommandLineDisplayText.Safe(result.Command)}"
         };
 
         return string.Join(Environment.NewLine, lines);

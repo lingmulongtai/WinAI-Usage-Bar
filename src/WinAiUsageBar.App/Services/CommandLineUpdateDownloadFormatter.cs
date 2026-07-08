@@ -12,10 +12,10 @@ public static class CommandLineUpdateDownloadFormatter
         {
             "Update download",
             $"Update status: {updateCheck.Status}",
-            $"Current version: {updateCheck.CurrentVersion}",
-            $"Latest version: {updateCheck.LatestVersion ?? "n/a"}",
+            $"Current version: {CommandLineDisplayText.Safe(updateCheck.CurrentVersion)}",
+            $"Latest version: {CommandLineDisplayText.Safe(updateCheck.LatestVersion)}",
             $"Update available: {(updateCheck.IsUpdateAvailable ? "yes" : "no")}",
-            $"Update message: {updateCheck.Message}"
+            $"Update message: {CommandLineDisplayText.Safe(updateCheck.Message)}"
         };
 
         if (download is null)
@@ -26,11 +26,11 @@ public static class CommandLineUpdateDownloadFormatter
         }
 
         lines.Add($"Download status: {download.Status}");
-        lines.Add($"Download message: {download.Message}");
-        lines.Add($"Package path: {download.PackagePath ?? "n/a"}");
-        lines.Add($"Checksum path: {download.ChecksumPath ?? "n/a"}");
-        lines.Add($"Expected SHA256: {download.ExpectedSha256 ?? "n/a"}");
-        lines.Add($"Actual SHA256: {download.ActualSha256 ?? "n/a"}");
+        lines.Add($"Download message: {CommandLineDisplayText.Safe(download.Message)}");
+        lines.Add($"Package path: {CommandLineDisplayText.Safe(download.PackagePath)}");
+        lines.Add($"Checksum path: {CommandLineDisplayText.Safe(download.ChecksumPath)}");
+        lines.Add($"Expected SHA256: {CommandLineDisplayText.Safe(download.ExpectedSha256)}");
+        lines.Add($"Actual SHA256: {CommandLineDisplayText.Safe(download.ActualSha256)}");
         return string.Join(Environment.NewLine, lines);
     }
 }

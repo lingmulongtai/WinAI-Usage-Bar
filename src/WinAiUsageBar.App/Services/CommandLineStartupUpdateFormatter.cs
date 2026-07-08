@@ -10,11 +10,11 @@ public static class CommandLineStartupUpdateFormatter
         {
             "Startup update check",
             $"Status: {result.Status}",
-            $"Message: {result.Message}",
-            $"Current version: {currentVersion}",
-            $"Latest version: {result.LatestVersion ?? "n/a"}",
-            $"Package path: {result.PackagePath ?? "n/a"}",
-            $"Install script: {result.InstallScriptPath ?? "n/a"}"
+            $"Message: {CommandLineDisplayText.Safe(result.Message)}",
+            $"Current version: {CommandLineDisplayText.Safe(currentVersion)}",
+            $"Latest version: {CommandLineDisplayText.Safe(result.LatestVersion)}",
+            $"Package path: {CommandLineDisplayText.Safe(result.PackagePath)}",
+            $"Install script: {CommandLineDisplayText.Safe(result.InstallScriptPath)}"
         };
 
         return string.Join(Environment.NewLine, lines);
