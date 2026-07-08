@@ -26,18 +26,17 @@ public sealed class ProviderDetailsPageViewModel
 
 public sealed class ProviderDetailsRowViewModel
 {
+    // Twice the longest automatic refresh interval keeps one missed tick from looking stale.
+    private static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan FutureTimestampTolerance = TimeSpan.FromSeconds(5);
+
     public ProviderDetailsRowViewModel(
         UsageSnapshot snapshot,
         Func<DateTimeOffset> nowProvider)
     {
+        var elapsed = nowProvider() - snapshot.UpdatedAt;
         DisplayName = snapshot.DisplayName;
-        SummaryLines =
-        [
-            $"Provider ID: {snapshot.ProviderId}",
-            $"Health: {snapshot.Health}",
-            $"Source: {snapshot.SourceKind}",
-            $"Updated: {FormatAgo(nowProvider() - snapshot.UpdatedAt)} ago"
-        ];
+        SummaryLines = BuildSummaryLines(snapshot, elapsed);
         IdentityLines = BuildIdentityLines(snapshot.Identity);
         UsageLines = BuildUsageLines(snapshot.PrimaryWindow, snapshot.SecondaryWindow);
         CreditLines = BuildCreditLines(snapshot.Credits);
@@ -68,6 +67,25 @@ public sealed class ProviderDetailsRowViewModel
     public string ErrorText { get; }
 
     public bool HasErrorText => !string.IsNullOrWhiteSpace(ErrorText);
+
+    private static IReadOnlyList<string> BuildSummaryLines(UsageSnapshot snapshot, TimeSpan elapsed)
+    {
+        var lines = new List<string>
+        {
+            $"Provider ID: {snapshot.ProviderId}",
+            $"Health: {snapshot.Health}",
+            $"Source: {snapshot.SourceKind}",
+            FormatUpdatedLine(elapsed)
+        };
+
+        var freshnessWarning = FormatFreshnessWarning(elapsed);
+        if (!string.IsNullOrWhiteSpace(freshnessWarning))
+        {
+            lines.Add(freshnessWarning);
+        }
+
+        return lines;
+    }
 
     private static IReadOnlyList<string> BuildIdentityLines(ProviderIdentity? identity)
     {
@@ -180,6 +198,7 @@ public sealed class ProviderDetailsRowViewModel
 
     private static string FormatAgo(TimeSpan elapsed)
     {
+        elapsed = elapsed.Duration();
         if (elapsed.TotalSeconds < 60)
         {
             return "just now";
@@ -196,5 +215,35 @@ public sealed class ProviderDetailsRowViewModel
         }
 
         return $"{Math.Floor(elapsed.TotalDays):0}d";
+    }
+
+    private static string FormatUpdatedLine(TimeSpan elapsed)
+    {
+        return elapsed < -FutureTimestampTolerance
+            ? $"Updated: in {FormatFuture(elapsed)} (future timestamp)"
+            : $"Updated: {FormatAgo(elapsed)} ago";
+    }
+
+    private static string? FormatFreshnessWarning(TimeSpan elapsed)
+    {
+        if (elapsed < -FutureTimestampTolerance)
+        {
+            return $"Timestamp warning: snapshot is {FormatFuture(elapsed)} in the future; check the system clock or refresh again.";
+        }
+
+        if (elapsed > StaleAfter)
+        {
+            return $"Timestamp warning: cached snapshot is stale ({FormatAgo(elapsed)} old); refresh now or inspect provider errors.";
+        }
+
+        return null;
+    }
+
+    private static string FormatFuture(TimeSpan elapsed)
+    {
+        var duration = elapsed.Duration();
+        return duration.TotalMinutes < 1
+            ? "under 1m"
+            : FormatAgo(duration);
     }
 }

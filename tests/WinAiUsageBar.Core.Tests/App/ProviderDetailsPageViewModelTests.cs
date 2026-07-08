@@ -59,6 +59,40 @@ public sealed class ProviderDetailsPageViewModelTests
     }
 
     [Fact]
+    public void Constructor_AddsWarningForFutureSnapshotTimestamp()
+    {
+        var now = new DateTimeOffset(2026, 7, 8, 12, 30, 0, TimeSpan.Zero);
+        var viewModel = new ProviderDetailsPageViewModel(
+            [Snapshot(now.AddMinutes(4))],
+            nowProvider: () => now);
+
+        var provider = Assert.Single(viewModel.Providers);
+
+        Assert.Contains("Updated: in 4m (future timestamp)", provider.SummaryLines);
+        Assert.Contains(
+            provider.SummaryLines,
+            line => line.Contains("in the future", StringComparison.Ordinal)
+                && line.Contains("system clock", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Constructor_AddsWarningForStaleSnapshotTimestamp()
+    {
+        var now = new DateTimeOffset(2026, 7, 8, 12, 30, 0, TimeSpan.Zero);
+        var viewModel = new ProviderDetailsPageViewModel(
+            [Snapshot(now.AddMinutes(-45))],
+            nowProvider: () => now);
+
+        var provider = Assert.Single(viewModel.Providers);
+
+        Assert.Contains("Updated: 45m ago", provider.SummaryLines);
+        Assert.Contains(
+            provider.SummaryLines,
+            line => line.Contains("cached snapshot is stale", StringComparison.Ordinal)
+                && line.Contains("refresh now", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Constructor_HidesRepairGuidanceForOkProviders()
     {
         var now = new DateTimeOffset(2026, 7, 8, 12, 30, 0, TimeSpan.Zero);
