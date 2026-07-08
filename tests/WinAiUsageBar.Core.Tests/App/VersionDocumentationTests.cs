@@ -93,6 +93,64 @@ public sealed class VersionDocumentationTests
         }
     }
 
+    [Fact]
+    public void ReleaseDogfooding_DocumentsPublishedUpdateFlowHelper()
+    {
+        var root = FindRepositoryRoot();
+        var scriptPath = Path.Combine(root, "scripts", "test-published-update-flow.ps1");
+        var script = File.ReadAllText(scriptPath);
+        var readme = File.ReadAllText(Path.Combine(root, "README.md"));
+        var dogfooding = File.ReadAllText(Path.Combine(root, "docs", "release-dogfooding.md"));
+
+        Assert.Contains("WINAIUSAGEBAR_APPDATA", script, StringComparison.Ordinal);
+        Assert.Contains("[switch]$Apply", script, StringComparison.Ordinal);
+        Assert.Contains("Assert-PathInside -ChildPath $installRoot", script, StringComparison.Ordinal);
+        Assert.Contains("--check-for-updates", script, StringComparison.Ordinal);
+        Assert.Contains("--download-update", script, StringComparison.Ordinal);
+        Assert.Contains("--prepare-update-install", script, StringComparison.Ordinal);
+        Assert.Contains("test-published-update-flow.ps1", readme, StringComparison.Ordinal);
+        Assert.Contains("test-published-update-flow.ps1", dogfooding, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task PublishedUpdateFlowScript_HasValidPowerShellSyntax()
+    {
+        var root = FindRepositoryRoot();
+        var scriptPath = Path.Combine(root, "scripts", "test-published-update-flow.ps1");
+        var command = """
+            $Path = $env:WINAIUSAGEBAR_SCRIPT_PATH
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($Path, [ref]$tokens, [ref]$errors) > $null
+            if ($errors.Count -gt 0) {
+                $errors | ForEach-Object { Write-Error $_.Message }
+                exit 1
+            }
+            """;
+
+        var startInfo = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "powershell.exe",
+            WorkingDirectory = root,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        startInfo.Environment["WINAIUSAGEBAR_SCRIPT_PATH"] = scriptPath;
+        startInfo.ArgumentList.Add("-NoProfile");
+        startInfo.ArgumentList.Add("-Command");
+        startInfo.ArgumentList.Add(command);
+
+        using var process = System.Diagnostics.Process.Start(startInfo)
+            ?? throw new InvalidOperationException("Failed to start PowerShell.");
+        var output = await process.StandardOutput.ReadToEndAsync();
+        var error = await process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+
+        Assert.True(process.ExitCode == 0, $"stdout: {output}{Environment.NewLine}stderr: {error}");
+    }
+
     private static string ReadAppVersion(string root)
     {
         var projectPath = Path.Combine(

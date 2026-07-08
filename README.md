@@ -112,6 +112,14 @@ Dogfood a prepared update install against a disposable install directory:
 
 The script uses an isolated app-data root under `artifacts\update-dogfood`, prepares `apply-update.ps1`, and only applies it when the install directory stays inside that work directory.
 
+Dogfood a published release-to-latest update flow without touching normal app data or an installed copy:
+
+```powershell
+.\scripts\test-published-update-flow.ps1 -FromTag v0.1.2 -ExpectedLatestTag v0.1.3
+```
+
+This downloads the older published zip, extracts it into an isolated temp workspace, and runs the older executable against the real GitHub latest-release endpoint. Releases before `v0.1.3` do not support `WINAIUSAGEBAR_APPDATA`, so the helper safely stops after discovery for those versions. For source releases `v0.1.3` and newer, pass `-Apply` when you want to download, prepare, and apply the latest update to the disposable extracted install directory.
+
 Run the published-app smoke test without opening UI:
 
 ```powershell
