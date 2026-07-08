@@ -16,6 +16,7 @@ All notable changes to WinAI Usage Bar are documented here.
 - Codex provider snapshots now preserve the selected `Cli` or `LocalAppServer` source kind instead of always reporting `LocalAppServer`.
 - ChatGPT app-server snapshots now use ChatGPT-specific usage and rate-limit window labels instead of Codex labels.
 - Codex app-server JSON-RPC envelope parsing now ignores nested notification ids and matches only top-level response ids.
+- Codex app-server initialization now reports the current app informational version in `clientInfo.version`.
 - Latest-release checks now persist the observed GitHub Release page URL for Refresh settings and health reports.
 - A repository test guard now rejects common secret-shaped fixture patterns before they can trigger scanner noise again.
 - Latest-release checks now persist observed setup installer asset status for Refresh settings and health reports.

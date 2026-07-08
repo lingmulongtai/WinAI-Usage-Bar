@@ -15,25 +15,29 @@ public sealed class CodexAppServerClient : ICodexAppServerClient
     private const int UsageRequestId = 4;
 
     private readonly Func<CommandProbeResult, ICodexAppServerTransport> transportFactory;
+    private readonly string clientVersion;
     private readonly TimeSpan timeout;
 
-    public CodexAppServerClient(TimeSpan? requestTimeout = null)
-        : this(commandProbe => new CodexProcessAppServerTransport(commandProbe), requestTimeout)
+    public CodexAppServerClient(TimeSpan? requestTimeout = null, string? clientVersion = null)
+        : this(commandProbe => new CodexProcessAppServerTransport(commandProbe), requestTimeout, clientVersion)
     {
     }
 
     public CodexAppServerClient(
         Func<ICodexAppServerTransport> transportFactory,
-        TimeSpan? requestTimeout = null)
-        : this(_ => transportFactory(), requestTimeout)
+        TimeSpan? requestTimeout = null,
+        string? clientVersion = null)
+        : this(_ => transportFactory(), requestTimeout, clientVersion)
     {
     }
 
     public CodexAppServerClient(
         Func<CommandProbeResult, ICodexAppServerTransport> transportFactory,
-        TimeSpan? requestTimeout = null)
+        TimeSpan? requestTimeout = null,
+        string? clientVersion = null)
     {
         this.transportFactory = transportFactory;
+        this.clientVersion = string.IsNullOrWhiteSpace(clientVersion) ? "0.0.0" : clientVersion.Trim();
         timeout = requestTimeout ?? TimeSpan.FromSeconds(8);
     }
 
@@ -59,7 +63,7 @@ public sealed class CodexAppServerClient : ICodexAppServerClient
                 transport,
                 pendingResponses,
                 InitializeRequestId,
-                CodexJsonRpcParser.CreateInitializeRequest(InitializeRequestId),
+                CodexJsonRpcParser.CreateInitializeRequest(InitializeRequestId, clientVersion),
                 cancellationToken).ConfigureAwait(false);
 
             var account = await TrySendOptionalAsync(

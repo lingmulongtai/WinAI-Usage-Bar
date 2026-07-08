@@ -26,6 +26,8 @@ The CLI can persist the same provider command override with `--set-provider-cli-
 
 Codex/ChatGPT app-server initialization is required, but account, rate-limit, and usage method calls should be treated as optional data sources after initialization. A non-auth JSON-RPC error or timeout from one optional method should be recorded as a redacted diagnostic while the client continues to later methods. Auth, login, unauthorized, malformed JSON, closed streams, and process startup failures should still become visible provider failures.
 
+The app-server `initialize` request should send `clientInfo.name` as `WinAI Usage Bar` and `clientInfo.version` from the app informational version, with a safe non-empty fallback when composition has no version metadata.
+
 Codex/ChatGPT app-server JSON-RPC response matching must use only top-level envelope `id` values. Notifications and events without a top-level `id`, even when they contain nested fields such as `params.id`, must not be treated as responses or buffered pending responses.
 
 Codex app-server adapters may be created for either `Cli` or `LocalAppServer` source selections. Successful snapshots and failure snapshots must preserve the configured source kind so provider cards, refresh output, diagnostics, and repair guidance describe the user's selected source accurately. ChatGPT app-server usage remains `LocalAppServer`.

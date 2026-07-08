@@ -160,7 +160,7 @@ public static class CodexJsonRpcParser
         return JsonSerializer.Serialize(new JsonRpcRequest("2.0", id, method, null), JsonOptions);
     }
 
-    public static string CreateInitializeRequest(int id)
+    public static string CreateInitializeRequest(int id, string? clientVersion = null)
     {
         return JsonSerializer.Serialize(
             new JsonRpcRequest(
@@ -169,7 +169,7 @@ public static class CodexJsonRpcParser
                 "initialize",
                 new
                 {
-                    clientInfo = new { name = "WinAI Usage Bar", version = "0.1.0" },
+                    clientInfo = new { name = "WinAI Usage Bar", version = NormalizeClientVersion(clientVersion) },
                     capabilities = new { }
                 }),
             JsonOptions);
@@ -392,6 +392,11 @@ public static class CodexJsonRpcParser
             ?? throw new FormatException("JSON-RPC envelope id must be numeric.");
 
         return Convert.ToInt32(number);
+    }
+
+    private static string NormalizeClientVersion(string? clientVersion)
+    {
+        return string.IsNullOrWhiteSpace(clientVersion) ? "0.0.0" : clientVersion.Trim();
     }
 
     private static string? TryGetSafeString(JsonElement root, string[] names)

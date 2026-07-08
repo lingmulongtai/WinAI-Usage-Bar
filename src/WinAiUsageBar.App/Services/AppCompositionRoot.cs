@@ -37,7 +37,8 @@ public static class AppCompositionRoot
         var configStore = configStoreOverride ?? new JsonAppConfigStore(paths);
         var snapshotStore = new JsonSnapshotStore(paths);
         var commandProbe = new CliCommandProbe();
-        var codexClient = new CodexAppServerClient();
+        var appInfo = AppInfoProvider.Get();
+        var codexClient = new CodexAppServerClient(clientVersion: appInfo.InformationalVersion);
         var gitHubCopilotClient = new GitHubCopilotMetricsHttpClient(new HttpClient());
         var registry = new ProviderRegistry(
             commandProbe,

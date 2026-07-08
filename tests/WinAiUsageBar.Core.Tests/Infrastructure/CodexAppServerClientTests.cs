@@ -1,3 +1,4 @@
+using System.Text.Json;
 using WinAiUsageBar.Core.Abstractions;
 using WinAiUsageBar.Infrastructure.Process;
 
@@ -127,6 +128,28 @@ public sealed class CodexAppServerClientTests
     }
 
     [Fact]
+    public async Task FetchAccountUsageAsync_SendsConfiguredInitializeClientVersion()
+    {
+        var transport = new FakeCodexTransport(
+            [
+                Response(1, """{"ok":true}"""),
+                Response(2, """{"email":"person@example.com"}"""),
+                Response(3, """{"used":10,"limit":100}"""),
+                Response(4, """{"used":20,"limit":100}""")
+            ],
+            []);
+        var client = new CodexAppServerClient(
+            () => transport,
+            TimeSpan.FromSeconds(1),
+            "9.8.7+metadata");
+
+        await client.FetchAccountUsageAsync(CodexProbe(), CancellationToken.None);
+
+        Assert.Contains("\"method\":\"initialize\"", transport.Requests[0], StringComparison.Ordinal);
+        Assert.Equal("9.8.7+metadata", ReadInitializeClientVersion(transport.Requests[0]));
+    }
+
+    [Fact]
     public async Task FetchAccountUsageAsync_ThrowsUnauthorizedAccessExceptionForAuthError()
     {
         var transport = new FakeCodexTransport(
@@ -201,6 +224,16 @@ public sealed class CodexAppServerClientTests
     private static string Error(int id, string message)
     {
         return $"{{\"jsonrpc\":\"2.0\",\"id\":{id},\"error\":{{\"message\":\"{message}\"}}}}";
+    }
+
+    private static string? ReadInitializeClientVersion(string request)
+    {
+        using var document = JsonDocument.Parse(request);
+        return document.RootElement
+            .GetProperty("params")
+            .GetProperty("clientInfo")
+            .GetProperty("version")
+            .GetString();
     }
 
     private sealed class FakeCodexTransport(

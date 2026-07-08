@@ -1,3 +1,4 @@
+using System.Text.Json;
 using WinAiUsageBar.Core.Abstractions;
 using WinAiUsageBar.Core.Models;
 using WinAiUsageBar.Core.Providers;
@@ -26,6 +27,23 @@ public sealed class CodexJsonRpcParserTests
 
         Assert.Equal("person@example.com", account?.Email);
         Assert.Equal("Plus", account?.PlanName);
+    }
+
+    [Fact]
+    public void CreateInitializeRequest_UsesProvidedClientVersion()
+    {
+        var request = CodexJsonRpcParser.CreateInitializeRequest(1, " 9.8.7+local ");
+
+        Assert.Contains("\"method\":\"initialize\"", request, StringComparison.Ordinal);
+        Assert.Equal("9.8.7+local", ReadInitializeClientVersion(request));
+    }
+
+    [Fact]
+    public void CreateInitializeRequest_UsesFallbackClientVersionWhenBlank()
+    {
+        var request = CodexJsonRpcParser.CreateInitializeRequest(1, " ");
+
+        Assert.Equal("0.0.0", ReadInitializeClientVersion(request));
     }
 
     [Fact]
@@ -676,5 +694,15 @@ public sealed class CodexJsonRpcParserTests
     {
         Assert.Throws<FormatException>(
             () => CodexJsonRpcParser.ParseEnvelope("""{"jsonrpc":"2.0","id":"not-a-number","result":{}}"""));
+    }
+
+    private static string? ReadInitializeClientVersion(string request)
+    {
+        using var document = JsonDocument.Parse(request);
+        return document.RootElement
+            .GetProperty("params")
+            .GetProperty("clientInfo")
+            .GetProperty("version")
+            .GetString();
     }
 }
