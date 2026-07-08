@@ -48,7 +48,10 @@ public sealed class UsageRefreshService(
 
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
-        currentSnapshots = await snapshotStore.LoadAsync(cancellationToken).ConfigureAwait(false);
+        var loadedSnapshots = await snapshotStore.LoadAsync(cancellationToken).ConfigureAwait(false);
+        currentSnapshots = loadedSnapshots.ToDictionary(
+            pair => pair.Key,
+            pair => UsageSnapshotSanitizer.Sanitize(pair.Value));
         SnapshotsChanged?.Invoke(this, CurrentSnapshots);
     }
 
@@ -119,7 +122,7 @@ public sealed class UsageRefreshService(
                     continue;
                 }
 
-                var snapshot = result.Success || !previous.TryGetValue(descriptor.Id, out var cached)
+                var rawSnapshot = result.Success || !previous.TryGetValue(descriptor.Id, out var cached)
                     ? result.Snapshot
                     : cached with
                     {
@@ -129,6 +132,7 @@ public sealed class UsageRefreshService(
                         StatusMessage = result.Snapshot.StatusMessage,
                         ErrorMessage = result.Snapshot.ErrorMessage
                     };
+                var snapshot = UsageSnapshotSanitizer.Sanitize(rawSnapshot);
 
                 snapshots.Add(snapshot);
 

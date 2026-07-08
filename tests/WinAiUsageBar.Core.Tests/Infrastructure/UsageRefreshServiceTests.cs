@@ -310,6 +310,91 @@ public sealed class UsageRefreshServiceTests
     }
 
     [Fact]
+    public async Task RefreshNowAsync_SanitizesSnapshotTextBeforePublishingAndPersistence()
+    {
+        var config = DisabledDefaultConfig();
+        Enable(config, ProviderId.Codex);
+        var snapshotStore = new InMemorySnapshotStore();
+        var notifications = new RecordingNotificationService();
+        var secretValue = "sample-provider-secret";
+        var refreshService = new UsageRefreshService(
+            new InMemoryConfigStore(config),
+            snapshotStore,
+            new FakeProviderSource(
+                [ProviderDescriptors.Get(ProviderId.Codex)],
+                descriptor => new SensitiveSnapshotProviderAdapter(descriptor, secretValue)),
+            TestPaths(),
+            notifications);
+
+        await refreshService.RefreshNowAsync(CancellationToken.None);
+
+        var current = Assert.Single(refreshService.CurrentSnapshots);
+        var saved = Assert.Single(snapshotStore.Saved);
+        var history = Assert.Single(snapshotStore.History);
+        var notification = Assert.Single(notifications.Snapshots);
+
+        AssertSanitizedSnapshot(current, secretValue);
+        AssertSanitizedSnapshot(saved, secretValue);
+        AssertSanitizedSnapshot(history, secretValue);
+        AssertSanitizedSnapshot(notification, secretValue);
+    }
+
+    [Fact]
+    public async Task RefreshNowAsync_SanitizesCachedUsageTextWhenProviderFails()
+    {
+        var config = DisabledDefaultConfig();
+        Enable(config, ProviderId.Codex);
+        var secretValue = "sample-cached-secret";
+        var cached = new UsageSnapshot(
+            ProviderId.Codex,
+            "Codex",
+            ProviderHealth.Ok,
+            new ProviderIdentity(
+                Email: $"user access_token={secretValue}",
+                AccountName: $"account token={secretValue}",
+                PlanName: $"plan cookie={secretValue}",
+                Organization: $"org api_key={secretValue}"),
+            new UsageWindow(
+                $"Cached token={secretValue}",
+                40,
+                60,
+                null,
+                $"cached reset cookie={secretValue}",
+                $"requests secret_name={secretValue}",
+                40,
+                100),
+            SecondaryWindow: null,
+            Credits: new ProviderCredits(1m, $"USD token={secretValue}", null, null),
+            DataSourceKind.Manual,
+            DateTimeOffset.Now.AddMinutes(-10),
+            $"cached status access_token={secretValue}",
+            ErrorMessage: null);
+
+        var snapshotStore = new InMemorySnapshotStore([cached]);
+        var refreshService = new UsageRefreshService(
+            new InMemoryConfigStore(config),
+            snapshotStore,
+            new FakeProviderSource(
+                [ProviderDescriptors.Get(ProviderId.Codex)],
+                descriptor => new ThrowingProviderAdapter(descriptor, "boom")),
+            TestPaths(),
+            new RecordingNotificationService());
+
+        await refreshService.InitializeAsync(CancellationToken.None);
+        await refreshService.RefreshNowAsync(CancellationToken.None);
+
+        var current = Assert.Single(refreshService.CurrentSnapshots);
+        var saved = Assert.Single(snapshotStore.Saved);
+        var history = Assert.Single(snapshotStore.History);
+
+        Assert.Equal(ProviderHealth.Error, current.Health);
+        Assert.Equal(60, current.PrimaryWindow?.RemainingPercent);
+        AssertSanitizedSnapshot(current, secretValue);
+        AssertSanitizedSnapshot(saved, secretValue);
+        AssertSanitizedSnapshot(history, secretValue);
+    }
+
+    [Fact]
     public async Task RefreshNowAsync_ContinuesWhenDiagnosticLoggingFails()
     {
         var config = DisabledDefaultConfig();
@@ -352,6 +437,33 @@ public sealed class UsageRefreshServiceTests
     private static AppDataPaths TestPaths()
     {
         return new AppDataPaths(Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N")));
+    }
+
+    private static void AssertSanitizedSnapshot(UsageSnapshot snapshot, string secretValue)
+    {
+        var text = SnapshotText(snapshot);
+        Assert.DoesNotContain(secretValue, text, StringComparison.Ordinal);
+        Assert.Contains("[REDACTED]", text, StringComparison.Ordinal);
+    }
+
+    private static string SnapshotText(UsageSnapshot snapshot)
+    {
+        return string.Join(
+            Environment.NewLine,
+            snapshot.DisplayName,
+            snapshot.Identity?.Email,
+            snapshot.Identity?.AccountName,
+            snapshot.Identity?.PlanName,
+            snapshot.Identity?.Organization,
+            snapshot.PrimaryWindow?.Label,
+            snapshot.PrimaryWindow?.ResetDescription,
+            snapshot.PrimaryWindow?.Unit,
+            snapshot.SecondaryWindow?.Label,
+            snapshot.SecondaryWindow?.ResetDescription,
+            snapshot.SecondaryWindow?.Unit,
+            snapshot.Credits?.Currency,
+            snapshot.StatusMessage,
+            snapshot.ErrorMessage);
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition)
@@ -552,6 +664,52 @@ public sealed class UsageRefreshServiceTests
                 ErrorMessage: null);
 
             return Task.FromResult(ProviderFetchResult.FromSnapshot(snapshot, diagnostics.ToArray()));
+        }
+    }
+
+    private sealed class SensitiveSnapshotProviderAdapter(
+        ProviderDescriptor descriptor,
+        string secretValue) : IProviderAdapter
+    {
+        public ProviderDescriptor Descriptor { get; } = descriptor;
+
+        public Task<ProviderFetchResult> FetchAsync(ProviderFetchContext context, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var snapshot = new UsageSnapshot(
+                Descriptor.Id,
+                Descriptor.DisplayName,
+                ProviderHealth.Warning,
+                new ProviderIdentity(
+                    Email: $"person access_token={secretValue}",
+                    AccountName: $"account token={secretValue}",
+                    PlanName: $"plan cookie={secretValue}",
+                    Organization: $"org api_key={secretValue}"),
+                new UsageWindow(
+                    $"Primary token={secretValue}",
+                    85,
+                    15,
+                    null,
+                    $"primary reset cookie={secretValue}",
+                    $"requests secret_name={secretValue}",
+                    85,
+                    100),
+                new UsageWindow(
+                    $"Secondary access_token={secretValue}",
+                    10,
+                    90,
+                    null,
+                    $"secondary reset api_key={secretValue}",
+                    $"tokens pat_secret_name={secretValue}",
+                    10,
+                    100),
+                new ProviderCredits(1m, $"USD token={secretValue}", null, null),
+                DataSourceKind.Manual,
+                context.Now,
+                $"status authorization: bearer {secretValue}",
+                $"error cookie={secretValue}");
+
+            return Task.FromResult(ProviderFetchResult.FromSnapshot(snapshot));
         }
     }
 
