@@ -23,6 +23,7 @@ public static class Program
             AppInfoProvider.Get,
             CancellationToken.None,
             refreshOnce: CommandLineActions.RefreshOnceAsync,
+            setProviderCliOverride: CommandLineActions.SetProviderCliOverrideAsync,
             pruneSupportArtifacts: CommandLineActions.PruneSupportArtifactsAsync,
             checkForUpdates: CommandLineActions.CheckForUpdatesAsync,
             downloadUpdate: CommandLineActions.DownloadUpdateAsync,

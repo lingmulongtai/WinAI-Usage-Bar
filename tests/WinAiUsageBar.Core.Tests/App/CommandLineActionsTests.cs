@@ -68,6 +68,57 @@ public sealed class CommandLineActionsTests
     }
 
     [Fact]
+    public async Task SetProviderCliOverrideAsync_SavesNormalizedOverrideWithoutEchoingValue()
+    {
+        var paths = TestPaths();
+        var commandPath = @"C:\Program Files\Codex\codex.cmd";
+
+        try
+        {
+            var result = await CommandLineActions.SetProviderCliOverrideAsync(
+                new CommandLineSetProviderCliOverrideOptions("Codex", $" \"{commandPath}\" "),
+                CancellationToken.None,
+                paths);
+
+            var config = await new JsonAppConfigStore(paths).LoadAsync(CancellationToken.None);
+            var codex = config.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.Codex));
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal(commandPath, codex.Cli.CommandPathOverride);
+            Assert.Contains("Provider CLI override", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Codex", result.Output, StringComparison.Ordinal);
+            Assert.Contains("configured", result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain(commandPath, result.Output, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(paths.RootDirectory))
+            {
+                Directory.Delete(paths.RootDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData("Nope", "codex", "Unknown provider")]
+    [InlineData("Gemini", "gemini", "does not support CLI command overrides")]
+    [InlineData("Codex", "\"C:\\Tools\\codex.cmd\" --verbose", "quotes must wrap")]
+    [InlineData("Codex", "codex.exe --token=secret", "must not contain tokens")]
+    public async Task SetProviderCliOverrideAsync_ReturnsValidationErrors(
+        string providerId,
+        string commandPathOverride,
+        string expectedError)
+    {
+        var result = await CommandLineActions.SetProviderCliOverrideAsync(
+            new CommandLineSetProviderCliOverrideOptions(providerId, commandPathOverride),
+            CancellationToken.None,
+            TestPaths());
+
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains(expectedError, result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task PruneSupportArtifactsAsync_PrunesBackupsAndDiagnosticsExports()
     {
         var paths = TestPaths();

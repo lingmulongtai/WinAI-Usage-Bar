@@ -152,6 +152,23 @@ public sealed class CliCommandSettings
             || trimmed[1..^1].Contains('"', StringComparison.Ordinal);
     }
 
+    public static bool LooksSensitiveCommandPathOverride(string value)
+    {
+        var markers = new[]
+        {
+            "token=",
+            "access_token",
+            "authorization:",
+            "bearer ",
+            "cookie=",
+            "api_key",
+            "apikey",
+            "secret="
+        };
+
+        return markers.Any(marker => value.Contains(marker, StringComparison.OrdinalIgnoreCase));
+    }
+
     private static bool HasBalancedOuterQuotes(string value)
     {
         return value.Length >= 2 && value[0] == '"' && value[^1] == '"';

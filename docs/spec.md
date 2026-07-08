@@ -22,6 +22,8 @@ CLI-based integrations use `ICommandProbe` to separate a missing command from a 
 
 Provider settings may store a non-secret CLI command override for providers that support `Cli` or `LocalAppServer` sources. The override is a single command/path string, must not contain tokens, cookies, or auth values, and must not be echoed in setup guidance. Balanced outer quotes pasted around a Windows path should be normalized away; partial or embedded quotes should be rejected. Codex/ChatGPT LocalAppServer refresh should try the configured override before normal PATH discovery so users can bypass broken WindowsApps aliases.
 
+The CLI can persist the same provider command override with `--set-provider-cli-override --provider <ProviderId> --command <path-or-command>`. The command must support only providers with `Cli` or `LocalAppServer` sources, reuse the same quote normalization and sensitive marker validation as the settings UI, save only the normalized non-secret command/path string to config, and print a status that does not echo the configured command.
+
 Codex/ChatGPT app-server initialization is required, but account, rate-limit, and usage method calls should be treated as optional data sources after initialization. A non-auth JSON-RPC error or timeout from one optional method should be recorded as a redacted diagnostic while the client continues to later methods. Auth, login, unauthorized, malformed JSON, closed streams, and process startup failures should still become visible provider failures.
 
 Codex/ChatGPT app-server parsing should tolerate common usage and reset timestamp shapes, including ISO reset strings, Unix seconds, Unix milliseconds, and relative reset seconds, while ignoring sensitive-looking token/auth/secret/cookie/key fields.

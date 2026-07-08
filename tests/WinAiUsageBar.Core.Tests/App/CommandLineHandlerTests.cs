@@ -50,7 +50,9 @@ public sealed class CommandLineHandlerTests
         Assert.Equal(0, result.ExitCode);
         Assert.Contains("--version", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--refresh-once", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--set-provider-cli-override", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--provider <ProviderId>", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--command <path-or-command>", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--source <DataSourceKind>", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--provider-catalog", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--check-for-updates", output.ToString(), StringComparison.Ordinal);
@@ -335,6 +337,98 @@ public sealed class CommandLineHandlerTests
 
         var result = await CommandLineHandler.TryHandleAsync(
             ["--refresh-once"],
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains("unavailable", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_SetsProviderCliOverride()
+    {
+        using var output = new StringWriter();
+        CommandLineSetProviderCliOverrideOptions? capturedOptions = null;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--set-provider-cli-override", "--provider", "Codex", "--command", @"C:\Tools\codex.cmd"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            setProviderCliOverride: (options, cancellationToken) =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                capturedOptions = options;
+                return Task.FromResult(new CommandLineActionResult("override saved", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("Codex", capturedOptions?.ProviderId);
+        Assert.Equal(@"C:\Tools\codex.cmd", capturedOptions?.CommandPathOverride);
+        Assert.Contains("override saved", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("--set-provider-cli-override")]
+    [InlineData("--set-provider-cli-override", "--provider", "Codex")]
+    [InlineData("--set-provider-cli-override", "--command", @"C:\Tools\codex.cmd")]
+    [InlineData("--set-provider-cli-override", "--provider")]
+    [InlineData("--set-provider-cli-override", "--provider", "Codex", "--command")]
+    [InlineData("--set-provider-cli-override", "--provider", "Codex", "--provider", "ChatGPT", "--command", "codex")]
+    [InlineData("--set-provider-cli-override", "--provider", "Codex", "--command", "codex", "--wat")]
+    public async Task TryHandleAsync_ReturnsErrorForInvalidProviderCliOverrideOptions(params string[] args)
+    {
+        using var error = new StringWriter();
+        var setCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            args,
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            setProviderCliOverride: (_, _) =>
+            {
+                setCount++;
+                return Task.FromResult(new CommandLineActionResult("should not run", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Equal(0, setCount);
+        Assert.Contains("--set-provider-cli-override", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ReturnsErrorWhenProviderCliOverrideSetterIsUnavailable()
+    {
+        using var error = new StringWriter();
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--set-provider-cli-override", "--provider", "Codex", "--command", @"C:\Tools\codex.cmd"],
             new StringWriter(),
             error,
             _ => Task.FromResult(1),

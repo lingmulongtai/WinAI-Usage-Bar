@@ -87,6 +87,43 @@ public static class CommandLineActions
         return CommandLineProviderCatalogFormatter.Format(ProviderDescriptors.All);
     }
 
+    public static async Task<CommandLineActionResult> SetProviderCliOverrideAsync(
+        CommandLineSetProviderCliOverrideOptions options,
+        CancellationToken cancellationToken)
+    {
+        return await SetProviderCliOverrideAsync(
+            options,
+            cancellationToken,
+            AppDataPaths.CreateDefault()).ConfigureAwait(false);
+    }
+
+    public static async Task<CommandLineActionResult> SetProviderCliOverrideAsync(
+        CommandLineSetProviderCliOverrideOptions options,
+        CancellationToken cancellationToken,
+        AppDataPaths paths)
+    {
+        var validation = ValidateProviderCliOverrideOptions(options);
+        if (!validation.IsValid || validation.Descriptor is null || validation.NormalizedOverride is null)
+        {
+            return new CommandLineActionResult(validation.ErrorMessage, 2);
+        }
+
+        var configStore = new JsonAppConfigStore(paths);
+        var config = await configStore.LoadAsync(cancellationToken).ConfigureAwait(false);
+        var provider = config.GetOrCreateProvider(validation.Descriptor);
+        provider.Cli.CommandPathOverride = validation.NormalizedOverride;
+        await configStore.SaveAsync(config, cancellationToken).ConfigureAwait(false);
+
+        return new CommandLineActionResult(
+            $"""
+            Provider CLI override
+            Provider: {validation.Descriptor.DisplayName}
+            Status: saved
+            Command override: configured (value not shown)
+            """,
+            0);
+    }
+
     public static async Task<CommandLineActionResult> CheckForUpdatesAsync(CancellationToken cancellationToken)
     {
         var service = new ReleaseUpdateCheckService(new GitHubLatestReleaseClient());
@@ -376,6 +413,62 @@ public static class CommandLineActions
         return RefreshOnceOverrideResult.Valid();
     }
 
+    private static ProviderCliOverrideValidationResult ValidateProviderCliOverrideOptions(
+        CommandLineSetProviderCliOverrideOptions options)
+    {
+        if (!Enum.TryParse<ProviderId>(options.ProviderId, ignoreCase: true, out var providerId))
+        {
+            return ProviderCliOverrideValidationResult.Invalid(
+                $"Unknown provider '{options.ProviderId}'. Use --provider-catalog to list supported providers.");
+        }
+
+        var descriptor = ProviderDescriptors.All.FirstOrDefault(item => item.Id == providerId);
+        if (descriptor is null)
+        {
+            return ProviderCliOverrideValidationResult.Invalid(
+                $"Unknown provider '{options.ProviderId}'. Use --provider-catalog to list supported providers.");
+        }
+
+        if (!descriptor.SupportedSources.Any(source => source is DataSourceKind.Cli or DataSourceKind.LocalAppServer))
+        {
+            return ProviderCliOverrideValidationResult.Invalid(
+                $"{descriptor.DisplayName} does not support CLI command overrides.");
+        }
+
+        if (CliCommandSettings.HasInvalidCommandPathOverrideQuotes(options.CommandPathOverride))
+        {
+            return ProviderCliOverrideValidationResult.Invalid(
+                "CLI command override quotes must wrap a single path or command.");
+        }
+
+        var normalizedOverride = CliCommandSettings.NormalizeCommandPathOverride(options.CommandPathOverride);
+        if (normalizedOverride is null)
+        {
+            return ProviderCliOverrideValidationResult.Invalid(
+                "CLI command override requires --command <path-or-command>.");
+        }
+
+        if (normalizedOverride.Length > 512)
+        {
+            return ProviderCliOverrideValidationResult.Invalid(
+                "CLI command override must be 512 characters or fewer.");
+        }
+
+        if (normalizedOverride.Contains('\r') || normalizedOverride.Contains('\n'))
+        {
+            return ProviderCliOverrideValidationResult.Invalid(
+                "CLI command override must be a single path or command.");
+        }
+
+        if (CliCommandSettings.LooksSensitiveCommandPathOverride(normalizedOverride))
+        {
+            return ProviderCliOverrideValidationResult.Invalid(
+                "CLI command override must not contain tokens, cookies, or auth values.");
+        }
+
+        return ProviderCliOverrideValidationResult.Valid(descriptor, normalizedOverride);
+    }
+
     public static async Task<CommandLineActionResult> ValidateConfigBackupAsync(
         string path,
         CancellationToken cancellationToken)
@@ -417,6 +510,25 @@ internal sealed record RefreshOnceOverrideResult(
     public static RefreshOnceOverrideResult Invalid(string errorMessage)
     {
         return new RefreshOnceOverrideResult(false, errorMessage);
+    }
+}
+
+internal sealed record ProviderCliOverrideValidationResult(
+    bool IsValid,
+    ProviderDescriptor? Descriptor,
+    string? NormalizedOverride,
+    string ErrorMessage)
+{
+    public static ProviderCliOverrideValidationResult Valid(
+        ProviderDescriptor descriptor,
+        string normalizedOverride)
+    {
+        return new ProviderCliOverrideValidationResult(true, descriptor, normalizedOverride, string.Empty);
+    }
+
+    public static ProviderCliOverrideValidationResult Invalid(string errorMessage)
+    {
+        return new ProviderCliOverrideValidationResult(false, null, null, errorMessage);
     }
 }
 

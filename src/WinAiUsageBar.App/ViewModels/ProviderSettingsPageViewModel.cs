@@ -414,7 +414,7 @@ public sealed class ProviderSettingsEditorViewModel(
             errors.Add("CLI command override must be a single path or command.");
         }
 
-        if (LooksSensitive(normalizedOverride))
+        if (CliCommandSettings.LooksSensitiveCommandPathOverride(normalizedOverride))
         {
             errors.Add("CLI command override must not contain tokens, cookies, or auth values.");
         }
@@ -523,22 +523,6 @@ public sealed class ProviderSettingsEditorViewModel(
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
-    private static bool LooksSensitive(string value)
-    {
-        var markers = new[]
-        {
-            "token=",
-            "access_token",
-            "authorization:",
-            "bearer ",
-            "cookie=",
-            "api_key",
-            "apikey",
-            "secret="
-        };
-
-        return markers.Any(marker => value.Contains(marker, StringComparison.OrdinalIgnoreCase));
-    }
 }
 
 public sealed record ProviderSettingsEditorValidationResult(
