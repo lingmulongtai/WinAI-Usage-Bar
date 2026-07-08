@@ -769,6 +769,29 @@ public sealed class MainWindow : Window
             }
         };
         actions.Children.Add(checkUpdates);
+
+        var installLatestUpdate = new Button { Content = "Install Latest Update Now" };
+        installLatestUpdate.Click += async (_, _) =>
+        {
+            try
+            {
+                var result = await host.InstallLatestUpdateNowAsync(
+                    restartAfterInstall: true,
+                    CancellationToken.None);
+                validationInfo.Severity = SeverityForLatestUpdateInstall(result);
+                validationInfo.Title = "Latest update install checked";
+                validationInfo.Message = CommandLineLatestUpdateInstallFormatter.Format(result);
+                validationInfo.IsOpen = true;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                validationInfo.Severity = InfoBarSeverity.Error;
+                validationInfo.Title = "Latest update install failed";
+                validationInfo.Message = ex.Message;
+                validationInfo.IsOpen = true;
+            }
+        };
+        actions.Children.Add(installLatestUpdate);
         panel.Children.Add(actions);
 
         return Wrap(panel);
@@ -1508,6 +1531,17 @@ public sealed class MainWindow : Window
         }
 
         return string.Join(Environment.NewLine, lines);
+    }
+
+    private static InfoBarSeverity SeverityForLatestUpdateInstall(LatestUpdateInstallResult result)
+    {
+        return result.Status switch
+        {
+            LatestUpdateInstallStatus.Launched => InfoBarSeverity.Success,
+            LatestUpdateInstallStatus.SkippedNoUpdate => InfoBarSeverity.Success,
+            LatestUpdateInstallStatus.UpdateCheckFailed => InfoBarSeverity.Warning,
+            _ => InfoBarSeverity.Error
+        };
     }
 
     private sealed record ProviderEditor(

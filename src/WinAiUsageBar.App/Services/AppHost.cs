@@ -30,6 +30,7 @@ public sealed class AppHost : IAsyncDisposable
     private readonly IApplicationExitService exitService;
     private readonly IStartupUpdateService startupUpdateService;
     private readonly IReleaseUpdateCheckService updateCheckService;
+    private readonly ILatestUpdateInstallService latestUpdateInstallService;
 
     public AppHost(IAppDispatcher dispatcher, AppHostServices services)
     {
@@ -53,6 +54,7 @@ public sealed class AppHost : IAsyncDisposable
         exitService = services.ExitService;
         startupUpdateService = services.StartupUpdateService ?? new NoOpStartupUpdateService();
         updateCheckService = services.UpdateCheckService ?? new NoOpReleaseUpdateCheckService();
+        latestUpdateInstallService = services.LatestUpdateInstallService ?? new NoOpLatestUpdateInstallService();
     }
 
     public ShellViewModel ViewModel { get; } = new();
@@ -144,6 +146,36 @@ public sealed class AppHost : IAsyncDisposable
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             await DiagnosticsLog.ErrorAsync("Manual update check failed.", ex, CancellationToken.None)
+                .ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    public async Task<LatestUpdateInstallResult> InstallLatestUpdateNowAsync(
+        bool restartAfterInstall,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var appInfo = AppInfoProvider.Get();
+            var result = await latestUpdateInstallService.InstallLatestAsync(
+                new LatestUpdateInstallRequest(
+                    appInfo.InformationalVersion,
+                    AppContext.BaseDirectory,
+                    Environment.ProcessId,
+                    restartAfterInstall),
+                cancellationToken).ConfigureAwait(false);
+
+            await SaveLatestUpdateInstallStatusAsync(result, appInfo.InformationalVersion, cancellationToken)
+                .ConfigureAwait(false);
+            await DiagnosticsLog.InfoAsync(
+                $"Manual latest update install result: {result.Status} - {result.Message}",
+                cancellationToken).ConfigureAwait(false);
+            return result;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await DiagnosticsLog.ErrorAsync("Manual latest update install failed.", ex, CancellationToken.None)
                 .ConfigureAwait(false);
             throw;
         }
@@ -557,6 +589,46 @@ public sealed class AppHost : IAsyncDisposable
         await ConfigStore.SaveAsync(config, cancellationToken).ConfigureAwait(false);
     }
 
+    private async Task SaveLatestUpdateInstallStatusAsync(
+        LatestUpdateInstallResult result,
+        string fallbackCurrentVersion,
+        CancellationToken cancellationToken)
+    {
+        var config = await ConfigStore.LoadAsync(cancellationToken).ConfigureAwait(false);
+        config.Updates.LastStatus = ToStartupUpdateStatus(result.Status).ToString();
+        config.Updates.LastMessage = result.Message;
+        config.Updates.LastCurrentVersion = result.UpdateCheck?.CurrentVersion ?? fallbackCurrentVersion;
+        config.Updates.LastLatestVersion = result.UpdateCheck?.LatestVersion;
+        config.Updates.LastPackagePath = result.Download?.PackagePath;
+        config.Updates.LastInstallScriptPath = result.Preparation?.ScriptPath ?? result.Launch?.ScriptPath;
+        if (result.Status is LatestUpdateInstallStatus.Launched
+            && !string.IsNullOrWhiteSpace(result.UpdateCheck?.LatestVersion))
+        {
+            config.Updates.LastInstallLaunchedVersion = result.UpdateCheck.LatestVersion;
+        }
+
+        if (result.UpdateCheck is not null)
+        {
+            config.Updates.LastCheckedAt = DateTimeOffset.Now;
+        }
+
+        await ConfigStore.SaveAsync(config, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static StartupUpdateStatus ToStartupUpdateStatus(LatestUpdateInstallStatus status)
+    {
+        return status switch
+        {
+            LatestUpdateInstallStatus.SkippedNoUpdate => StartupUpdateStatus.NoUpdate,
+            LatestUpdateInstallStatus.Launched => StartupUpdateStatus.InstallLaunched,
+            LatestUpdateInstallStatus.UpdateCheckFailed => StartupUpdateStatus.UpdateCheckFailed,
+            LatestUpdateInstallStatus.DownloadFailed => StartupUpdateStatus.DownloadFailed,
+            LatestUpdateInstallStatus.PreparationFailed => StartupUpdateStatus.PreparationFailed,
+            LatestUpdateInstallStatus.LaunchFailed => StartupUpdateStatus.LaunchFailed,
+            _ => StartupUpdateStatus.Error
+        };
+    }
+
     private static string RequireSecretName(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -599,6 +671,23 @@ public sealed class AppHost : IAsyncDisposable
                 ReleasePageUrl: null,
                 Package: null,
                 Checksum: null));
+        }
+    }
+
+    private sealed class NoOpLatestUpdateInstallService : ILatestUpdateInstallService
+    {
+        public Task<LatestUpdateInstallResult> InstallLatestAsync(
+            LatestUpdateInstallRequest request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(new LatestUpdateInstallResult(
+                LatestUpdateInstallStatus.Error,
+                "Latest update install service is unavailable.",
+                UpdateCheck: null,
+                Download: null,
+                Preparation: null,
+                Launch: null));
         }
     }
 }

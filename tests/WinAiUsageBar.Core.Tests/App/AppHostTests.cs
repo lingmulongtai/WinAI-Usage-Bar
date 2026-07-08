@@ -268,6 +268,55 @@ public sealed class AppHostTests
     }
 
     [Fact]
+    public async Task InstallLatestUpdateNowAsync_RecordsInstallStatusAndLogsResult()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        var config = AppConfig.CreateDefault();
+        var diagnostics = new RecordingDiagnosticsLog();
+        var latestInstall = new FakeLatestUpdateInstallService(LaunchedLatestUpdate(paths));
+        var host = new AppHost(
+            new ImmediateDispatcher(),
+            new AppHostServices(
+                paths,
+                new InMemoryConfigStore(config),
+                new FakeRefreshService([]),
+                new FakeTrayIconService(),
+                diagnostics,
+                new FakeDiagnosticsExportService(paths),
+                new FakeDiagnosticsSummaryService(paths),
+                new FakeHistorySummaryService(),
+                new FakeDataMaintenanceService(paths),
+                new FakeSecretStore(),
+                new FakeStartupRegistrationService(),
+                new FakeWindowActivator(),
+                new FakeExitService(),
+                LatestUpdateInstallService: latestInstall));
+
+        var result = await host.InstallLatestUpdateNowAsync(
+            restartAfterInstall: true,
+            CancellationToken.None);
+
+        Assert.Equal(LatestUpdateInstallStatus.Launched, result.Status);
+        Assert.Equal(1, latestInstall.InstallCount);
+        Assert.True(latestInstall.LastRequest?.RestartAfterInstall);
+        Assert.False(string.IsNullOrWhiteSpace(latestInstall.LastRequest?.CurrentVersion));
+        Assert.False(string.IsNullOrWhiteSpace(latestInstall.LastRequest?.InstallDirectory));
+        Assert.True(latestInstall.LastRequest?.ProcessIdToWait > 0);
+        Assert.Equal("InstallLaunched", config.Updates.LastStatus);
+        Assert.Equal("Latest update install script launched.", config.Updates.LastMessage);
+        Assert.Equal("0.1.0", config.Updates.LastCurrentVersion);
+        Assert.Equal("0.2.0", config.Updates.LastLatestVersion);
+        Assert.Equal(Path.Combine(paths.UpdatesDirectory, "WinAIUsageBar-0.2.0-win-x64.zip"), config.Updates.LastPackagePath);
+        Assert.Equal(Path.Combine(paths.UpdatesDirectory, "install-1", "apply-update.ps1"), config.Updates.LastInstallScriptPath);
+        Assert.Equal("0.2.0", config.Updates.LastInstallLaunchedVersion);
+        Assert.NotNull(config.Updates.LastCheckedAt);
+        Assert.Contains(diagnostics.InfoMessages, message => message.StartsWith(
+            "Manual latest update install result: Launched - ",
+            StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task SecretMethods_UseInjectedSecretStoreWithoutLoggingValues()
     {
         var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
@@ -579,6 +628,36 @@ public sealed class AppHostTests
                 "WinAIUsageBar-0.2.0-win-x64.zip.sha256",
                 new Uri("https://example.test/package.zip.sha256"),
                 128));
+    }
+
+    private static LatestUpdateInstallResult LaunchedLatestUpdate(AppDataPaths paths)
+    {
+        return new LatestUpdateInstallResult(
+            LatestUpdateInstallStatus.Launched,
+            "Latest update install script launched.",
+            AvailableUpdateCheck(),
+            new UpdateDownloadResult(
+                UpdateDownloadStatus.Downloaded,
+                "downloaded",
+                Path.Combine(paths.UpdatesDirectory, "WinAIUsageBar-0.2.0-win-x64.zip"),
+                Path.Combine(paths.UpdatesDirectory, "WinAIUsageBar-0.2.0-win-x64.zip.sha256"),
+                ExpectedSha256: new string('a', 64),
+                ActualSha256: new string('a', 64)),
+            new UpdateInstallPreparationResult(
+                UpdateInstallPreparationStatus.Prepared,
+                "prepared",
+                Path.Combine(paths.UpdatesDirectory, "install-1", "apply-update.ps1"),
+                @"powershell -ExecutionPolicy Bypass -File apply-update.ps1",
+                Path.Combine(paths.UpdatesDirectory, "WinAIUsageBar-0.2.0-win-x64.zip"),
+                AppContext.BaseDirectory,
+                Path.Combine(paths.UpdatesDirectory, "install-1", "staging"),
+                Path.Combine(paths.UpdatesDirectory, "install-1", "backup")),
+            new UpdateInstallLaunchResult(
+                UpdateInstallLaunchStatus.Launched,
+                "launched",
+                Path.Combine(paths.UpdatesDirectory, "install-1", "apply-update.ps1"),
+                @"powershell -NoProfile -ExecutionPolicy Bypass -File apply-update.ps1",
+                ProcessId: 4321));
     }
 
     private sealed class ImmediateDispatcher : IAppDispatcher
@@ -929,6 +1008,23 @@ public sealed class AppHostTests
             cancellationToken.ThrowIfCancellationRequested();
             CheckCount++;
             Assert.False(string.IsNullOrWhiteSpace(currentVersion));
+            return Task.FromResult(result);
+        }
+    }
+
+    private sealed class FakeLatestUpdateInstallService(LatestUpdateInstallResult result) : ILatestUpdateInstallService
+    {
+        public int InstallCount { get; private set; }
+
+        public LatestUpdateInstallRequest? LastRequest { get; private set; }
+
+        public Task<LatestUpdateInstallResult> InstallLatestAsync(
+            LatestUpdateInstallRequest request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            InstallCount++;
+            LastRequest = request;
             return Task.FromResult(result);
         }
     }

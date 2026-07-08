@@ -60,6 +60,12 @@ public static class AppCompositionRoot
         var updateDownloader = new UpdatePackageDownloader();
         var updatePreparation = new UpdateInstallPreparationService(paths);
         var updateLauncher = new UpdateInstallLaunchService(paths);
+        var latestUpdateInstallService = new LatestUpdateInstallService(
+            updateCheck,
+            updateDownloader,
+            updatePreparation,
+            updateLauncher,
+            paths);
         var startupUpdateService = new StartupUpdateService(
             configStore,
             updateCheck,
@@ -99,7 +105,8 @@ public static class AppCompositionRoot
             configBackupRestoreService,
             configResetService,
             startupUpdateService,
-            updateCheck);
+            updateCheck,
+            latestUpdateInstallService);
     }
 }
 
@@ -121,7 +128,8 @@ public sealed record AppHostServices(
     IConfigBackupRestoreService? ConfigBackupRestoreService = null,
     IConfigResetService? ConfigResetService = null,
     IStartupUpdateService? StartupUpdateService = null,
-    IReleaseUpdateCheckService? UpdateCheckService = null);
+    IReleaseUpdateCheckService? UpdateCheckService = null,
+    ILatestUpdateInstallService? LatestUpdateInstallService = null);
 
 public interface IAppDispatcher
 {
