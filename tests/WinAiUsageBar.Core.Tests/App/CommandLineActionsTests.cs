@@ -572,6 +572,58 @@ public sealed class CommandLineActionsTests
         Assert.Contains("hash mismatch", result.Output, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task RunStartupUpdateAsync_FormatsDisabledResultWithCurrentVersion()
+    {
+        var service = new FakeStartupUpdateService(new StartupUpdateResult(
+            StartupUpdateStatus.Disabled,
+            "Startup update check is disabled.",
+            LatestVersion: null,
+            PackagePath: null,
+            InstallScriptPath: null));
+
+        var result = await CommandLineActions.RunStartupUpdateAsync(
+            service,
+            new AppInfo("WinAI Usage Bar", "0.1.4.0", "0.1.4"),
+            installDirectory: @"C:\App",
+            processIdToWait: 1234,
+            CancellationToken.None);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(1, service.RunCount);
+        Assert.Equal("0.1.4", service.LastRequest?.CurrentVersion);
+        Assert.Equal(@"C:\App", service.LastRequest?.InstallDirectory);
+        Assert.Equal(1234, service.LastRequest?.ProcessIdToWait);
+        Assert.Contains("Startup update check", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Status: Disabled", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Current version: 0.1.4", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Latest version: n/a", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RunStartupUpdateAsync_FormatsInstallLaunchedResult()
+    {
+        var service = new FakeStartupUpdateService(new StartupUpdateResult(
+            StartupUpdateStatus.InstallLaunched,
+            "Update package downloaded, verified, prepared, and launched for install.",
+            LatestVersion: "0.2.0",
+            PackagePath: @"C:\Updates\WinAIUsageBar-0.2.0-win-x64.zip",
+            InstallScriptPath: @"C:\Updates\install-1\apply-update.ps1"));
+
+        var result = await CommandLineActions.RunStartupUpdateAsync(
+            service,
+            new AppInfo("WinAI Usage Bar", "0.1.4.0", "0.1.4"),
+            installDirectory: @"C:\App",
+            processIdToWait: 1234,
+            CancellationToken.None);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("Status: InstallLaunched", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Latest version: 0.2.0", result.Output, StringComparison.Ordinal);
+        Assert.Contains(@"Package path: C:\Updates\WinAIUsageBar-0.2.0-win-x64.zip", result.Output, StringComparison.Ordinal);
+        Assert.Contains(@"Install script: C:\Updates\install-1\apply-update.ps1", result.Output, StringComparison.Ordinal);
+    }
+
     private static AppDataPaths TestPaths()
     {
         return new AppDataPaths(Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N")));
@@ -701,6 +753,23 @@ public sealed class CommandLineActionsTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             InstallCount++;
+            LastRequest = request;
+            return Task.FromResult(result);
+        }
+    }
+
+    private sealed class FakeStartupUpdateService(StartupUpdateResult result) : IStartupUpdateService
+    {
+        public int RunCount { get; private set; }
+
+        public StartupUpdateRequest? LastRequest { get; private set; }
+
+        public Task<StartupUpdateResult> RunAsync(
+            StartupUpdateRequest request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            RunCount++;
             LastRequest = request;
             return Task.FromResult(result);
         }

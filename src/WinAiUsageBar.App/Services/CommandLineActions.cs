@@ -319,6 +319,49 @@ public static class CommandLineActions
             isFailure ? 1 : 0);
     }
 
+    public static async Task<CommandLineActionResult> RunStartupUpdateAsync(CancellationToken cancellationToken)
+    {
+        var paths = AppDataPaths.CreateDefault();
+        var configStore = new JsonAppConfigStore(paths);
+        var updateCheck = new ReleaseUpdateCheckService(new GitHubLatestReleaseClient());
+        var downloader = new UpdatePackageDownloader();
+        var preparation = new UpdateInstallPreparationService(paths);
+        var launcher = new UpdateInstallLaunchService(paths);
+        var service = new StartupUpdateService(
+            configStore,
+            updateCheck,
+            downloader,
+            preparation,
+            launcher,
+            paths);
+
+        return await RunStartupUpdateAsync(
+            service,
+            AppInfoProvider.Get(),
+            installDirectory: AppContext.BaseDirectory,
+            processIdToWait: Environment.ProcessId,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public static async Task<CommandLineActionResult> RunStartupUpdateAsync(
+        IStartupUpdateService service,
+        AppInfo appInfo,
+        string installDirectory,
+        int processIdToWait,
+        CancellationToken cancellationToken)
+    {
+        var currentVersion = appInfo.InformationalVersion;
+        var result = await service.RunAsync(
+            new StartupUpdateRequest(
+                currentVersion,
+                installDirectory,
+                processIdToWait),
+            cancellationToken).ConfigureAwait(false);
+        return new CommandLineActionResult(
+            CommandLineStartupUpdateFormatter.Format(result, currentVersion),
+            0);
+    }
+
     private static string ResolveCurrentVersion(AppInfo appInfo, string? currentVersionOverride)
     {
         return string.IsNullOrWhiteSpace(currentVersionOverride)

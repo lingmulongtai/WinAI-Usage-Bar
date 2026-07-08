@@ -61,6 +61,7 @@ public sealed class CommandLineHandlerTests
         Assert.Contains("--prepare-update-install", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--launch-prepared-update", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--install-latest-update", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--run-startup-update-check", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--prune-support-artifacts", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--keep-newest <N>", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--export-config-backup", output.ToString(), StringComparison.Ordinal);
@@ -904,6 +905,90 @@ public sealed class CommandLineHandlerTests
         Assert.True(result.Handled);
         Assert.Equal(2, result.ExitCode);
         Assert.Contains("unavailable", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_RunsStartupUpdateCheck()
+    {
+        using var output = new StringWriter();
+        var runCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--run-startup-update-check"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            runStartupUpdate: cancellationToken =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                runCount++;
+                return Task.FromResult(new CommandLineActionResult("startup update body", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(1, runCount);
+        Assert.Contains("startup update body", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ReturnsErrorWhenStartupUpdateCheckIsUnavailable()
+    {
+        using var error = new StringWriter();
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--run-startup-update-check"],
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains("unavailable", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ReturnsErrorWhenStartupUpdateCheckHasOptions()
+    {
+        using var error = new StringWriter();
+        var runCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--run-startup-update-check", "--current-version", "0.1.2"],
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            runStartupUpdate: _ =>
+            {
+                runCount++;
+                return Task.FromResult(new CommandLineActionResult("should not run", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Equal(0, runCount);
+        Assert.Contains("does not accept options", error.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]

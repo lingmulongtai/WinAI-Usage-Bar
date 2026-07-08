@@ -35,11 +35,11 @@ Overall:
 - Diagnostics exports redact common secret shapes and exclude `secrets/`.
 - Config, snapshots, history, diagnostics, and maintenance flows are all represented in code and tests.
 - CI now builds, tests, publishes, smoke-tests app service composition, packages, and uploads artifacts on `main`.
-- The CLI surface gives useful non-UI checks: help, version, smoke test with app service composition and refresh pipeline coverage, diagnostics export, config backup export, health report with storage pressure guidance, recovery guidance, launch targets, and repair hints, provider catalog, provider CLI override setting, support artifact pruning, update checks, verified update downloads, staged install script preparation, guarded prepared-script launch, explicit latest-update install orchestration, and headless refresh-once.
+- The CLI surface gives useful non-UI checks: help, version, smoke test with app service composition and refresh pipeline coverage, diagnostics export, config backup export, health report with storage pressure guidance, recovery guidance, launch targets, and repair hints, provider catalog, provider CLI override setting, support artifact pruning, update checks, verified update downloads, staged install script preparation, guarded prepared-script launch, explicit latest-update install orchestration, headless startup update policy execution, and headless refresh-once.
 - Release readiness checks now cover version metadata, changelog, audit date, published-app smoke test, package presence, installer presence, and checksum validity.
 - The repo now has an Inno Setup build path, checksum generation, CI artifact upload, and release asset wiring for setup executables.
 - `v0.1.4` is published as the latest release with English release notes plus zip, zip checksum, setup executable, and setup checksum assets, and the latest-release endpoint resolves it correctly.
-- Refresh settings can run a manual latest-release check or explicitly launch the confirmation-gated safe latest-update install flow, while startup update policy checks releases on a conservative interval, can download verified packages, can launch guarded install scripts, and avoids repeatedly launching the same release version.
+- Refresh settings can run a manual latest-release check or explicitly launch the confirmation-gated safe latest-update install flow, while startup update policy checks releases on a conservative interval, can download verified packages, can launch guarded install scripts, avoids repeatedly launching the same release version, and can now be exercised once from CLI without opening WinUI. The headless startup policy command has passed an isolated no-update plus cooldown dogfood run.
 - Generated update apply scripts now back up by copying, restore from backup if the install copy phase fails, reject unsafe archive entries before an install script is prepared, and are written with a UTF-8 BOM so Windows PowerShell 5.1 can read non-ASCII package, staging, backup, and install paths.
 - `WINAIUSAGEBAR_APPDATA` lets CLI dogfooding run against isolated app data instead of the user's normal `%AppData%\WinAiUsageBar` tree.
 - Update CLI commands now support `--current-version <version>` for headless dogfooding of older-version update paths without changing assembly metadata or normal startup/UI behavior.
@@ -132,7 +132,7 @@ The weak point is value density. A usage bar is only as useful as the data it ca
    Even a minimal app-start plus window activation check would catch major WinUI regressions.
 
 9. Dogfood the startup update policy.
-   The app can now check GitHub release metadata on startup with a cooldown and optionally download or launch a prepared install script without repeating the same release launch. Next it needs real release-to-release testing and a more explicit in-app confirmation story before wider use.
+   The app can now check GitHub release metadata on startup with a cooldown and optionally download or launch a prepared install script without repeating the same release launch. A headless isolated no-update/cooldown run has passed. Next it needs real release-to-release startup-policy testing and a more explicit in-app confirmation story before wider use.
 
 10. Keep release readiness gates strict as distribution matures.
    Current gates cover metadata, audit date, smoke test, package, installer, checksum, and optional manual verification report evidence.

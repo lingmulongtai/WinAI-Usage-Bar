@@ -54,7 +54,8 @@ public static class CommandLineHandler
         Func<CommandLinePrepareUpdateInstallOptions, CancellationToken, Task<CommandLineActionResult>>? prepareUpdateInstall = null,
         Func<CommandLineLaunchPreparedUpdateOptions, CancellationToken, Task<CommandLineActionResult>>? launchPreparedUpdate = null,
         Func<CommandLineInstallLatestUpdateOptions, CancellationToken, Task<CommandLineActionResult>>? installLatestUpdate = null,
-        Func<CancellationToken, Task<CommandLineActionResult>>? exportConfigBackup = null)
+        Func<CancellationToken, Task<CommandLineActionResult>>? exportConfigBackup = null,
+        Func<CancellationToken, Task<CommandLineActionResult>>? runStartupUpdate = null)
     {
         if (args.Count == 0)
         {
@@ -280,6 +281,31 @@ public static class CommandLineHandler
             return new CommandLineHandleResult(Handled: true, result.ExitCode);
         }
 
+        if (args.Count >= 1
+            && string.Equals(args[0].Trim(), "--run-startup-update-check", StringComparison.OrdinalIgnoreCase))
+        {
+            if (runStartupUpdate is null)
+            {
+                await error.WriteLineAsync(
+                    "--run-startup-update-check is unavailable in this host.".AsMemory(),
+                    cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            if (args.Count != 1)
+            {
+                await error.WriteLineAsync(
+                    "--run-startup-update-check does not accept options.".AsMemory(),
+                    cancellationToken).ConfigureAwait(false);
+                await error.WriteLineAsync(CreateHelpText().AsMemory(), cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var result = await runStartupUpdate(cancellationToken).ConfigureAwait(false);
+            await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, result.ExitCode);
+        }
+
         if (args.Count != 1)
         {
             await WriteUnknownArgumentsAsync(args, error, cancellationToken).ConfigureAwait(false);
@@ -364,7 +390,7 @@ public static class CommandLineHandler
         WinAI Usage Bar
 
         Usage:
-          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--export-config-backup|--health-report|--refresh-once|--set-provider-cli-override|--provider-catalog|--check-for-updates|--download-update|--launch-prepared-update|--install-latest-update]
+          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--export-config-backup|--health-report|--refresh-once|--set-provider-cli-override|--provider-catalog|--check-for-updates|--download-update|--launch-prepared-update|--install-latest-update|--run-startup-update-check]
           WinAiUsageBar.App.exe --refresh-once --provider <ProviderId> [--source <DataSourceKind>]
           WinAiUsageBar.App.exe --set-provider-cli-override --provider <ProviderId> --command <path-or-command>
           WinAiUsageBar.App.exe --prune-support-artifacts [--keep-newest <N>]
@@ -412,6 +438,8 @@ public static class CommandLineHandler
           --script <path>       Prepared update install script to launch.
           --install-latest-update
                                 Check, download, verify, prepare, and launch the latest update install script.
+          --run-startup-update-check
+                                Run the configured startup update policy once without opening UI.
           --validate-config-backup <path>
                                 Validate a config backup without applying it.
           --restore-config-backup <path> --confirm

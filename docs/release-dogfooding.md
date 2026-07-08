@@ -138,6 +138,45 @@ $env:WINAIUSAGEBAR_APPDATA = "$pwd\artifacts\update-dogfood\override-appdata"
 
 This override is for dogfooding only. It is not persisted and does not affect WinUI or startup update checks.
 
+## Startup Update Policy CLI Dogfood
+
+Use this helper to run the configured startup update policy once without opening WinUI:
+
+```powershell
+$env:WINAIUSAGEBAR_APPDATA = "$pwd\artifacts\update-dogfood\startup-policy-appdata"
+.\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --run-startup-update-check
+Remove-Item Env:\WINAIUSAGEBAR_APPDATA
+```
+
+This command uses the real app version and the current config under the selected app-data root. It intentionally does not accept `--current-version`; older-version update paths belong to the explicit update dogfood helpers above.
+
+## 2026-07-08 - Startup Update Policy CLI No-Update And Cooldown
+
+Result: passed.
+
+What was checked:
+
+- Ran current debug build with isolated `WINAIUSAGEBAR_APPDATA` under `artifacts/startup-update-dogfood`.
+- Ran `--run-startup-update-check` twice.
+- Confirmed the first run checks the real latest-release endpoint using the real app version.
+- Confirmed the second run skips because the startup update cooldown is still fresh.
+- Confirmed the isolated `config.json` records `lastStatus`, `lastMessage`, `lastCurrentVersion`, `lastLatestVersion`, and `lastCheckedAt`.
+
+Observed output summary:
+
+```text
+First run:
+Status: NoUpdate
+Message: The current app version is up to date.
+Current version: 0.1.4+6b6c81be95e60d864227316f2b72f3ec04598548
+Latest version: 0.1.4
+
+Second run:
+Status: SkippedRecentCheck
+Message: Startup update check skipped. Last check is still fresh for about 24 hours.
+Latest version: 0.1.4
+```
+
 For the full isolated update path, use the helper:
 
 ```powershell
