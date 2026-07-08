@@ -50,7 +50,7 @@ Overall:
 - The UI is functional but still not visually or ergonomically proven with extended daily use.
 - Tray behavior, taskbar-near placement, topmost widget behavior, and notification delivery need real Windows manual testing.
 - There is no installer, MSIX, code signing, auto-update, or uninstall story.
-- First-run setup has a basic checklist, but it is not yet a full guided wizard with provider-specific decisions and safe setup actions.
+- First-run setup has a basic checklist with action targets, but it is not yet a full guided wizard with provider-specific decisions.
 - Config backup and reset recovery now exist with basic decision guidance, but they still need repeated dogfooding before they can be treated as comfort features.
 - Local storage growth is visible for history, backups, and diagnostics logs, but the maintenance flow still needs real-use tuning.
 - Local CLI discovery can still be messy on Windows. Provider Details has generic CLI repair guidance, but deeper provider-specific repair checks are still needed for future CLI-backed providers.
@@ -96,7 +96,7 @@ The weak point is value density. A usage bar is only as useful as the data it ca
    The page exists now, but it needs real snapshot data and daily-use feedback.
 
 4. Dogfood the guided first-run setup checklist and decide whether it should become a deeper wizard.
-   A new user can see provider, source mode, and API-reference setup state now, but still has to jump into settings to act.
+   A new user can jump to Providers or Privacy & Data from checklist items now, but the flow still does not apply provider-specific setup decisions inline.
 
 5. Dogfood config backup, restore, and reset.
    CLI restore, latest-backup in-app restore, and reset-to-default recovery exist now, but they need repeated real-use recovery checks before they become comfort features.

@@ -33,7 +33,7 @@ Gemini and OpenCode Zen support provider-specific API settings for future integr
 - Tray left-click opens a compact panel.
 - Tray right-click menu includes Show, Show Widget, Refresh Now, Settings, Exit.
 - Main settings window contains Overview, Providers, Provider Details, Appearance, Widget, History, Refresh, Privacy & Data, and About pages.
-- Overview shows a first-run setup checklist until the user marks setup complete.
+- Overview shows a first-run setup checklist with action buttons until the user marks setup complete.
 - Compact panel shows enabled provider cards.
 - Widget window shows one to three provider cards and remembers size and position.
 - Widget settings validate that one to three providers are selected and expose show-on-startup and always-on-top toggles.
@@ -69,7 +69,7 @@ The History page summarizes retained `history.ndjson` data without displaying ra
 
 Provider repair guidance is derived from provider ID, health, and source kind. It should suggest safe next steps such as reconnecting credentials through Privacy & Data, checking CLI availability, switching to Manual mode, exporting diagnostics, or refreshing again. It must not display secret names, secret values, tokens, raw diagnostics, or configured account scope values.
 
-The first-run setup checklist guides users through enabling providers, choosing supported source modes, and preparing API credential or scope references when an API-backed source needs them. Checklist text may describe provider setup state, but it must not display secret names, secret values, or account scope values.
+The first-run setup checklist guides users through enabling providers, choosing supported source modes, and preparing API credential or scope references when an API-backed source needs them. Checklist text may describe provider setup state, but it must not display secret names, secret values, or account scope values. Provider and source-mode checklist actions should navigate to Providers. Missing API-reference checklist actions should navigate to Privacy & Data first so users can save secret values before storing only secret-name references in provider settings.
 
 ## Storage
 

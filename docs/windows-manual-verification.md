@@ -53,7 +53,7 @@ Record the environment for each run.
 
 | Check | Expected result | Pass | Notes |
 | --- | --- | --- | --- |
-| Open Overview | Provider cards, actions, and first-run setup checklist render |  |  |
+| Open Overview | Provider cards, actions, and first-run setup checklist action buttons render |  |  |
 | Open Providers | Provider editors render and save validation works |  |  |
 | Open Provider Details | Detailed snapshot rows and repair guidance render without secret values |  |  |
 | Open Appearance | Theme and start-at-login controls render |  |  |

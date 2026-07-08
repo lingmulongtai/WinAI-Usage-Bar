@@ -51,6 +51,10 @@ public sealed class FirstRunSetupViewModelTests
         Assert.True(apiReferences.IsComplete);
         Assert.Contains("2 provider", chooseProviders.StateText, StringComparison.Ordinal);
         Assert.Contains("No API-backed providers", apiReferences.StateText, StringComparison.Ordinal);
+        Assert.Equal("Open Providers", chooseProviders.ActionButtonText);
+        Assert.Equal("Providers", chooseProviders.ActionNavigationTag);
+        Assert.Equal("Providers", sourceModes.ActionNavigationTag);
+        Assert.Equal("Providers", apiReferences.ActionNavigationTag);
     }
 
     [Fact]
@@ -67,6 +71,8 @@ public sealed class FirstRunSetupViewModelTests
         Assert.False(sourceModes.IsComplete);
         Assert.Contains("1 enabled provider", sourceModes.StateText, StringComparison.Ordinal);
         Assert.Contains("Manual mode", sourceModes.ActionText, StringComparison.Ordinal);
+        Assert.Equal("Open Providers", sourceModes.ActionButtonText);
+        Assert.Equal("Providers", sourceModes.ActionNavigationTag);
     }
 
     [Fact]
@@ -91,6 +97,8 @@ public sealed class FirstRunSetupViewModelTests
 
         Assert.False(apiReferences.IsComplete);
         Assert.Contains("1 API-backed provider", apiReferences.StateText, StringComparison.Ordinal);
+        Assert.Equal("Open Privacy & Data", apiReferences.ActionButtonText);
+        Assert.Equal("Privacy & Data", apiReferences.ActionNavigationTag);
         Assert.DoesNotContain("gemini-api-key", checklistText, StringComparison.Ordinal);
         Assert.DoesNotContain("my-org", checklistText, StringComparison.Ordinal);
     }
@@ -114,6 +122,8 @@ public sealed class FirstRunSetupViewModelTests
 
         Assert.True(apiReferences.IsComplete);
         Assert.Contains("required non-secret references", apiReferences.StateText, StringComparison.Ordinal);
+        Assert.Equal("Open Providers", apiReferences.ActionButtonText);
+        Assert.Equal("Providers", apiReferences.ActionNavigationTag);
         Assert.DoesNotContain("github-copilot-pat", checklistText, StringComparison.Ordinal);
         Assert.DoesNotContain("my-enterprise", checklistText, StringComparison.Ordinal);
     }

@@ -63,14 +63,18 @@ public sealed class FirstRunSetupViewModel(
                     enabled.Count > 0
                         ? $"{enabled.Count} provider(s) enabled."
                         : "No providers are enabled yet.",
-                    "Open Providers and enable the AI services you want to track."),
+                    "Open Providers and enable the AI services you want to track.",
+                    "Open Providers",
+                    "Providers"),
                 new FirstRunSetupChecklistItem(
                     "Choose supported source modes",
                     enabled.Count > 0 && unsupportedSources == 0,
                     unsupportedSources == 0
                         ? "Enabled providers use supported source modes."
                         : $"{unsupportedSources} enabled provider(s) need a supported source mode.",
-                    "Use Manual mode when an automatic source is not ready."),
+                    "Use Manual mode when an automatic source is not ready.",
+                    "Open Providers",
+                    "Providers"),
                 new FirstRunSetupChecklistItem(
                     "Prepare API references",
                     missingApiReferences == 0,
@@ -79,7 +83,9 @@ public sealed class FirstRunSetupViewModel(
                         : missingApiReferences == 0
                             ? "API-backed providers have the required non-secret references."
                             : $"{missingApiReferences} API-backed provider(s) need credential or scope references.",
-                    "Save secret values from Privacy & Data, then store only secret names in provider settings.")
+                    "Save secret values from Privacy & Data, then store only secret names in provider settings.",
+                    missingApiReferences == 0 ? "Open Providers" : "Open Privacy & Data",
+                    missingApiReferences == 0 ? "Providers" : "Privacy & Data")
             ];
         }
     }
@@ -121,4 +127,6 @@ public sealed record FirstRunSetupChecklistItem(
     string Title,
     bool IsComplete,
     string StateText,
-    string ActionText);
+    string ActionText,
+    string ActionButtonText,
+    string ActionNavigationTag);

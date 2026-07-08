@@ -164,6 +164,9 @@ public sealed class MainWindow : Window
             stack.Children.Add(UiFactory.Text($"{state}: {item.Title}", 12, FontWeights.SemiBold));
             stack.Children.Add(UiFactory.Text(item.StateText, 12));
             stack.Children.Add(UiFactory.Text(item.ActionText, 12));
+            var actionButton = new Button { Content = item.ActionButtonText };
+            actionButton.Click += (_, _) => SelectNavigationItem(item.ActionNavigationTag);
+            stack.Children.Add(actionButton);
         }
 
         foreach (var line in viewModel.ProviderLines)
