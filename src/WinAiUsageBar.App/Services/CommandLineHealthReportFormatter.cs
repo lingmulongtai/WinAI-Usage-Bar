@@ -13,7 +13,8 @@ public static class CommandLineHealthReportFormatter
         DiagnosticsSummary diagnostics,
         HistorySummary history,
         DateTimeOffset generatedAt,
-        CliEnvironmentReport? cliEnvironment = null)
+        CliEnvironmentReport? cliEnvironment = null,
+        IReadOnlyList<StoragePressureGuidanceItem>? storagePressure = null)
     {
         var builder = new StringBuilder();
         builder.AppendLine($"{appInfo.ProductName} {appInfo.InformationalVersion}");
@@ -40,6 +41,19 @@ public static class CommandLineHealthReportFormatter
         builder.AppendLine($"  Diagnostics exports: {diagnostics.DiagnosticsExportCount} export(s), {FormatBytes(diagnostics.DiagnosticsExportTotalBytes)} total");
         builder.AppendLine($"  Latest diagnostics export: {diagnostics.LatestDiagnosticsExportPath ?? "n/a"}");
         builder.AppendLine($"  Latest diagnostics export time: {FormatDate(diagnostics.LatestDiagnosticsExportCreatedAt)}");
+
+        if (storagePressure is { Count: > 0 })
+        {
+            builder.AppendLine();
+            builder.AppendLine("Storage pressure");
+            foreach (var item in storagePressure)
+            {
+                builder.AppendLine($"  {item.Title}: {item.Level}");
+                builder.AppendLine($"    {item.Detail}");
+                builder.AppendLine($"    {item.Recommendation}");
+            }
+        }
+
         builder.AppendLine();
         builder.AppendLine("Snapshots");
         builder.AppendLine($"  Cached snapshots: {diagnostics.CachedSnapshotCount}");

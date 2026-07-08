@@ -29,14 +29,24 @@ public static class CommandLineActions
     public static async Task<string> CreateHealthReportAsync(CancellationToken cancellationToken)
     {
         var paths = AppDataPaths.CreateDefault();
+        return await CreateHealthReportAsync(cancellationToken, paths).ConfigureAwait(false);
+    }
+
+    public static async Task<string> CreateHealthReportAsync(
+        CancellationToken cancellationToken,
+        AppDataPaths paths,
+        ICliEnvironmentService? cliEnvironmentService = null)
+    {
         var configStore = new JsonAppConfigStore(paths);
         var snapshotStore = new JsonSnapshotStore(paths);
         var diagnosticsService = new DiagnosticsSummaryService(paths, configStore, snapshotStore);
         var historyService = new HistorySummaryService(paths);
-        var cliEnvironmentService = new CliEnvironmentService();
+        var storagePressureService = new StoragePressureGuidanceService();
+        cliEnvironmentService ??= new CliEnvironmentService();
 
         var diagnostics = await diagnosticsService.GetSummaryAsync(cancellationToken).ConfigureAwait(false);
         var history = await historyService.GetSummaryAsync(cancellationToken).ConfigureAwait(false);
+        var storagePressure = storagePressureService.CreateGuidance(diagnostics);
         var cliEnvironment = await cliEnvironmentService.GetReportAsync(HealthReportCliChecks, cancellationToken)
             .ConfigureAwait(false);
 
@@ -45,7 +55,8 @@ public static class CommandLineActions
             diagnostics,
             history,
             DateTimeOffset.Now,
-            cliEnvironment);
+            cliEnvironment,
+            storagePressure);
     }
 
     public static string CreateProviderCatalog()

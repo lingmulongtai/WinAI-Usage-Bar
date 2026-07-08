@@ -88,8 +88,8 @@ public sealed class StoragePressureGuidanceServiceTests
         Assert.Equal(StoragePressureLevel.High, backups.Level);
         Assert.Equal(StoragePressureLevel.High, exports.Level);
         Assert.Equal(StoragePressureLevel.High, log.Level);
-        Assert.Contains("archive or delete older config backups", backups.Recommendation, StringComparison.Ordinal);
-        Assert.Contains("delete older diagnostics exports", exports.Recommendation, StringComparison.Ordinal);
+        Assert.Contains("--prune-support-artifacts", backups.Recommendation, StringComparison.Ordinal);
+        Assert.Contains("--prune-support-artifacts", exports.Recommendation, StringComparison.Ordinal);
         Assert.Contains("prune the old diagnostics log", log.Recommendation, StringComparison.Ordinal);
         Assert.DoesNotContain("secrets", visibleText, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("token", visibleText, StringComparison.OrdinalIgnoreCase);

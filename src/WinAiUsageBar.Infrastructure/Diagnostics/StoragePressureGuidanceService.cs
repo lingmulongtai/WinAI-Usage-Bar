@@ -77,8 +77,8 @@ public sealed class StoragePressureGuidanceService : IStoragePressureGuidanceSer
 
         var recommendation = level switch
         {
-            StoragePressureLevel.High => "Open the data folder, keep the newest known-good backups, and archive or delete older config backups manually.",
-            StoragePressureLevel.Watch => "Review config-backups/ during maintenance and keep backups that correspond to known-good app states.",
+            StoragePressureLevel.High => "Use Prune Old Backups or --prune-support-artifacts, then archive older config backups if you need custom retention.",
+            StoragePressureLevel.Watch => "Review config-backups/ during maintenance and prune older backups after confirming a known-good backup exists.",
             _ => "No action needed. Keep at least one known-good config backup before changing settings."
         };
 
@@ -122,8 +122,8 @@ public sealed class StoragePressureGuidanceService : IStoragePressureGuidanceSer
 
         var recommendation = level switch
         {
-            StoragePressureLevel.High => "Archive needed support bundles, then delete older diagnostics exports from the data folder.",
-            StoragePressureLevel.Watch => "Review diagnostics-exports/ during maintenance and keep only bundles tied to active investigations.",
+            StoragePressureLevel.High => "Use Prune Old Diagnostics Exports or --prune-support-artifacts, then archive needed support bundles if required.",
+            StoragePressureLevel.Watch => "Review diagnostics-exports/ during maintenance and prune bundles that are not tied to active investigations.",
             _ => "No action needed. Diagnostics exports are within the normal MVP range."
         };
 

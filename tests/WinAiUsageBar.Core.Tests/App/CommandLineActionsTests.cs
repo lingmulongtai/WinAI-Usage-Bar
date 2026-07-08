@@ -1,6 +1,7 @@
 using WinAiUsageBar.App.Services;
 using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Core.Models;
+using WinAiUsageBar.Infrastructure.Process;
 using WinAiUsageBar.Infrastructure.Storage;
 
 namespace WinAiUsageBar.Core.Tests.App;
@@ -135,6 +136,40 @@ public sealed class CommandLineActionsTests
         }
     }
 
+    [Fact]
+    public async Task CreateHealthReportAsync_IncludesStoragePressureGuidance()
+    {
+        var paths = TestPaths();
+        var configStore = new JsonAppConfigStore(paths);
+        var config = AppConfig.CreateDefault();
+        config.HistoryRetention.MaxBytes = 1_000;
+        config.HistoryRetention.MaxDays = 30;
+
+        try
+        {
+            await configStore.SaveAsync(config, CancellationToken.None);
+            await File.WriteAllTextAsync(paths.HistoryPath, new string('x', 95_000));
+
+            var report = await CommandLineActions.CreateHealthReportAsync(
+                CancellationToken.None,
+                paths,
+                new FakeCliEnvironmentService());
+
+            Assert.Contains("Storage pressure", report, StringComparison.Ordinal);
+            Assert.Contains("Retained history: High", report, StringComparison.Ordinal);
+            Assert.Contains("Use Clear History soon", report, StringComparison.Ordinal);
+            Assert.DoesNotContain("secret", report, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("token", report, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            if (Directory.Exists(paths.RootDirectory))
+            {
+                Directory.Delete(paths.RootDirectory, recursive: true);
+            }
+        }
+    }
+
     private static AppDataPaths TestPaths()
     {
         return new AppDataPaths(Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N")));
@@ -150,5 +185,16 @@ public sealed class CommandLineActionsTests
         await File.WriteAllTextAsync(path, content);
         File.SetLastWriteTimeUtc(path, lastWriteTimeUtc);
         return path;
+    }
+
+    private sealed class FakeCliEnvironmentService : ICliEnvironmentService
+    {
+        public Task<CliEnvironmentReport> GetReportAsync(
+            IReadOnlyList<CliCommandCheck> commands,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(new CliEnvironmentReport([]));
+        }
     }
 }

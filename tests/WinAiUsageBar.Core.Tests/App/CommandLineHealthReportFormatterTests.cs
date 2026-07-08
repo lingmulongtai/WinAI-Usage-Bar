@@ -88,13 +88,15 @@ public sealed class CommandLineHealthReportFormatterTests
                 TimedOut: false,
                 StatusMessage: "Not found on PATH.")
         ]);
+        var storagePressure = new StoragePressureGuidanceService().CreateGuidance(diagnostics);
 
         var report = CommandLineHealthReportFormatter.Format(
             new AppInfo("WinAI Usage Bar", "1.2.3.0", "1.2.3"),
             diagnostics,
             history,
             generatedAt,
-            cliEnvironment);
+            cliEnvironment,
+            storagePressure);
 
         Assert.Contains("WinAI Usage Bar 1.2.3", report, StringComparison.Ordinal);
         Assert.Contains("Generated: 2026-07-08 06:45:00 +09:00", report, StringComparison.Ordinal);
@@ -104,6 +106,12 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.Contains("Latest config backup time: 2026-07-08 06:40:00 +09:00", report, StringComparison.Ordinal);
         Assert.Contains("Diagnostics exports: 3 export(s), 8 KB total", report, StringComparison.Ordinal);
         Assert.Contains("Latest diagnostics export time: 2026-07-08 06:40:00 +09:00", report, StringComparison.Ordinal);
+        Assert.Contains("Storage pressure", report, StringComparison.Ordinal);
+        Assert.Contains("Retained history: High", report, StringComparison.Ordinal);
+        Assert.Contains("Use Clear History soon", report, StringComparison.Ordinal);
+        Assert.Contains("Config backups: Ok", report, StringComparison.Ordinal);
+        Assert.Contains("Diagnostics exports: Ok", report, StringComparison.Ordinal);
+        Assert.Contains("Diagnostics log: Ok", report, StringComparison.Ordinal);
         Assert.Contains("Cached snapshots: 2", report, StringComparison.Ordinal);
         Assert.Contains("Entries: 3", report, StringComparison.Ordinal);
         Assert.Contains("Codex: 3 entries, latest Warning, remaining 42.5%, source LocalAppServer", report, StringComparison.Ordinal);
@@ -114,6 +122,8 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.Contains("claude: not found on PATH", report, StringComparison.Ordinal);
         Assert.Contains("config.json: 2 KB", report, StringComparison.Ordinal);
         Assert.Contains("diagnostics.log: Missing", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("secret", report, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("token", report, StringComparison.OrdinalIgnoreCase);
     }
 
     private static DiagnosticsFileSummary FileSummary(

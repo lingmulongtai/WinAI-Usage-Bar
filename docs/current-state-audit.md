@@ -33,7 +33,7 @@ Overall:
 - Diagnostics exports redact common secret shapes and exclude `secrets/`.
 - Config, snapshots, history, diagnostics, and maintenance flows are all represented in code and tests.
 - CI now builds, tests, publishes, smoke-tests app service composition, packages, and uploads artifacts on `main`.
-- The CLI surface gives useful non-UI checks: help, version, smoke test with app service composition and refresh pipeline coverage, diagnostics export, health report with launch targets and repair hints, provider catalog, support artifact pruning, and headless refresh-once.
+- The CLI surface gives useful non-UI checks: help, version, smoke test with app service composition and refresh pipeline coverage, diagnostics export, health report with storage pressure guidance, launch targets, and repair hints, provider catalog, support artifact pruning, and headless refresh-once.
 - Release readiness checks now cover version metadata, changelog, audit date, published-app smoke test, package presence, and checksum validity.
 - Guided first-run checklist state, Provider Details, config backup export, backup validation, confirmed CLI restore, latest-backup in-app restore, and confirmed reset-to-default recovery are implemented.
 - Providers now includes non-secret setup guidance for source choices, Manual fallback, API references, Copilot metrics requirements, and CLI/app-server caveats.
@@ -44,7 +44,7 @@ Overall:
 - Config saves use per-save unique temporary files, avoiding fixed `config.json.tmp` collisions when headless commands are run in parallel.
 - Config backup exports and restore/reset rollback backups use unique temp files and suffix duplicate timestamp names instead of overwriting same-second backups.
 - Diagnostics exports also use create-new writes and suffix duplicate timestamp names instead of overwriting same-second support bundles.
-- Privacy & Data now includes non-secret storage pressure guidance for history, backups, diagnostics exports, and diagnostics logs, plus recovery guidance for backup, restore, reset, and diagnostics export choices.
+- Privacy & Data and `--health-report` now include non-secret storage pressure guidance for history, backups, diagnostics exports, and diagnostics logs, plus recovery guidance in the UI for backup, restore, reset, and diagnostics export choices.
 - Privacy & Data and the CLI can prune old config backups and diagnostics exports while keeping the newest matched files and leaving config, cache, logs, and `secrets/` alone.
 - Windows shell dogfooding now has a concrete manual verification checklist and a timestamped local report script.
 - The issue and commit history is becoming meaningful rather than fake contribution noise.
