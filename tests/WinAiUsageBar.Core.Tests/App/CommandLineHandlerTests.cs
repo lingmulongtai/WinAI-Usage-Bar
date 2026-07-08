@@ -69,6 +69,7 @@ public sealed class CommandLineHandlerTests
         Assert.Contains("--validate-config-backup", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--restore-config-backup", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--restore-latest-config-backup", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--reset-config-to-defaults", output.ToString(), StringComparison.Ordinal);
         Assert.Equal(string.Empty, error.ToString());
     }
 
@@ -1359,6 +1360,94 @@ public sealed class CommandLineHandlerTests
         Assert.True(result.Handled);
         Assert.Equal(2, result.ExitCode);
         Assert.Contains("unavailable", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ResetsConfigToDefaultsWhenConfirmed()
+    {
+        using var output = new StringWriter();
+        var resetCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--reset-config-to-defaults", "--confirm"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            resetConfigToDefaults: cancellationToken =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                resetCount++;
+                return Task.FromResult(new CommandLineActionResult("reset ok", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(1, resetCount);
+        Assert.Contains("reset ok", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ReturnsErrorWhenResetConfigToDefaultsIsUnavailable()
+    {
+        using var error = new StringWriter();
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--reset-config-to-defaults", "--confirm"],
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains("unavailable", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("--reset-config-to-defaults")]
+    [InlineData("--reset-config-to-defaults", "--force")]
+    [InlineData("--reset-config-to-defaults", "--confirm", "--confirm")]
+    public async Task TryHandleAsync_RequiresConfirmForResetConfigToDefaults(params string[] args)
+    {
+        using var error = new StringWriter();
+        var resetCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            args,
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            resetConfigToDefaults: _ =>
+            {
+                resetCount++;
+                return Task.FromResult(new CommandLineActionResult("should not run", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Equal(0, resetCount);
+        Assert.Contains("requires", error.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--confirm", error.ToString(), StringComparison.Ordinal);
     }
 
     [Theory]

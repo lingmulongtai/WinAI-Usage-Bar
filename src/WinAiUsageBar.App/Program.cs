@@ -33,7 +33,8 @@ public static class Program
             installLatestUpdate: CommandLineActions.InstallLatestUpdateAsync,
             exportConfigBackup: CommandLineActions.ExportConfigBackupAsync,
             runStartupUpdate: CommandLineActions.RunStartupUpdateAsync,
-            restoreLatestConfigBackup: CommandLineActions.RestoreLatestConfigBackupAsync)
+            restoreLatestConfigBackup: CommandLineActions.RestoreLatestConfigBackupAsync,
+            resetConfigToDefaults: CommandLineActions.ResetConfigToDefaultsAsync)
             .GetAwaiter()
             .GetResult();
 

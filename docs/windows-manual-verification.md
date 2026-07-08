@@ -122,6 +122,8 @@ Record the environment for each run.
 | Restore config backup from CLI with `--confirm` | Current config is backed up before restore and `secrets/` is unchanged |  |  |
 | Restore latest config backup from CLI with `--restore-latest-config-backup --confirm` | Newest app-owned backup is restored, current config is backed up first, and `secrets/` is unchanged |  |  |
 | Attempt restore without `--confirm` | Command exits non-zero and config is unchanged |  |  |
+| Reset config to defaults from CLI with `--reset-config-to-defaults --confirm` | Current config is backed up, default config is saved, and `secrets/` is unchanged |  |  |
+| Attempt CLI reset without `--confirm` | Command exits non-zero and config is unchanged |  |  |
 
 ## Provider Flows
 

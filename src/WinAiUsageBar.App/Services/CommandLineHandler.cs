@@ -60,7 +60,8 @@ public static class CommandLineHandler
         Func<CommandLineInstallLatestUpdateOptions, CancellationToken, Task<CommandLineActionResult>>? installLatestUpdate = null,
         Func<CancellationToken, Task<CommandLineActionResult>>? exportConfigBackup = null,
         Func<CancellationToken, Task<CommandLineActionResult>>? runStartupUpdate = null,
-        Func<CancellationToken, Task<CommandLineActionResult>>? restoreLatestConfigBackup = null)
+        Func<CancellationToken, Task<CommandLineActionResult>>? restoreLatestConfigBackup = null,
+        Func<CancellationToken, Task<CommandLineActionResult>>? resetConfigToDefaults = null)
     {
         if (args.Count == 0)
         {
@@ -116,6 +117,33 @@ public static class CommandLineHandler
         {
             await error.WriteLineAsync(
                 "Restoring a config backup requires: --restore-config-backup <path> --confirm".AsMemory(),
+                cancellationToken).ConfigureAwait(false);
+            await error.WriteLineAsync(CreateHelpText().AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+        }
+
+        if (args.Count == 2
+            && string.Equals(args[0].Trim(), "--reset-config-to-defaults", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(args[1].Trim(), "--confirm", StringComparison.OrdinalIgnoreCase))
+        {
+            if (resetConfigToDefaults is null)
+            {
+                await error.WriteLineAsync(
+                    "--reset-config-to-defaults is unavailable in this host.".AsMemory(),
+                    cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var result = await resetConfigToDefaults(cancellationToken).ConfigureAwait(false);
+            await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, result.ExitCode);
+        }
+
+        if (args.Count >= 1
+            && string.Equals(args[0].Trim(), "--reset-config-to-defaults", StringComparison.OrdinalIgnoreCase))
+        {
+            await error.WriteLineAsync(
+                "Resetting config to defaults requires: --reset-config-to-defaults --confirm".AsMemory(),
                 cancellationToken).ConfigureAwait(false);
             await error.WriteLineAsync(CreateHelpText().AsMemory(), cancellationToken).ConfigureAwait(false);
             return new CommandLineHandleResult(Handled: true, ExitCode: 2);
@@ -446,7 +474,7 @@ public static class CommandLineHandler
         WinAI Usage Bar
 
         Usage:
-          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--export-config-backup|--health-report|--refresh-once|--set-provider-cli-override|--clear-provider-cli-override|--provider-catalog|--check-for-updates|--download-update|--launch-prepared-update|--install-latest-update|--run-startup-update-check|--restore-latest-config-backup]
+          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--export-config-backup|--health-report|--refresh-once|--set-provider-cli-override|--clear-provider-cli-override|--provider-catalog|--check-for-updates|--download-update|--launch-prepared-update|--install-latest-update|--run-startup-update-check|--restore-latest-config-backup|--reset-config-to-defaults]
           WinAiUsageBar.App.exe --refresh-once --provider <ProviderId> [--source <DataSourceKind>]
           WinAiUsageBar.App.exe --set-provider-cli-override --provider <ProviderId> --command <path-or-command>
           WinAiUsageBar.App.exe --clear-provider-cli-override --provider <ProviderId>
@@ -459,6 +487,7 @@ public static class CommandLineHandler
           WinAiUsageBar.App.exe --validate-config-backup <path>
           WinAiUsageBar.App.exe --restore-config-backup <path> --confirm
           WinAiUsageBar.App.exe --restore-latest-config-backup --confirm
+          WinAiUsageBar.App.exe --reset-config-to-defaults --confirm
 
         Options:
           --help                Show this help text without launching the app.
@@ -506,6 +535,8 @@ public static class CommandLineHandler
                                 Restore a config backup after creating a rollback backup.
           --restore-latest-config-backup --confirm
                                 Restore the newest app-owned config backup after creating a rollback backup.
+          --reset-config-to-defaults --confirm
+                                Reset config.json to defaults after creating a rollback backup.
         """;
     }
 

@@ -742,6 +742,26 @@ public static class CommandLineActions
             cancellationToken,
             paths).ConfigureAwait(false);
     }
+
+    public static async Task<CommandLineActionResult> ResetConfigToDefaultsAsync(
+        CancellationToken cancellationToken)
+    {
+        return await ResetConfigToDefaultsAsync(
+            cancellationToken,
+            AppDataPaths.CreateDefault()).ConfigureAwait(false);
+    }
+
+    public static async Task<CommandLineActionResult> ResetConfigToDefaultsAsync(
+        CancellationToken cancellationToken,
+        AppDataPaths paths)
+    {
+        var configStore = new JsonAppConfigStore(paths);
+        var service = new ConfigResetService(paths, configStore);
+        var result = await service.ResetToDefaultsAsync(cancellationToken).ConfigureAwait(false);
+        return new CommandLineActionResult(
+            CommandLineConfigResetFormatter.Format(result),
+            result.Reset ? 0 : 1);
+    }
 }
 
 public sealed record CommandLineActionResult(

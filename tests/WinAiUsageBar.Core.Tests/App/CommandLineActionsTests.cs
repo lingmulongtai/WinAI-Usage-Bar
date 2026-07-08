@@ -362,6 +362,51 @@ public sealed class CommandLineActionsTests
     }
 
     [Fact]
+    public async Task ResetConfigToDefaultsAsync_BacksUpConfigAndKeepsSecrets()
+    {
+        var paths = TestPaths();
+        var configStore = new JsonAppConfigStore(paths);
+        var config = AppConfig.CreateDefault();
+        config.Appearance.Theme = "Dark";
+        config.Startup.LaunchOnLogin = true;
+        config.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.Gemini)).IsEnabled = true;
+        var secretPath = Path.Combine(paths.SecretsDirectory, "gemini-secret");
+
+        try
+        {
+            await configStore.SaveAsync(config, CancellationToken.None);
+            await File.WriteAllTextAsync(secretPath, "secret-value");
+
+            var result = await CommandLineActions.ResetConfigToDefaultsAsync(
+                CancellationToken.None,
+                paths);
+            var reset = await configStore.LoadAsync(CancellationToken.None);
+            var rollbackBackups = Directory.GetFiles(paths.ConfigBackupsDirectory, "config-backup-before-reset-*.json");
+            var rollbackText = await File.ReadAllTextAsync(rollbackBackups.Single());
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("Config reset: reset", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Rollback backup:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Saved secrets were not deleted", result.Output, StringComparison.Ordinal);
+            Assert.Equal("System", reset.Appearance.Theme);
+            Assert.False(reset.Startup.LaunchOnLogin);
+            Assert.False(reset.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.Gemini)).IsEnabled);
+            Assert.Contains("\"theme\": \"Dark\"", rollbackText, StringComparison.Ordinal);
+            Assert.True(File.Exists(secretPath));
+            Assert.Equal("secret-value", await File.ReadAllTextAsync(secretPath));
+            Assert.DoesNotContain("secret-value", result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("gemini-secret", result.Output, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(paths.RootDirectory))
+            {
+                Directory.Delete(paths.RootDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task CreateHealthReportAsync_IncludesStoragePressureGuidance()
     {
         var paths = TestPaths();
