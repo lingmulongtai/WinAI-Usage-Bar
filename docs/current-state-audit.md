@@ -4,24 +4,26 @@ Date: 2026-07-08
 
 This audit is intentionally strict. The repository has moved past a throwaway scaffold, but it is still an MVP. The design foundation is much stronger than the product completeness.
 
+Latest published release: `v0.1.2`. `main` is currently ahead of that release with the `WINAIUSAGEBAR_APPDATA` dogfooding override.
+
 ## Scorecard
 
 | Area | Score | Read |
 | --- | ---: | --- |
 | Architecture foundation | 8/10 | The layer split is real, testable, and mostly respected. |
 | Provider extensibility | 7/10 | Descriptors, adapters, manual mode, and safe failure states are in place. Real provider depth is still thin. |
-| Security posture | 7/10 | Good defaults around DPAPI, redaction, and no cookie scraping. Needs more adversarial review before wider distribution. |
-| Windows shell integration | 5/10 | Tray, windows, placement, startup registration, and notifications exist, with a manual verification checklist and report scaffold now available. Actual shell behavior still needs hands-on runs. |
+| Security posture | 7.5/10 | Good defaults around DPAPI, redaction, no cookie scraping, checksum verification, guarded update launch, rollback, and unsafe update zip rejection. Needs more adversarial review before wider distribution. |
+| Windows shell integration | 6/10 | Tray, windows, placement, startup registration, and notifications exist, with duplicate notification suppression plus a manual verification checklist and report scaffold. Actual shell behavior still needs hands-on runs. |
 | Product usability | 6/10 | The app now has guided first-run checklist state, provider details, backup export/restore, and recovery checks, but it is still mostly useful with Mock/Manual data today. |
-| Packaging and release | 8/10 | Self-contained publish, zip packaging, checksums, readiness gates, artifacts, release workflow, update-check, verified download, install-script preparation, guarded script launch, explicit latest-update install orchestration, setup installer artifact/release paths, and throttled startup update policy exist. No signing yet. |
+| Packaging and release | 8.5/10 | Self-contained publish, zip packaging, checksums, readiness gates, artifacts, release workflow, published setup assets, update-check, verified download, install-script preparation, rollback-capable guarded script launch, explicit latest-update install orchestration, setup installer artifact/release paths, and throttled startup update policy exist. No signing yet. |
 | Test confidence | 8/10 | Core, infrastructure, view model, CLI, storage, parser, refresh, app-composition smoke, and packaging smoke paths are covered without external CLIs. UI runtime coverage remains limited. |
-| Observability and support | 7/10 | Diagnostics summary, provider repair guidance, recovery guidance, redacted export, health report, and logs are solid for an MVP. No structured crash reports yet. |
+| Observability and support | 7.5/10 | Diagnostics summary, provider repair guidance, recovery guidance, redacted export, health report, isolated app-data dogfooding, and logs are solid for an MVP. No structured crash reports yet. |
 
 Overall:
 
-- Design foundation: about 80-85% of the intended MVP foundation.
-- Personal dogfooding readiness: about 60-65%.
-- Public release readiness: about 35-40%.
+- Design foundation: about 85-90% of the intended MVP foundation.
+- Personal dogfooding readiness: about 70-75%.
+- Public release readiness: about 45-50%.
 
 ## What Is Strong
 
@@ -34,9 +36,12 @@ Overall:
 - Config, snapshots, history, diagnostics, and maintenance flows are all represented in code and tests.
 - CI now builds, tests, publishes, smoke-tests app service composition, packages, and uploads artifacts on `main`.
 - The CLI surface gives useful non-UI checks: help, version, smoke test with app service composition and refresh pipeline coverage, diagnostics export, config backup export, health report with storage pressure guidance, recovery guidance, launch targets, and repair hints, provider catalog, provider CLI override setting, support artifact pruning, update checks, verified update downloads, staged install script preparation, guarded prepared-script launch, explicit latest-update install orchestration, and headless refresh-once.
-- Release readiness checks now cover version metadata, changelog, audit date, published-app smoke test, package presence, and checksum validity.
-- The repo now has an Inno Setup build path, checksum generation, CI artifact upload, and draft-release asset wiring for setup executables.
+- Release readiness checks now cover version metadata, changelog, audit date, published-app smoke test, package presence, installer presence, and checksum validity.
+- The repo now has an Inno Setup build path, checksum generation, CI artifact upload, and release asset wiring for setup executables.
+- `v0.1.2` is published with zip, zip checksum, setup executable, and setup checksum assets, and the latest-release endpoint resolves it correctly.
 - Refresh settings can run a manual latest-release check or explicitly launch the confirmation-gated safe latest-update install flow, while startup update policy checks releases on a conservative interval, can download verified packages, can launch guarded install scripts, and avoids repeatedly launching the same release version.
+- Generated update apply scripts now back up by copying, restore from backup if the install copy phase fails, and reject unsafe archive entries before an install script is prepared.
+- `WINAIUSAGEBAR_APPDATA` lets CLI dogfooding run against isolated app data instead of the user's normal `%AppData%\WinAiUsageBar` tree.
 - Provider notifications now suppress repeated alerts for the same provider/reason during periodic refresh while still notifying when severity changes or after recovery.
 - Guided first-run checklist state, Provider Details, config backup export, backup validation, confirmed CLI restore, latest-backup in-app restore, and confirmed reset-to-default recovery are implemented.
 - Providers now includes non-secret setup guidance for source choices, Manual fallback, API references, Copilot metrics requirements, and CLI/app-server caveats.
@@ -60,7 +65,8 @@ Overall:
 - GitHub Copilot support targets organization or enterprise metrics and is not a complete personal usage experience.
 - The UI is functional but still not visually or ergonomically proven with extended daily use.
 - Tray behavior, taskbar-near placement, topmost widget behavior, and notification delivery need real Windows manual testing.
-- There is no MSIX, code signing, or installer trust story yet. Startup auto-update policy exists, but it needs careful dogfooding before it should be treated as safe-by-default.
+- There is no MSIX, code signing, or installer trust story yet. Startup auto-update policy exists and `v0.1.2` gives a real latest-release target, but release-to-release update installs still need careful dogfooding before they should be treated as safe-by-default.
+- `main` is ahead of `v0.1.2` with the app-data override, so the latest release does not yet contain every dogfooding convenience.
 - First-run setup has a basic checklist with action targets and Providers has setup guidance, but it is not yet a full guided wizard with inline provider-specific decisions.
 - Config backup and reset recovery now exist with basic decision guidance, but they still need repeated dogfooding before they can be treated as comfort features.
 - Local storage growth is visible for history, backups, diagnostics exports, and diagnostics logs, with basic pruning for backups and exports, but the maintenance flow still needs real-use tuning.
@@ -76,7 +82,8 @@ Overall:
 | Tray/window behavior differs across Windows setups | Medium | Placement service, single-instance guard tests, manual checklist, and report scaffold | Run and record the checklist across taskbar edges, DPI, multi-monitor, startup, and theme modes. |
 | CI restore flakiness blocks progress | Medium | Retry script and NuGet audit disabled by default | Keep restore helper simple and inspect future failures quickly. |
 | App feels like a demo because provider data is manual | High | Mock, Manual, broader Codex reset parser tests, provider details, and headless refresh-once are stable | Prioritize one reliable real provider path end to end. |
-| Public binaries are not trusted by Windows | High | Zip, checksum, release workflow, setup artifact path, update check, checksum-verified download path, install-script preparation, guarded script launch, explicit latest-update install orchestration, and throttled startup update policy exist | Add signing or at least documented install warnings before public release. |
+| Public binaries are not trusted by Windows | High | Zip, checksum, release workflow, published setup assets, update check, checksum-verified download path, install-script preparation, rollback-capable guarded script launch, explicit latest-update install orchestration, and throttled startup update policy exist | Add signing or at least documented install warnings before public release. |
+| Self-update can damage an install | High | SHA256 verification, app-owned update staging, guarded script launch, same-version relaunch suppression, rollback on copy failure, and unsafe zip-entry rejection | Dogfood release-to-release update flows repeatedly before recommending automatic install. |
 | Local data files grow too much | Medium | History retention by days and bytes; Privacy & Data storage pressure guidance includes history, backups, diagnostics exports, and diagnostics logs; backups and diagnostics exports can be pruned from UI or CLI while keeping newest matched files | Dogfood pressure thresholds and add richer compaction or per-folder controls if needed. |
 | Config corruption causes user confusion | Medium | Corrupt config backup, default migration, unique temp files for config and backup saves, collision-resistant backup/export names, config export, validation, confirmed CLI restore, latest-backup in-app restore, reset-to-default recovery, and recovery guidance | Dogfood restore and reset repeatedly, then tighten recovery copy and guidance based on real failures. |
 | CLI availability is ambiguous on Windows | Medium | Safe health report checks command discovery, selected launch targets, repair hints, and short startup; command launch prefers resolved `.exe`/shim paths; Codex provider classifies startup failures; Provider Details gives generic CLI repair guidance | Extend provider-specific repair checks to every future CLI-backed provider. |
@@ -97,32 +104,35 @@ The weak point is value density. A usage bar is only as useful as the data it ca
 
 ## Next Work, In Priority Order
 
-1. Run the manual Windows verification checklist.
+1. Dogfood release-to-release update flows.
+   Start with `v0.1.1` seeing `v0.1.2`, then use later releases with `WINAIUSAGEBAR_APPDATA` to isolate app data while testing download, prepare, launch, rollback, and startup update policy behavior.
+
+2. Run the manual Windows verification checklist.
    Cover tray click, context menu, widget placement, topmost behavior, notifications, startup registration, DPI, taskbar position, and multi-monitor.
 
-2. Pick one real provider path and make it genuinely useful.
+3. Pick one real provider path and make it genuinely useful.
    Codex/ChatGPT is the best candidate because the local app-server path already exists.
 
-3. Run the Provider Details page through dogfooding.
+4. Run the Provider Details page through dogfooding.
    The page exists now, but it needs real snapshot data and daily-use feedback.
 
-4. Dogfood the guided first-run setup checklist and decide whether it should become a deeper wizard.
+5. Dogfood the guided first-run setup checklist and decide whether it should become a deeper wizard.
    A new user can jump to Providers or Privacy & Data from checklist items now, and Providers explains source setup, but the flow still does not apply provider-specific setup decisions inline.
 
-5. Dogfood config backup, restore, and reset.
+6. Dogfood config backup, restore, and reset.
    CLI restore, latest-backup in-app restore, and reset-to-default recovery exist now, but they need repeated real-use recovery checks before they become comfort features.
 
-6. Dogfood recovery decision guidance.
+7. Dogfood recovery decision guidance.
    The app can explain the basic backup, restore, reset, and diagnostics choices now, but the copy and placement still need real-use validation.
 
-7. Add one automated UI launch check if feasible.
+8. Add one automated UI launch check if feasible.
    Even a minimal app-start plus window activation check would catch major WinUI regressions.
 
-8. Dogfood the startup update policy.
+9. Dogfood the startup update policy.
    The app can now check GitHub release metadata on startup with a cooldown and optionally download or launch a prepared install script without repeating the same release launch. Next it needs real release-to-release testing and a more explicit in-app confirmation story before wider use.
 
-9. Keep release readiness gates strict as distribution matures.
-   Current gates cover metadata, audit date, smoke test, package, checksum, and optional manual verification report evidence.
+10. Keep release readiness gates strict as distribution matures.
+   Current gates cover metadata, audit date, smoke test, package, installer, checksum, and optional manual verification report evidence.
 
 ## Contribution Strategy Assessment
 
