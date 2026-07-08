@@ -120,6 +120,10 @@ public sealed class CommandLineHealthReportFormatterTests
             LastInstallResultCompletedAt = generatedAt.AddMinutes(-1),
             LastInstallValidationStatus = "Passed",
             LastInstallValidationExitCode = 0,
+            LastInstallValidationOutputPath = @"C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\install-1\validation.out.txt",
+            LastInstallValidationOutputBytes = 12,
+            LastInstallValidationErrorPath = @"C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\install-1\validation.err.txt",
+            LastInstallValidationErrorBytes = 0,
             LastMessage = "Downloaded with token=sample-secret-value"
         };
 
@@ -169,6 +173,10 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.Contains("Install result message: Update installed successfully with [REDACTED]", report, StringComparison.Ordinal);
         Assert.Contains("Install validation: Passed", report, StringComparison.Ordinal);
         Assert.Contains("Install validation exit code: 0", report, StringComparison.Ordinal);
+        Assert.Contains(@"Install validation output: C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\install-1\validation.out.txt", report, StringComparison.Ordinal);
+        Assert.Contains("Install validation output bytes: 12 B", report, StringComparison.Ordinal);
+        Assert.Contains(@"Install validation errors: C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\install-1\validation.err.txt", report, StringComparison.Ordinal);
+        Assert.Contains("Install validation error bytes: 0 B", report, StringComparison.Ordinal);
         Assert.Contains("Message: Downloaded with [REDACTED]", report, StringComparison.Ordinal);
         Assert.Contains("Storage pressure", report, StringComparison.Ordinal);
         Assert.Contains("Retained history: High", report, StringComparison.Ordinal);
@@ -234,6 +242,10 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.Contains("Install result message: n/a", report, StringComparison.Ordinal);
         Assert.Contains("Install validation: n/a", report, StringComparison.Ordinal);
         Assert.Contains("Install validation exit code: n/a", report, StringComparison.Ordinal);
+        Assert.Contains("Install validation output: n/a", report, StringComparison.Ordinal);
+        Assert.Contains("Install validation output bytes: n/a", report, StringComparison.Ordinal);
+        Assert.Contains("Install validation errors: n/a", report, StringComparison.Ordinal);
+        Assert.Contains("Install validation error bytes: n/a", report, StringComparison.Ordinal);
         Assert.Contains("Message: n/a", report, StringComparison.Ordinal);
     }
 
@@ -248,7 +260,9 @@ public sealed class CommandLineHealthReportFormatterTests
             LastPackageChecksumAssetName = "WinAIUsageBar.zip.sha256 secret=package-checksum-secret",
             LastPackageChecksumPath = @"C:\Updates\token=package-checksum-path-secret\WinAIUsageBar.zip.sha256",
             LastInstallerAssetName = "WinAIUsageBar-setup.exe token=installer-secret",
-            LastInstallerChecksumAssetName = "WinAIUsageBar-setup.exe.sha256 secret=checksum-secret"
+            LastInstallerChecksumAssetName = "WinAIUsageBar-setup.exe.sha256 secret=checksum-secret",
+            LastInstallValidationOutputPath = @"C:\Updates\token=validation-output-secret\validation.out.txt",
+            LastInstallValidationErrorPath = @"C:\Updates\secret=validation-error-secret\validation.err.txt"
         };
 
         var report = CommandLineHealthReportFormatter.Format(
@@ -270,6 +284,8 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.DoesNotContain("package-checksum-path-secret", report, StringComparison.Ordinal);
         Assert.DoesNotContain("installer-secret", report, StringComparison.Ordinal);
         Assert.DoesNotContain("checksum-secret", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("validation-output-secret", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("validation-error-secret", report, StringComparison.Ordinal);
         Assert.DoesNotContain("token", report, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("secret", report, StringComparison.OrdinalIgnoreCase);
     }

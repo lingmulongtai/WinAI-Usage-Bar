@@ -29,6 +29,10 @@ public sealed class JsonConfigStoreTests
         config.Updates.LastInstallResultCompletedAt = new DateTimeOffset(2026, 7, 8, 9, 32, 0, TimeSpan.FromHours(9));
         config.Updates.LastInstallValidationStatus = "Passed";
         config.Updates.LastInstallValidationExitCode = 0;
+        config.Updates.LastInstallValidationOutputPath = @"C:\Updates\install-1\validation.out.txt";
+        config.Updates.LastInstallValidationOutputBytes = 123;
+        config.Updates.LastInstallValidationErrorPath = @"C:\Updates\install-1\validation.err.txt";
+        config.Updates.LastInstallValidationErrorBytes = 0;
         config.Updates.LastReleasePageUrl = "https://example.test/releases/v0.2.0";
         config.Updates.LastPackageAssetName = "WinAIUsageBar-0.2.0-win-x64.zip";
         config.Updates.LastPackageChecksumAssetName = "WinAIUsageBar-0.2.0-win-x64.zip.sha256";
@@ -53,6 +57,10 @@ public sealed class JsonConfigStoreTests
         Assert.Equal(new DateTimeOffset(2026, 7, 8, 9, 32, 0, TimeSpan.FromHours(9)), reloaded.Updates.LastInstallResultCompletedAt);
         Assert.Equal("Passed", reloaded.Updates.LastInstallValidationStatus);
         Assert.Equal(0, reloaded.Updates.LastInstallValidationExitCode);
+        Assert.Equal(@"C:\Updates\install-1\validation.out.txt", reloaded.Updates.LastInstallValidationOutputPath);
+        Assert.Equal(123, reloaded.Updates.LastInstallValidationOutputBytes);
+        Assert.Equal(@"C:\Updates\install-1\validation.err.txt", reloaded.Updates.LastInstallValidationErrorPath);
+        Assert.Equal(0, reloaded.Updates.LastInstallValidationErrorBytes);
         Assert.Equal("https://example.test/releases/v0.2.0", reloaded.Updates.LastReleasePageUrl);
         Assert.Equal("WinAIUsageBar-0.2.0-win-x64.zip", reloaded.Updates.LastPackageAssetName);
         Assert.Equal("WinAIUsageBar-0.2.0-win-x64.zip.sha256", reloaded.Updates.LastPackageChecksumAssetName);
@@ -124,7 +132,9 @@ public sealed class JsonConfigStoreTests
             "lastPackageChecksumPath": "   ",
             "lastInstallerAssetName": "   ",
             "lastInstallerChecksumAssetName": "",
-            "lastInstallValidationStatus": "   "
+            "lastInstallValidationStatus": "   ",
+            "lastInstallValidationOutputPath": "   ",
+            "lastInstallValidationErrorPath": ""
           }
         }
         """);
@@ -165,6 +175,8 @@ public sealed class JsonConfigStoreTests
             Assert.Null(config.Updates.LastInstallerAssetName);
             Assert.Null(config.Updates.LastInstallerChecksumAssetName);
             Assert.Null(config.Updates.LastInstallValidationStatus);
+            Assert.Null(config.Updates.LastInstallValidationOutputPath);
+            Assert.Null(config.Updates.LastInstallValidationErrorPath);
             Assert.Equal(123, config.Widget.Left);
             Assert.Equal(456, config.Widget.Top);
             Assert.Equal(280, config.Widget.Width);

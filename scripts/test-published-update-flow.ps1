@@ -60,6 +60,106 @@ function Assert-PathInside {
     }
 }
 
+function Test-PathInside {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ChildPath,
+        [Parameter(Mandatory = $true)]
+        [string]$ParentPath
+    )
+
+    try {
+        $child = [System.IO.Path]::GetFullPath($ChildPath)
+        $parent = [System.IO.Path]::GetFullPath($ParentPath)
+        $parentWithSeparator = $parent.TrimEnd(
+            [System.IO.Path]::DirectorySeparatorChar,
+            [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+
+        return $child.Equals($parent, [StringComparison]::OrdinalIgnoreCase) -or
+            $child.StartsWith($parentWithSeparator, [StringComparison]::OrdinalIgnoreCase)
+    }
+    catch {
+        return $false
+    }
+}
+
+function Resolve-PreparedResultPath {
+    param(
+        [string]$CandidatePath,
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptPath,
+        [Parameter(Mandatory = $true)]
+        [string]$AppDataRoot
+    )
+
+    $fallback = Join-Path (Split-Path -Parent $ScriptPath) "install-result.json"
+    if ([string]::IsNullOrWhiteSpace($CandidatePath) -or
+        $CandidatePath.Equals("n/a", [StringComparison]::OrdinalIgnoreCase)) {
+        return $fallback
+    }
+
+    try {
+        $candidateFull = [System.IO.Path]::GetFullPath($CandidatePath)
+        $candidateDirectory = Split-Path -Parent $candidateFull
+        if ([string]::IsNullOrWhiteSpace($candidateDirectory) -or
+            -not (Test-Path -LiteralPath $candidateDirectory -PathType Container) -or
+            -not (Test-PathInside -ChildPath $candidateFull -ParentPath $AppDataRoot)) {
+            return $fallback
+        }
+
+        return $candidateFull
+    }
+    catch {
+        return $fallback
+    }
+}
+
+function Write-ValidationLogMetadataStatus {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$InstallResult,
+        [Parameter(Mandatory = $true)]
+        [string]$ResultPath
+    )
+
+    $resultDirectory = Split-Path -Parent ([System.IO.Path]::GetFullPath($ResultPath))
+    $expectedLogs = @(
+        @{ PathProperty = "validationOutputPath"; BytesProperty = "validationOutputBytes"; FileName = "validation.out.txt" },
+        @{ PathProperty = "validationErrorPath"; BytesProperty = "validationErrorBytes"; FileName = "validation.err.txt" }
+    )
+    $missing = @()
+
+    foreach ($expectedLog in $expectedLogs) {
+        $pathProperty = $InstallResult.PSObject.Properties[$expectedLog.PathProperty]
+        $bytesProperty = $InstallResult.PSObject.Properties[$expectedLog.BytesProperty]
+        if ($null -eq $pathProperty -or [string]::IsNullOrWhiteSpace([string]$pathProperty.Value) -or $null -eq $bytesProperty) {
+            $missing += $expectedLog.PathProperty
+            continue
+        }
+
+        $logPath = [System.IO.Path]::GetFullPath([string]$pathProperty.Value)
+        $expectedPath = [System.IO.Path]::GetFullPath((Join-Path $resultDirectory $expectedLog.FileName))
+        if (-not $logPath.Equals($expectedPath, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "$($expectedLog.PathProperty) must stay beside install-result.json. Path: $logPath Expected: $expectedPath"
+        }
+
+        if (-not (Test-Path -LiteralPath $logPath -PathType Leaf)) {
+            throw "Validation log was not written: $logPath"
+        }
+
+        if ([int64]$bytesProperty.Value -lt 0) {
+            throw "install-result.json included a negative $($expectedLog.BytesProperty)."
+        }
+    }
+
+    if ($missing.Count -gt 0) {
+        Write-Warning "install-result.json did not include validation log metadata. The source published release may predate validation log retention."
+    }
+    else {
+        Write-Host "install-result.json includes validation stdout/stderr log metadata."
+    }
+}
+
 function Quote-ProcessArgument {
     param(
         [Parameter(Mandatory = $true)]
@@ -484,6 +584,7 @@ try {
         Assert-PathInside -ChildPath $packagePath -ParentPath $appDataRoot -Description "Startup policy package path"
         Assert-PathInside -ChildPath $scriptPath -ParentPath $appDataRoot -Description "Startup policy install script"
         if (-not [string]::IsNullOrWhiteSpace($resultPath)) {
+            $resultPath = Resolve-PreparedResultPath -CandidatePath $resultPath -ScriptPath $scriptPath -AppDataRoot $appDataRoot
             Assert-PathInside -ChildPath $resultPath -ParentPath $appDataRoot -Description "Startup policy install result path"
         }
 
@@ -539,6 +640,7 @@ try {
                     }
 
                     Write-Host "Startup policy install-result.json shows passed post-install validation."
+                    Write-ValidationLogMetadataStatus -InstallResult $result -ResultPath $resultPath
                 }
                 else {
                     Write-Warning "Startup policy install-result.json did not include validationStatus. The source published release may predate post-install validation."
@@ -628,9 +730,7 @@ try {
     }
 
     Assert-PathInside -ChildPath $scriptPath -ParentPath $appDataRoot -Description "Prepared update script"
-    if ([string]::IsNullOrWhiteSpace($resultPath)) {
-        $resultPath = Join-Path (Split-Path -Parent $scriptPath) "install-result.json"
-    }
+    $resultPath = Resolve-PreparedResultPath -CandidatePath $resultPath -ScriptPath $scriptPath -AppDataRoot $appDataRoot
 
     Assert-PathInside -ChildPath $resultPath -ParentPath $appDataRoot -Description "Prepared update result"
 
@@ -692,6 +792,7 @@ try {
                 }
 
                 Write-Host "install-result.json shows passed post-install validation."
+                Write-ValidationLogMetadataStatus -InstallResult $installResult -ResultPath $resultPath
             }
             else {
                 Write-Warning "install-result.json did not include validationStatus. The source published release may predate post-install validation."

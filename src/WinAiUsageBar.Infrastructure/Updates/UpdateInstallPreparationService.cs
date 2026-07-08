@@ -202,6 +202,9 @@ public sealed class UpdateInstallPreparationService(
         $RestartAfterInstall = ${{restartAfterInstall.ToString().ToLowerInvariant()}}
         $ValidationStatus = 'NotRun'
         $ValidationExitCode = $null
+        $ResultDirectory = [System.IO.Path]::GetDirectoryName($ResultPath)
+        $ValidationOutputPath = Join-Path $ResultDirectory 'validation.out.txt'
+        $ValidationErrorPath = Join-Path $ResultDirectory 'validation.err.txt'
 
         function Write-InstallResult {
             param(
@@ -222,6 +225,18 @@ public sealed class UpdateInstallPreparationService(
 
             if ($null -ne $ValidationExitCode) {
                 $Result.validationExitCode = $ValidationExitCode
+            }
+
+            if (Test-Path -LiteralPath $ValidationOutputPath -PathType Leaf) {
+                $ValidationOutput = Get-Item -LiteralPath $ValidationOutputPath
+                $Result.validationOutputPath = $ValidationOutputPath
+                $Result.validationOutputBytes = $ValidationOutput.Length
+            }
+
+            if (Test-Path -LiteralPath $ValidationErrorPath -PathType Leaf) {
+                $ValidationError = Get-Item -LiteralPath $ValidationErrorPath
+                $Result.validationErrorPath = $ValidationErrorPath
+                $Result.validationErrorBytes = $ValidationError.Length
             }
 
             $Result | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $ResultPath -Encoding UTF8
@@ -248,13 +263,30 @@ public sealed class UpdateInstallPreparationService(
             )
 
             $script:ValidationStatus = 'Running'
+            Remove-Item -LiteralPath $ValidationOutputPath -Force -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath $ValidationErrorPath -Force -ErrorAction SilentlyContinue
+            $OutputTask = $null
+            $ErrorTask = $null
+            $ValidationProcess = $null
             try {
-                $ValidationProcess = Start-Process `
-                    -FilePath $InstalledExe `
-                    -ArgumentList '--smoke-test' `
-                    -WorkingDirectory $InstallDirectory `
-                    -WindowStyle Hidden `
-                    -PassThru
+                $StartInfo = [System.Diagnostics.ProcessStartInfo]::new()
+                $StartInfo.FileName = $InstalledExe
+                $StartInfo.Arguments = '--smoke-test'
+                $StartInfo.WorkingDirectory = $InstallDirectory
+                $StartInfo.UseShellExecute = $false
+                $StartInfo.CreateNoWindow = $true
+                $StartInfo.RedirectStandardOutput = $true
+                $StartInfo.RedirectStandardError = $true
+
+                $ValidationProcess = [System.Diagnostics.Process]::new()
+                $ValidationProcess.StartInfo = $StartInfo
+                if (-not $ValidationProcess.Start()) {
+                    $script:ValidationStatus = 'FailedToStart'
+                    throw "Post-install smoke test could not start."
+                }
+
+                $OutputTask = $ValidationProcess.StandardOutput.ReadToEndAsync()
+                $ErrorTask = $ValidationProcess.StandardError.ReadToEndAsync()
             }
             catch {
                 $script:ValidationStatus = 'FailedToStart'
@@ -265,13 +297,17 @@ public sealed class UpdateInstallPreparationService(
                 $script:ValidationStatus = 'TimedOut'
                 try {
                     $ValidationProcess.Kill()
+                    $ValidationProcess.WaitForExit(5000) | Out-Null
                 }
                 catch {
                 }
 
+                Write-ValidationLogFiles -OutputTask $OutputTask -ErrorTask $ErrorTask
                 throw "Post-install smoke test timed out."
             }
 
+            $ValidationProcess.WaitForExit()
+            Write-ValidationLogFiles -OutputTask $OutputTask -ErrorTask $ErrorTask
             $script:ValidationExitCode = $ValidationProcess.ExitCode
             if ($ValidationProcess.ExitCode -ne 0) {
                 $script:ValidationStatus = 'Failed'
@@ -279,6 +315,36 @@ public sealed class UpdateInstallPreparationService(
             }
 
             $script:ValidationStatus = 'Passed'
+        }
+
+        function Write-ValidationLogFiles {
+            param(
+                [Parameter()]
+                [object]$OutputTask,
+                [Parameter()]
+                [object]$ErrorTask
+            )
+
+            $OutputText = ''
+            $ErrorText = ''
+            try {
+                if ($null -ne $OutputTask -and $OutputTask.IsCompleted) {
+                    $OutputText = $OutputTask.Result
+                }
+            }
+            catch {
+            }
+
+            try {
+                if ($null -ne $ErrorTask -and $ErrorTask.IsCompleted) {
+                    $ErrorText = $ErrorTask.Result
+                }
+            }
+            catch {
+            }
+
+            [System.IO.File]::WriteAllText($ValidationOutputPath, $OutputText, [System.Text.Encoding]::UTF8)
+            [System.IO.File]::WriteAllText($ValidationErrorPath, $ErrorText, [System.Text.Encoding]::UTF8)
         }
 
         try {

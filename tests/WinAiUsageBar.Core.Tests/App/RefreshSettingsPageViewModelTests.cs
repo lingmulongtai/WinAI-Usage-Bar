@@ -108,6 +108,10 @@ public sealed class RefreshSettingsPageViewModelTests
         config.Updates.LastInstallResultCompletedAt = new DateTimeOffset(2026, 7, 8, 9, 35, 0, TimeSpan.FromHours(9));
         config.Updates.LastInstallValidationStatus = "Passed";
         config.Updates.LastInstallValidationExitCode = 0;
+        config.Updates.LastInstallValidationOutputPath = @"C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\install-1\validation.out.txt";
+        config.Updates.LastInstallValidationOutputBytes = 12;
+        config.Updates.LastInstallValidationErrorPath = @"C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\install-1\validation.err.txt";
+        config.Updates.LastInstallValidationErrorBytes = 0;
         config.Updates.LastCheckedAt = new DateTimeOffset(2026, 7, 8, 9, 30, 0, TimeSpan.FromHours(9));
 
         var viewModel = new RefreshSettingsPageViewModel(config);
@@ -134,6 +138,10 @@ public sealed class RefreshSettingsPageViewModelTests
         Assert.Contains("Install result message: Update installed successfully.", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("Install validation: Passed", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("Install validation exit code: 0", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.Contains("Install validation output:", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.Contains("validation.out.txt (12 B)", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.Contains("Install validation errors:", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.Contains("validation.err.txt (0 B)", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("Update package downloaded", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("2026-07-08", viewModel.UpdateStatusText, StringComparison.Ordinal);
     }
@@ -160,6 +168,8 @@ public sealed class RefreshSettingsPageViewModelTests
         config.Updates.LastInstallResultMessage = "Failed with cookie=result-message-secret";
         config.Updates.LastInstallValidationStatus = "Failed token=validation-secret";
         config.Updates.LastInstallValidationExitCode = 1;
+        config.Updates.LastInstallValidationOutputPath = @"C:\Updates\token=validation-output-secret\validation.out.txt";
+        config.Updates.LastInstallValidationErrorPath = @"C:\Updates\secret=validation-error-secret\validation.err.txt";
 
         var viewModel = new RefreshSettingsPageViewModel(config);
 
@@ -181,6 +191,8 @@ public sealed class RefreshSettingsPageViewModelTests
         Assert.DoesNotContain("result-status-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("result-message-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("validation-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("validation-output-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("validation-error-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("token", viewModel.UpdateStatusText, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("secret", viewModel.UpdateStatusText, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("cookie", viewModel.UpdateStatusText, StringComparison.OrdinalIgnoreCase);
@@ -208,6 +220,8 @@ public sealed class RefreshSettingsPageViewModelTests
         Assert.DoesNotContain("Installer checksum asset:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("Install script:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("Install validation:", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("Install validation output:", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("Install validation errors:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("Message: The current app version is up to date.", viewModel.UpdateStatusText, StringComparison.Ordinal);
     }
 }

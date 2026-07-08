@@ -198,6 +198,16 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
             lines.Add($"Install validation exit code: {updates.LastInstallValidationExitCode.Value}");
         }
 
+        if (!string.IsNullOrWhiteSpace(updates.LastInstallValidationOutputPath))
+        {
+            lines.Add($"Install validation output: {SafeValue(updates.LastInstallValidationOutputPath)} ({FormatBytes(updates.LastInstallValidationOutputBytes)})");
+        }
+
+        if (!string.IsNullOrWhiteSpace(updates.LastInstallValidationErrorPath))
+        {
+            lines.Add($"Install validation errors: {SafeValue(updates.LastInstallValidationErrorPath)} ({FormatBytes(updates.LastInstallValidationErrorBytes)})");
+        }
+
         lines.Add($"Message: {message}");
 
         return string.Join(
@@ -230,6 +240,13 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
     private static string SafeValue(string value)
     {
         return DiagnosticRedactor.RedactForDisplay(value);
+    }
+
+    private static string FormatBytes(long? bytes)
+    {
+        return bytes is null
+            ? "n/a"
+            : $"{bytes.Value.ToString(CultureInfo.InvariantCulture)} B";
     }
 }
 

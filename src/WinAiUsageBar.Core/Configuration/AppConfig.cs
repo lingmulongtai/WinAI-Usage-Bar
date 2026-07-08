@@ -304,6 +304,14 @@ public sealed class UpdateSettings
 
     public int? LastInstallValidationExitCode { get; set; }
 
+    public string? LastInstallValidationOutputPath { get; set; }
+
+    public long? LastInstallValidationOutputBytes { get; set; }
+
+    public string? LastInstallValidationErrorPath { get; set; }
+
+    public long? LastInstallValidationErrorBytes { get; set; }
+
     public string? LastInstallLaunchedVersion { get; set; }
 
     public DateTimeOffset? LastCheckedAt { get; set; }

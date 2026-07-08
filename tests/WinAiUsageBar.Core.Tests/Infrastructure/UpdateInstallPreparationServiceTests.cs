@@ -52,13 +52,22 @@ public sealed class UpdateInstallPreparationServiceTests
             Assert.Contains("installDirectory = $InstallDirectory", script, StringComparison.Ordinal);
             Assert.Contains("validationStatus = $ValidationStatus", script, StringComparison.Ordinal);
             Assert.Contains("validationExitCode", script, StringComparison.Ordinal);
+            Assert.Contains("$ValidationOutputPath = Join-Path $ResultDirectory 'validation.out.txt'", script, StringComparison.Ordinal);
+            Assert.Contains("$ValidationErrorPath = Join-Path $ResultDirectory 'validation.err.txt'", script, StringComparison.Ordinal);
+            Assert.Contains("validationOutputPath = $ValidationOutputPath", script, StringComparison.Ordinal);
+            Assert.Contains("validationErrorPath = $ValidationErrorPath", script, StringComparison.Ordinal);
             Assert.Contains("Wait-Process -Id $ProcessIdToWait", script, StringComparison.Ordinal);
             Assert.Contains("$ProcessIdToWait = 1234", script, StringComparison.Ordinal);
             Assert.Contains("$RestartAfterInstall = $true", script, StringComparison.Ordinal);
             Assert.Contains("Expand-Archive -LiteralPath $PackagePath", script, StringComparison.Ordinal);
             Assert.Contains("function Restore-Backup", script, StringComparison.Ordinal);
             Assert.Contains("function Invoke-PostInstallValidation", script, StringComparison.Ordinal);
-            Assert.Contains("-ArgumentList '--smoke-test'", script, StringComparison.Ordinal);
+            Assert.Contains("$StartInfo.Arguments = '--smoke-test'", script, StringComparison.Ordinal);
+            Assert.Contains("$StartInfo.RedirectStandardOutput = $true", script, StringComparison.Ordinal);
+            Assert.Contains("$StartInfo.RedirectStandardError = $true", script, StringComparison.Ordinal);
+            Assert.Contains("function Write-ValidationLogFiles", script, StringComparison.Ordinal);
+            Assert.Contains("[System.IO.File]::WriteAllText($ValidationOutputPath", script, StringComparison.Ordinal);
+            Assert.Contains("[System.IO.File]::WriteAllText($ValidationErrorPath", script, StringComparison.Ordinal);
             Assert.Contains("Post-install smoke test failed", script, StringComparison.Ordinal);
             Assert.Contains("Copy-Item -LiteralPath $_.FullName -Destination $BackupDirectory -Recurse -Force", script, StringComparison.Ordinal);
             Assert.Contains("Remove-Item -LiteralPath $_.FullName -Recurse -Force", script, StringComparison.Ordinal);
@@ -99,9 +108,11 @@ public sealed class UpdateInstallPreparationServiceTests
                     RestartAfterInstall: false),
                 CancellationToken.None);
 
-            var scriptExitCode = await RunPowerShellScriptAsync(result.ScriptPath!);
+            var scriptResult = await RunPowerShellScriptAsync(result.ScriptPath!);
 
-            Assert.Equal(0, scriptExitCode);
+            Assert.True(
+                scriptResult.ExitCode == 0,
+                CreateScriptFailureMessage(scriptResult, result.ResultPath));
             Assert.True(File.Exists(result.ResultPath));
             using var resultDocument = JsonDocument.Parse(await File.ReadAllTextAsync(result.ResultPath!));
             var rootElement = resultDocument.RootElement;
@@ -111,6 +122,14 @@ public sealed class UpdateInstallPreparationServiceTests
             Assert.Equal(Path.GetFullPath(installDirectory), rootElement.GetProperty("installDirectory").GetString());
             Assert.Equal("Passed", rootElement.GetProperty("validationStatus").GetString());
             Assert.Equal(0, rootElement.GetProperty("validationExitCode").GetInt32());
+            var validationOutputPath = rootElement.GetProperty("validationOutputPath").GetString();
+            var validationErrorPath = rootElement.GetProperty("validationErrorPath").GetString();
+            Assert.EndsWith("validation.out.txt", validationOutputPath, StringComparison.OrdinalIgnoreCase);
+            Assert.EndsWith("validation.err.txt", validationErrorPath, StringComparison.OrdinalIgnoreCase);
+            Assert.True(File.Exists(validationOutputPath));
+            Assert.True(File.Exists(validationErrorPath));
+            Assert.True(rootElement.GetProperty("validationOutputBytes").GetInt64() >= 0);
+            Assert.True(rootElement.GetProperty("validationErrorBytes").GetInt64() >= 0);
             Assert.False(string.IsNullOrWhiteSpace(rootElement.GetProperty("completedAtUtc").GetString()));
             Assert.True(File.Exists(Path.Combine(installDirectory, "WinAiUsageBar.App.exe")));
             Assert.True(File.Exists(Path.Combine(installDirectory, "WinAiUsageBar.App.dll")));
@@ -146,9 +165,9 @@ public sealed class UpdateInstallPreparationServiceTests
                     RestartAfterInstall: false),
                 CancellationToken.None);
 
-            var scriptExitCode = await RunPowerShellScriptAsync(result.ScriptPath!);
+            var scriptResult = await RunPowerShellScriptAsync(result.ScriptPath!);
 
-            Assert.NotEqual(0, scriptExitCode);
+            Assert.NotEqual(0, scriptResult.ExitCode);
             Assert.True(File.Exists(result.ResultPath));
             using var resultDocument = JsonDocument.Parse(await File.ReadAllTextAsync(result.ResultPath!));
             var rootElement = resultDocument.RootElement;
@@ -190,9 +209,9 @@ public sealed class UpdateInstallPreparationServiceTests
                 CancellationToken.None);
             File.Delete(packagePath);
 
-            var scriptExitCode = await RunPowerShellScriptAsync(result.ScriptPath!);
+            var scriptResult = await RunPowerShellScriptAsync(result.ScriptPath!);
 
-            Assert.NotEqual(0, scriptExitCode);
+            Assert.NotEqual(0, scriptResult.ExitCode);
             Assert.True(File.Exists(result.ResultPath));
             using var resultDocument = JsonDocument.Parse(await File.ReadAllTextAsync(result.ResultPath!));
             var rootElement = resultDocument.RootElement;
@@ -409,7 +428,7 @@ public sealed class UpdateInstallPreparationServiceTests
         }
     }
 
-    private static async Task<int> RunPowerShellScriptAsync(string scriptPath)
+    private static async Task<ScriptRunResult> RunPowerShellScriptAsync(string scriptPath)
     {
         using var process = Process.Start(new ProcessStartInfo
         {
@@ -428,7 +447,31 @@ public sealed class UpdateInstallPreparationServiceTests
             }
         });
         Assert.NotNull(process);
+        var outputTask = process.StandardOutput.ReadToEndAsync();
+        var errorTask = process.StandardError.ReadToEndAsync();
         await process.WaitForExitAsync();
-        return process.ExitCode;
+        return new ScriptRunResult(
+            process.ExitCode,
+            await outputTask,
+            await errorTask);
     }
+
+    private static string CreateScriptFailureMessage(ScriptRunResult result, string? resultPath)
+    {
+        var installResult = resultPath is not null && File.Exists(resultPath)
+            ? File.ReadAllText(resultPath)
+            : "(missing)";
+        return $"""
+            Expected generated update script to exit with 0.
+            Exit code: {result.ExitCode}
+            Stdout:
+            {result.Output}
+            Stderr:
+            {result.Error}
+            install-result.json:
+            {installResult}
+            """;
+    }
+
+    private sealed record ScriptRunResult(int ExitCode, string Output, string Error);
 }

@@ -36,7 +36,7 @@ Use this helper to dogfood update preparation and optional application against a
 .\scripts\test-update-prepare-apply.ps1 -PackagePath .\artifacts\packages\WinAIUsageBar-0.1.2-win-x64.zip -Apply
 ```
 
-The helper creates an isolated work directory under `artifacts\update-dogfood`, redirects command output to logs, sets `WINAIUSAGEBAR_APPDATA` for the app process, and refuses to apply the generated script unless the install directory is inside the work directory. Current generated scripts also run the updated app's `--smoke-test` before reporting success, restore the backup if validation fails, and write `validationStatus` to `install-result.json`.
+The helper creates an isolated work directory under `artifacts\update-dogfood`, redirects command output to logs, sets `WINAIUSAGEBAR_APPDATA` for the app process, falls back to the script-adjacent `install-result.json` when redirected GUI output mangles a non-ASCII `Result:` path, and refuses to apply the generated script unless the install directory is inside the work directory. Current generated scripts also run the updated app's `--smoke-test` before reporting success, retain `validation.out.txt` and `validation.err.txt` beside `install-result.json`, restore the backup if validation fails, and write `validationStatus` plus validation log path/byte metadata to `install-result.json`. With `-Apply`, the helper verifies that validation log metadata points beside the result file.
 
 ## Published Release-to-Latest Update Helper
 
@@ -46,7 +46,7 @@ Use this helper to dogfood an already published release against the real GitHub 
 .\scripts\test-published-update-flow.ps1 -FromTag v0.1.2 -ExpectedLatestTag v0.1.3
 ```
 
-The helper downloads the older release zip from GitHub, extracts it into an isolated temp workspace, redirects command output to logs, sets `WINAIUSAGEBAR_APPDATA` to isolated app data, and runs `--check-for-updates`. Releases before `v0.1.3` do not support `WINAIUSAGEBAR_APPDATA`, so the helper stops after discovery for those versions to avoid writing to normal app data. For source releases `v0.1.3` and newer, `-Apply` can dogfood `--download-update`, `--prepare-update-install`, and the generated update script against the disposable extracted install directory. When the source release writes `validationStatus`, the helper requires it to be `Passed`.
+The helper downloads the older release zip from GitHub, extracts it into an isolated temp workspace, redirects command output to logs, sets `WINAIUSAGEBAR_APPDATA` to isolated app data, and runs `--check-for-updates`. Releases before `v0.1.3` do not support `WINAIUSAGEBAR_APPDATA`, so the helper stops after discovery for those versions to avoid writing to normal app data. For source releases `v0.1.3` and newer, `-Apply` can dogfood `--download-update`, `--prepare-update-install`, and the generated update script against the disposable extracted install directory. When the source release writes `validationStatus`, the helper requires it to be `Passed`; when it writes validation log metadata, the helper verifies the log files stay beside `install-result.json`.
 
 Add `-AssertNormalAppDataUnchanged` to snapshot the normal `%AppData%\WinAiUsageBar\updates` directory before and after the isolated run. The helper fails if files are added, removed, or changed there.
 
@@ -56,7 +56,7 @@ Add `-StartupPolicy` to exercise the normal startup update policy entrypoint ins
 .\scripts\test-published-update-flow.ps1 -FromTag v0.1.4 -ExpectedLatestTag v0.1.5 -StartupPolicy -Apply -AssertNormalAppDataUnchanged
 ```
 
-The startup-policy mode requires a source release that exposes `--run-startup-update-check` (`v0.1.4` or newer). It creates isolated app data, enables startup update checks, automatic download, and guarded automatic install launch in the extracted release's `config.json`, then runs the startup policy command. With `-Apply`, it waits for the startup policy-launched script to update only the disposable extracted install directory, verifies the updated version, checks `install-result.json` when the source release reports a result path, requires `validationStatus: Passed` when the source release writes it, runs `--health-report`, and verifies the reconciled install result status when the target release supports that newer reconciliation behavior.
+The startup-policy mode requires a source release that exposes `--run-startup-update-check` (`v0.1.4` or newer). It creates isolated app data, enables startup update checks, automatic download, and guarded automatic install launch in the extracted release's `config.json`, then runs the startup policy command. With `-Apply`, it waits for the startup policy-launched script to update only the disposable extracted install directory, verifies the updated version, checks `install-result.json` when the source release reports a result path, requires `validationStatus: Passed` when the source release writes it, verifies validation log metadata when the source release writes it, runs `--health-report`, and verifies the reconciled install result status when the target release supports that newer reconciliation behavior.
 
 ## 2026-07-09 - Published v0.1.3 Startup Policy Guard
 

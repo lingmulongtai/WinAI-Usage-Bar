@@ -20,7 +20,11 @@ public sealed record UpdateInstallResultRefreshResult(
     string? InstallStatus,
     DateTimeOffset? CompletedAt,
     string? ValidationStatus = null,
-    int? ValidationExitCode = null);
+    int? ValidationExitCode = null,
+    string? ValidationOutputPath = null,
+    long? ValidationOutputBytes = null,
+    string? ValidationErrorPath = null,
+    long? ValidationErrorBytes = null);
 
 public enum UpdateInstallResultRefreshStatus
 {
@@ -91,6 +95,19 @@ public sealed class UpdateInstallResultService(AppDataPaths paths) : IUpdateInst
             var message = Sanitize(GetString(root, "message"), maxLength: 1000);
             var validationStatus = Sanitize(GetString(root, "validationStatus"), maxLength: 64);
             var validationExitCode = GetInt32(root, "validationExitCode");
+            var resultDirectory = Path.GetDirectoryName(safePath) ?? paths.UpdatesDirectory;
+            var validationOutput = ReadValidationLog(
+                root,
+                "validationOutputPath",
+                "validationOutputBytes",
+                resultDirectory,
+                "validation.out.txt");
+            var validationError = ReadValidationLog(
+                root,
+                "validationErrorPath",
+                "validationErrorBytes",
+                resultDirectory,
+                "validation.err.txt");
             var completedAt = ParseCompletedAt(
                 GetString(root, "completedAtUtc")
                 ?? GetString(root, "completedAt"));
@@ -109,7 +126,11 @@ public sealed class UpdateInstallResultService(AppDataPaths paths) : IUpdateInst
                 || !string.Equals(config.Updates.LastInstallResultMessage, message, StringComparison.Ordinal)
                 || config.Updates.LastInstallResultCompletedAt != completedAt
                 || !string.Equals(config.Updates.LastInstallValidationStatus, validationStatus, StringComparison.Ordinal)
-                || config.Updates.LastInstallValidationExitCode != validationExitCode;
+                || config.Updates.LastInstallValidationExitCode != validationExitCode
+                || !string.Equals(config.Updates.LastInstallValidationOutputPath, validationOutput.Path, StringComparison.Ordinal)
+                || config.Updates.LastInstallValidationOutputBytes != validationOutput.Bytes
+                || !string.Equals(config.Updates.LastInstallValidationErrorPath, validationError.Path, StringComparison.Ordinal)
+                || config.Updates.LastInstallValidationErrorBytes != validationError.Bytes;
 
             if (changed)
             {
@@ -118,6 +139,10 @@ public sealed class UpdateInstallResultService(AppDataPaths paths) : IUpdateInst
                 config.Updates.LastInstallResultCompletedAt = completedAt;
                 config.Updates.LastInstallValidationStatus = validationStatus;
                 config.Updates.LastInstallValidationExitCode = validationExitCode;
+                config.Updates.LastInstallValidationOutputPath = validationOutput.Path;
+                config.Updates.LastInstallValidationOutputBytes = validationOutput.Bytes;
+                config.Updates.LastInstallValidationErrorPath = validationError.Path;
+                config.Updates.LastInstallValidationErrorBytes = validationError.Bytes;
             }
 
             return new UpdateInstallResultRefreshResult(
@@ -131,7 +156,11 @@ public sealed class UpdateInstallResultService(AppDataPaths paths) : IUpdateInst
                 installStatus,
                 completedAt,
                 validationStatus,
-                validationExitCode);
+                validationExitCode,
+                validationOutput.Path,
+                validationOutput.Bytes,
+                validationError.Path,
+                validationError.Bytes);
         }
         catch (Exception ex) when (ex is JsonException or NotSupportedException or IOException or UnauthorizedAccessException)
         {
@@ -199,6 +228,62 @@ public sealed class UpdateInstallResultService(AppDataPaths paths) : IUpdateInst
         };
     }
 
+    private static long? GetInt64(JsonElement root, string propertyName)
+    {
+        if (root.ValueKind is not JsonValueKind.Object
+            || !root.TryGetProperty(propertyName, out var property))
+        {
+            return null;
+        }
+
+        var value = property.ValueKind switch
+        {
+            JsonValueKind.Number when property.TryGetInt64(out var number) => number,
+            JsonValueKind.String when long.TryParse(
+                property.GetString(),
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out var number) => number,
+            _ => -1
+        };
+
+        return value >= 0 ? value : null;
+    }
+
+    private static ValidationLogMetadata ReadValidationLog(
+        JsonElement root,
+        string pathPropertyName,
+        string bytesPropertyName,
+        string resultDirectory,
+        string expectedFileName)
+    {
+        var value = GetString(root, pathPropertyName);
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return new ValidationLogMetadata(Path: null, Bytes: null);
+        }
+
+        try
+        {
+            var fullPath = Path.GetFullPath(value);
+            var fullResultDirectory = Path.GetFullPath(resultDirectory);
+            if (!string.Equals(Path.GetFileName(fullPath), expectedFileName, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(Path.GetDirectoryName(fullPath), fullResultDirectory, StringComparison.OrdinalIgnoreCase))
+            {
+                return new ValidationLogMetadata(Path: null, Bytes: null);
+            }
+
+            var bytes = File.Exists(fullPath)
+                ? new FileInfo(fullPath).Length
+                : GetInt64(root, bytesPropertyName);
+            return new ValidationLogMetadata(Sanitize(fullPath, maxLength: 1000), bytes);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return new ValidationLogMetadata(Path: null, Bytes: null);
+        }
+    }
+
     private static DateTimeOffset? ParseCompletedAt(string? value)
     {
         return DateTimeOffset.TryParse(
@@ -246,4 +331,6 @@ public sealed class UpdateInstallResultService(AppDataPaths paths) : IUpdateInst
             InstallStatus: null,
             CompletedAt: null);
     }
+
+    private sealed record ValidationLogMetadata(string? Path, long? Bytes);
 }

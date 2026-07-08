@@ -71,6 +71,111 @@ function Assert-PathInside {
     }
 }
 
+function Test-PathInside {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ChildPath,
+        [Parameter(Mandatory = $true)]
+        [string]$ParentPath
+    )
+
+    try {
+        $child = [System.IO.Path]::GetFullPath($ChildPath)
+        $parent = [System.IO.Path]::GetFullPath($ParentPath)
+        $parentWithSeparator = $parent.TrimEnd(
+            [System.IO.Path]::DirectorySeparatorChar,
+            [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+
+        return $child.Equals($parent, [StringComparison]::OrdinalIgnoreCase) -or
+            $child.StartsWith($parentWithSeparator, [StringComparison]::OrdinalIgnoreCase)
+    }
+    catch {
+        return $false
+    }
+}
+
+function Resolve-PreparedResultPath {
+    param(
+        [string]$CandidatePath,
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptPath,
+        [Parameter(Mandatory = $true)]
+        [string]$AppDataRoot
+    )
+
+    $fallback = Join-Path (Split-Path -Parent $ScriptPath) "install-result.json"
+    if ([string]::IsNullOrWhiteSpace($CandidatePath) -or
+        $CandidatePath.Equals("n/a", [StringComparison]::OrdinalIgnoreCase)) {
+        return $fallback
+    }
+
+    try {
+        $candidateFull = [System.IO.Path]::GetFullPath($CandidatePath)
+        $candidateDirectory = Split-Path -Parent $candidateFull
+        if ([string]::IsNullOrWhiteSpace($candidateDirectory) -or
+            -not (Test-Path -LiteralPath $candidateDirectory -PathType Container) -or
+            -not (Test-PathInside -ChildPath $candidateFull -ParentPath $AppDataRoot)) {
+            return $fallback
+        }
+
+        return $candidateFull
+    }
+    catch {
+        return $fallback
+    }
+}
+
+function Assert-ValidationLogMetadata {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$InstallResult,
+        [Parameter(Mandatory = $true)]
+        [string]$ResultPath
+    )
+
+    $resultDirectory = Split-Path -Parent ([System.IO.Path]::GetFullPath($ResultPath))
+    $expectedLogs = @(
+        @{ PathProperty = "validationOutputPath"; BytesProperty = "validationOutputBytes"; FileName = "validation.out.txt" },
+        @{ PathProperty = "validationErrorPath"; BytesProperty = "validationErrorBytes"; FileName = "validation.err.txt" }
+    )
+
+    foreach ($expectedLog in $expectedLogs) {
+        $pathProperty = $InstallResult.PSObject.Properties[$expectedLog.PathProperty]
+        $bytesProperty = $InstallResult.PSObject.Properties[$expectedLog.BytesProperty]
+        if ($null -eq $pathProperty -or [string]::IsNullOrWhiteSpace([string]$pathProperty.Value)) {
+            throw "install-result.json did not include $($expectedLog.PathProperty)."
+        }
+
+        $logPath = [System.IO.Path]::GetFullPath([string]$pathProperty.Value)
+        $expectedPath = [System.IO.Path]::GetFullPath((Join-Path $resultDirectory $expectedLog.FileName))
+        if (-not $logPath.Equals($expectedPath, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "$($expectedLog.PathProperty) must stay beside install-result.json. Path: $logPath Expected: $expectedPath"
+        }
+
+        if (-not (Test-Path -LiteralPath $logPath -PathType Leaf)) {
+            throw "Validation log was not written: $logPath"
+        }
+
+        if ($null -eq $bytesProperty -or [int64]$bytesProperty.Value -lt 0) {
+            throw "install-result.json did not include a non-negative $($expectedLog.BytesProperty)."
+        }
+    }
+}
+
+function Test-ScriptWritesInstallResult {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptPath
+    )
+
+    if (-not (Test-Path -LiteralPath $ScriptPath -PathType Leaf)) {
+        return $false
+    }
+
+    $scriptText = Get-Content -LiteralPath $ScriptPath -Raw
+    return $scriptText.IndexOf("Write-InstallResult", [StringComparison]::OrdinalIgnoreCase) -ge 0
+}
+
 function Quote-ProcessArgument {
     param(
         [Parameter(Mandatory = $true)]
@@ -203,9 +308,7 @@ try {
     }
 
     Assert-PathInside -ChildPath $script -ParentPath $appDataRoot -Description "Prepared update script"
-    if ([string]::IsNullOrWhiteSpace($resultPath)) {
-        $resultPath = Join-Path (Split-Path -Parent $script) "install-result.json"
-    }
+    $resultPath = Resolve-PreparedResultPath -CandidatePath $resultPath -ScriptPath $script -AppDataRoot $appDataRoot
 
     Assert-PathInside -ChildPath $resultPath -ParentPath $appDataRoot -Description "Prepared update result"
 
@@ -240,16 +343,23 @@ try {
         }
 
         if (-not (Test-Path -LiteralPath $resultPath -PathType Leaf)) {
-            throw "Prepared update script did not write install-result.json: $resultPath"
-        }
+            if (Test-ScriptWritesInstallResult -ScriptPath $script) {
+                throw "Prepared update script did not write install-result.json: $resultPath"
+            }
 
-        $installResult = Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json
-        if ($installResult.status -ne "Succeeded") {
-            throw "install-result.json did not report success. Status: $($installResult.status)"
+            Write-Warning "Prepared update script did not write install-result.json. The source executable may predate install-result reporting."
         }
+        else {
+            $installResult = Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json
+            if ($installResult.status -ne "Succeeded") {
+                throw "install-result.json did not report success. Status: $($installResult.status)"
+            }
 
-        if ($installResult.validationStatus -ne "Passed") {
-            throw "install-result.json did not report passed post-install validation. Validation status: $($installResult.validationStatus)"
+            if ($installResult.validationStatus -ne "Passed") {
+                throw "install-result.json did not report passed post-install validation. Validation status: $($installResult.validationStatus)"
+            }
+
+            Assert-ValidationLogMetadata -InstallResult $installResult -ResultPath $resultPath
         }
 
         Write-Host "Applied prepared update script to disposable install directory."

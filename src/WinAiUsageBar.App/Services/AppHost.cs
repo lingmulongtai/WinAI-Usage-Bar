@@ -645,6 +645,10 @@ public sealed class AppHost : IAsyncDisposable
                 config.Updates.LastInstallResultCompletedAt = null;
                 config.Updates.LastInstallValidationStatus = null;
                 config.Updates.LastInstallValidationExitCode = null;
+                config.Updates.LastInstallValidationOutputPath = null;
+                config.Updates.LastInstallValidationOutputBytes = null;
+                config.Updates.LastInstallValidationErrorPath = null;
+                config.Updates.LastInstallValidationErrorBytes = null;
             }
         }
 

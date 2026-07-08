@@ -145,6 +145,10 @@ public static class CommandLineHealthReportFormatter
         builder.AppendLine($"  Install result message: {SafeValue(updates.LastInstallResultMessage)}");
         builder.AppendLine($"  Install validation: {SafeValue(updates.LastInstallValidationStatus)}");
         builder.AppendLine($"  Install validation exit code: {updates.LastInstallValidationExitCode?.ToString(CultureInfo.InvariantCulture) ?? "n/a"}");
+        builder.AppendLine($"  Install validation output: {SafeValue(updates.LastInstallValidationOutputPath)}");
+        builder.AppendLine($"  Install validation output bytes: {FormatBytes(updates.LastInstallValidationOutputBytes)}");
+        builder.AppendLine($"  Install validation errors: {SafeValue(updates.LastInstallValidationErrorPath)}");
+        builder.AppendLine($"  Install validation error bytes: {FormatBytes(updates.LastInstallValidationErrorBytes)}");
         builder.AppendLine($"  Message: {SafeValue(updates.LastMessage)}");
     }
 
@@ -257,6 +261,11 @@ public static class CommandLineHealthReportFormatter
         }
 
         return $"{bytes} B";
+    }
+
+    private static string FormatBytes(long? bytes)
+    {
+        return bytes is null ? "n/a" : FormatBytes(bytes.Value);
     }
 
     private static string SafeValue(string? value)
