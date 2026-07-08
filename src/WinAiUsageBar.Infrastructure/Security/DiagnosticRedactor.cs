@@ -15,6 +15,7 @@ public static partial class DiagnosticRedactor
         redacted = KeyValueSecretRegex().Replace(redacted, "$1[REDACTED]");
         redacted = OpenAiStyleKeyRegex().Replace(redacted, "sk-[REDACTED]");
         redacted = GitHubTokenRegex().Replace(redacted, "ghp_[REDACTED]");
+        redacted = SecretishTokenRegex().Replace(redacted, "[REDACTED]");
         return redacted;
     }
 
@@ -35,7 +36,7 @@ public static partial class DiagnosticRedactor
         redacted = DisplaySwitchSecretRegex().Replace(redacted, "[REDACTED]");
         redacted = DisplayOpenAiStyleKeyRegex().Replace(redacted, "[REDACTED]");
         redacted = DisplayGitHubTokenRegex().Replace(redacted, "[REDACTED]");
-        redacted = DisplaySecretishTokenRegex().Replace(redacted, "[REDACTED]");
+        redacted = SecretishTokenRegex().Replace(redacted, "[REDACTED]");
         return redacted;
     }
 
@@ -64,5 +65,5 @@ public static partial class DiagnosticRedactor
     private static partial Regex DisplayGitHubTokenRegex();
 
     [GeneratedRegex(@"(?i)\b(?:api[_-]?key|access[_-]?token|refresh[_-]?token|token|secret|cookie|pat)[_-][A-Za-z0-9][A-Za-z0-9._-]{5,}\b")]
-    private static partial Regex DisplaySecretishTokenRegex();
+    private static partial Regex SecretishTokenRegex();
 }

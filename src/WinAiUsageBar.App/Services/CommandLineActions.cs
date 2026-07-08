@@ -58,6 +58,14 @@ public static class CommandLineActions
         cliEnvironmentService ??= new CliEnvironmentService();
 
         var config = await configStore.LoadAsync(cancellationToken).ConfigureAwait(false);
+        var installResultRefresh = await new UpdateInstallResultService(paths)
+            .RefreshAsync(config, cancellationToken)
+            .ConfigureAwait(false);
+        if (installResultRefresh.Status is UpdateInstallResultRefreshStatus.Updated)
+        {
+            await configStore.SaveAsync(config, cancellationToken).ConfigureAwait(false);
+        }
+
         var cliChecks = CreateHealthReportCliChecks(config);
         var diagnostics = await diagnosticsService.GetSummaryAsync(cancellationToken).ConfigureAwait(false);
         var history = await historyService.GetSummaryAsync(cancellationToken).ConfigureAwait(false);

@@ -9,7 +9,7 @@ public sealed class SecurityTests
     [Fact]
     public void Redact_RemovesCommonSecretShapes()
     {
-        var text = "Authorization: Bearer abc123 token=secret secretName=secret-ref patSecretName=copilot-ref sk-1234567890 ghp_1234567890";
+        var text = "Authorization: Bearer abc123 token=secret secretName=secret-ref patSecretName=copilot-ref token-secret-123 sk-1234567890 ghp_1234567890";
 
         var redacted = DiagnosticRedactor.Redact(text);
 
@@ -17,6 +17,7 @@ public sealed class SecurityTests
         Assert.DoesNotContain("token=secret", redacted);
         Assert.DoesNotContain("secret-ref", redacted);
         Assert.DoesNotContain("copilot-ref", redacted);
+        Assert.DoesNotContain("token-secret-123", redacted);
         Assert.DoesNotContain("sk-1234567890", redacted);
         Assert.DoesNotContain("ghp_1234567890", redacted);
         Assert.Contains("[REDACTED]", redacted);

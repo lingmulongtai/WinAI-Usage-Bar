@@ -600,14 +600,20 @@ public sealed class AppHost : IAsyncDisposable
         config.Updates.LastCurrentVersion = result.UpdateCheck?.CurrentVersion ?? fallbackCurrentVersion;
         config.Updates.LastLatestVersion = result.UpdateCheck?.LatestVersion;
         config.Updates.LastPackagePath = result.Download?.PackagePath;
-        config.Updates.LastInstallScriptPath = result.Preparation?.ScriptPath ?? result.Launch?.ScriptPath;
-        config.Updates.LastInstallResultPath = result.Preparation?.ResultPath
-            ?? GetInstallResultPath(config.Updates.LastInstallScriptPath);
-        if (string.IsNullOrWhiteSpace(config.Updates.LastInstallResultPath))
+        var nextInstallScriptPath = result.Preparation?.ScriptPath ?? result.Launch?.ScriptPath;
+        if (!string.IsNullOrWhiteSpace(nextInstallScriptPath))
         {
-            config.Updates.LastInstallResultStatus = null;
-            config.Updates.LastInstallResultMessage = null;
-            config.Updates.LastInstallResultCompletedAt = null;
+            var previousResultPath = config.Updates.LastInstallResultPath;
+            var nextResultPath = result.Preparation?.ResultPath
+                ?? GetInstallResultPath(nextInstallScriptPath);
+            config.Updates.LastInstallScriptPath = nextInstallScriptPath;
+            config.Updates.LastInstallResultPath = nextResultPath;
+            if (!SamePath(previousResultPath, nextResultPath))
+            {
+                config.Updates.LastInstallResultStatus = null;
+                config.Updates.LastInstallResultMessage = null;
+                config.Updates.LastInstallResultCompletedAt = null;
+            }
         }
 
         if (result.Status is LatestUpdateInstallStatus.Launched
@@ -641,6 +647,23 @@ public sealed class AppHost : IAsyncDisposable
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
         {
             return null;
+        }
+    }
+
+    private static bool SamePath(string? left, string? right)
+    {
+        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+        {
+            return string.IsNullOrWhiteSpace(left) && string.IsNullOrWhiteSpace(right);
+        }
+
+        try
+        {
+            return string.Equals(Path.GetFullPath(left), Path.GetFullPath(right), StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
         }
     }
 

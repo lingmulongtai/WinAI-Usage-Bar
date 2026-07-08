@@ -60,6 +60,7 @@ public static class AppCompositionRoot
         var updateDownloader = new UpdatePackageDownloader();
         var updatePreparation = new UpdateInstallPreparationService(paths);
         var updateLauncher = new UpdateInstallLaunchService(paths);
+        var updateInstallResult = new UpdateInstallResultService(paths);
         var latestUpdateInstallService = new LatestUpdateInstallService(
             updateCheck,
             updateDownloader,
@@ -72,7 +73,8 @@ public static class AppCompositionRoot
             updateDownloader,
             updatePreparation,
             updateLauncher,
-            paths);
+            paths,
+            installResultService: updateInstallResult);
         var refreshService = new UsageRefreshService(
             configStore,
             snapshotStore,

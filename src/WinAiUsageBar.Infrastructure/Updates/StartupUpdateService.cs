@@ -48,9 +48,11 @@ public sealed class StartupUpdateService(
     IUpdateInstallPreparationService preparation,
     IUpdateInstallLaunchService launcher,
     AppDataPaths paths,
-    Func<DateTimeOffset>? nowProvider = null) : IStartupUpdateService
+    Func<DateTimeOffset>? nowProvider = null,
+    IUpdateInstallResultService? installResultService = null) : IStartupUpdateService
 {
     private readonly Func<DateTimeOffset> nowProvider = nowProvider ?? (() => DateTimeOffset.Now);
+    private readonly IUpdateInstallResultService installResultService = installResultService ?? new UpdateInstallResultService(paths);
 
     public async Task<StartupUpdateResult> RunAsync(
         StartupUpdateRequest request,
@@ -60,6 +62,7 @@ public sealed class StartupUpdateService(
         try
         {
             config = await configStore.LoadAsync(cancellationToken).ConfigureAwait(false);
+            await installResultService.RefreshAsync(config, cancellationToken).ConfigureAwait(false);
             if (!config.Updates.CheckOnStartup)
             {
                 return await SaveResultAsync(
@@ -288,13 +291,19 @@ public sealed class StartupUpdateService(
         config.Updates.LastCurrentVersion = currentVersion;
         config.Updates.LastLatestVersion = latestVersion;
         config.Updates.LastPackagePath = packagePath;
-        config.Updates.LastInstallScriptPath = installScriptPath;
-        config.Updates.LastInstallResultPath = GetInstallResultPath(installScriptPath);
-        if (string.IsNullOrWhiteSpace(config.Updates.LastInstallResultPath))
+
+        if (!string.IsNullOrWhiteSpace(installScriptPath))
         {
-            config.Updates.LastInstallResultStatus = null;
-            config.Updates.LastInstallResultMessage = null;
-            config.Updates.LastInstallResultCompletedAt = null;
+            var previousResultPath = config.Updates.LastInstallResultPath;
+            var nextResultPath = GetInstallResultPath(installScriptPath);
+            config.Updates.LastInstallScriptPath = installScriptPath;
+            config.Updates.LastInstallResultPath = nextResultPath;
+            if (!SamePath(previousResultPath, nextResultPath))
+            {
+                config.Updates.LastInstallResultStatus = null;
+                config.Updates.LastInstallResultMessage = null;
+                config.Updates.LastInstallResultCompletedAt = null;
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(installLaunchedVersion))
@@ -337,6 +346,23 @@ public sealed class StartupUpdateService(
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
         {
             return null;
+        }
+    }
+
+    private static bool SamePath(string? left, string? right)
+    {
+        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+        {
+            return string.IsNullOrWhiteSpace(left) && string.IsNullOrWhiteSpace(right);
+        }
+
+        try
+        {
+            return string.Equals(Path.GetFullPath(left), Path.GetFullPath(right), StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
         }
     }
 

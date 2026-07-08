@@ -446,6 +446,52 @@ public sealed class CommandLineActionsTests
     }
 
     [Fact]
+    public async Task CreateHealthReportAsync_ReconcilesPendingInstallResult()
+    {
+        var paths = TestPaths();
+        var configStore = new JsonAppConfigStore(paths);
+        var config = AppConfig.CreateDefault();
+        var resultPath = Path.Combine(paths.UpdatesDirectory, "install-1", "install-result.json");
+        config.Updates.LastInstallScriptPath = Path.Combine(paths.UpdatesDirectory, "install-1", "apply-update.ps1");
+        config.Updates.LastInstallResultPath = resultPath;
+        Directory.CreateDirectory(Path.GetDirectoryName(resultPath)!);
+        await File.WriteAllTextAsync(resultPath, """
+        {
+          "status": "Succeeded",
+          "message": "Installed with token-secret-123",
+          "completedAtUtc": "2026-07-08T00:32:00Z"
+        }
+        """);
+
+        try
+        {
+            await configStore.SaveAsync(config, CancellationToken.None);
+
+            var report = await CommandLineActions.CreateHealthReportAsync(
+                CancellationToken.None,
+                paths,
+                new FakeCliEnvironmentService());
+            var reloaded = await configStore.LoadAsync(CancellationToken.None);
+
+            Assert.Contains("Install result status: Succeeded", report, StringComparison.Ordinal);
+            Assert.Contains("Install result message: Installed with [REDACTED]", report, StringComparison.Ordinal);
+            Assert.DoesNotContain("token-secret-123", report, StringComparison.Ordinal);
+            Assert.Equal("Succeeded", reloaded.Updates.LastInstallResultStatus);
+            Assert.Equal("Installed with [REDACTED]", reloaded.Updates.LastInstallResultMessage);
+            Assert.Equal(
+                new DateTimeOffset(2026, 7, 8, 0, 32, 0, TimeSpan.Zero),
+                reloaded.Updates.LastInstallResultCompletedAt);
+        }
+        finally
+        {
+            if (Directory.Exists(paths.RootDirectory))
+            {
+                Directory.Delete(paths.RootDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task CheckForUpdatesAsync_FormatsUpdateCheckResult()
     {
         var updateCheck = new FakeUpdateCheckService(new ReleaseUpdateCheckResult(

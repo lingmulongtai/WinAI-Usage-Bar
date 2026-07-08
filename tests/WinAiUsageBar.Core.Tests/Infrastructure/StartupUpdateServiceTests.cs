@@ -47,6 +47,49 @@ public sealed class StartupUpdateServiceTests
     }
 
     [Fact]
+    public async Task RunAsync_ReconcilesExistingInstallResultBeforeSkippingRecentCheck()
+    {
+        var paths = TestPaths();
+        var resultPath = Path.Combine(paths.UpdatesDirectory, "install-1", "install-result.json");
+        var lastChecked = Now.AddHours(-2);
+        var config = AppConfig.CreateDefault();
+        config.Updates.MinimumCheckIntervalHours = 24;
+        config.Updates.LastCheckedAt = lastChecked;
+        config.Updates.LastLatestVersion = "0.2.0";
+        config.Updates.LastInstallScriptPath = Path.Combine(paths.UpdatesDirectory, "install-1", "apply-update.ps1");
+        config.Updates.LastInstallResultPath = resultPath;
+        Directory.CreateDirectory(Path.GetDirectoryName(resultPath)!);
+        await File.WriteAllTextAsync(resultPath, """
+        {
+          "status": "Succeeded",
+          "message": "Installed with token-secret-123",
+          "completedAtUtc": "2026-07-08T00:30:00Z"
+        }
+        """);
+        var store = new InMemoryConfigStore(config);
+        var updateCheck = new FakeUpdateCheckService(UpdateAvailable());
+        var service = CreateService(store, updateCheck, paths: paths);
+
+        try
+        {
+            var result = await service.RunAsync(Request(), CancellationToken.None);
+
+            Assert.Equal(StartupUpdateStatus.SkippedRecentCheck, result.Status);
+            Assert.Equal(0, updateCheck.CheckCount);
+            Assert.Equal("Succeeded", config.Updates.LastInstallResultStatus);
+            Assert.Equal("Installed with [REDACTED]", config.Updates.LastInstallResultMessage);
+            Assert.Equal(
+                new DateTimeOffset(2026, 7, 8, 0, 30, 0, TimeSpan.Zero),
+                config.Updates.LastInstallResultCompletedAt);
+            Assert.Equal(resultPath, config.Updates.LastInstallResultPath);
+        }
+        finally
+        {
+            Directory.Delete(paths.RootDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task RunAsync_RecordsNoUpdateWhenLatestIsCurrent()
     {
         var config = AppConfig.CreateDefault();
