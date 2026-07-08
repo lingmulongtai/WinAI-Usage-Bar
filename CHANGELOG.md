@@ -40,6 +40,7 @@ All notable changes to WinAI Usage Bar are documented here.
 - Provider Details now includes Claude and Claude Code CLI repair guidance without echoing paths, scopes, or secret-shaped diagnostics.
 - Provider Details now flags stale cached snapshots and future-dated timestamps so clock skew or old data is visible.
 - Provider cards now use the same snapshot freshness checks as Provider Details for stale and future-dated timestamps.
+- Provider cards now redact status and error text before display.
 
 ## 0.1.4 - 2026-07-08
 

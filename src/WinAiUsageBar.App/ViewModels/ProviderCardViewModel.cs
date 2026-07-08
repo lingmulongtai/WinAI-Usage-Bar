@@ -1,4 +1,5 @@
 using WinAiUsageBar.Core.Models;
+using WinAiUsageBar.Infrastructure.Security;
 
 namespace WinAiUsageBar.App.ViewModels;
 
@@ -21,8 +22,8 @@ public sealed class ProviderCardViewModel
         SourceText = snapshot.SourceKind.ToString();
         UpdatedText = $"Updated {timestamp.DisplayText}";
         TimestampWarningText = timestamp.WarningText ?? string.Empty;
-        StatusText = (snapshot.StatusMessage ?? string.Empty).Trim();
-        ErrorMessage = snapshot.ErrorMessage;
+        StatusText = Safe(snapshot.StatusMessage);
+        ErrorMessage = Safe(snapshot.ErrorMessage);
         Snapshot = snapshot;
     }
 
@@ -83,6 +84,11 @@ public sealed class ProviderCardViewModel
         }
 
         return string.Join(" / ", parts);
+    }
+
+    private static string Safe(string? value)
+    {
+        return DiagnosticRedactor.RedactForDisplay(value).Trim();
     }
 
     private static string FormatResetText(UsageWindow? window, DateTimeOffset now)

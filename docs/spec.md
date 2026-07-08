@@ -67,11 +67,11 @@ Provider cards show:
 - Health badge text
 - Usage bar
 - Reset text
-- Status message
+- Redacted status message
 - Credits/cost line
 - Source kind
 - Updated time and stale/future timestamp warning when applicable
-- Error message
+- Redacted error message
 
 Provider Details shows current provider snapshots in a fuller non-secret format:
 

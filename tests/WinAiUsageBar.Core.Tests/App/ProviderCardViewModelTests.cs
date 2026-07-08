@@ -28,6 +28,35 @@ public sealed class ProviderCardViewModelTests
     }
 
     [Fact]
+    public void StatusDisplay_RedactsStatusAndErrorText()
+    {
+        var secret = "gh" + "p_" + new string('a', 8);
+        var viewModel = new ProviderCardViewModel(Snapshot(
+            statusMessage: "status token=" + secret,
+            errorMessage: "error authorization: bearer " + secret));
+
+        Assert.Contains("[REDACTED]", viewModel.StatusText, StringComparison.Ordinal);
+        Assert.Contains("[REDACTED]", viewModel.ErrorMessage, StringComparison.Ordinal);
+        Assert.DoesNotContain(secret, viewModel.StatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain(secret, viewModel.ErrorMessage, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void StatusDisplay_DeduplicatesAfterRedaction()
+    {
+        var firstSecret = "gh" + "p_" + new string('a', 8);
+        var secondSecret = "gh" + "p_" + new string('b', 8);
+        var viewModel = new ProviderCardViewModel(Snapshot(
+            statusMessage: "token=" + firstSecret,
+            errorMessage: "token=" + secondSecret));
+
+        Assert.Equal("[REDACTED]", viewModel.StatusText);
+        Assert.Equal("[REDACTED]", viewModel.ErrorMessage);
+        Assert.False(viewModel.HasStatusMessage);
+        Assert.True(viewModel.HasError);
+    }
+
+    [Fact]
     public void TimestampDisplay_DoesNotWarnForRecentSnapshot()
     {
         var now = new DateTimeOffset(2026, 7, 8, 12, 30, 0, TimeSpan.Zero);
