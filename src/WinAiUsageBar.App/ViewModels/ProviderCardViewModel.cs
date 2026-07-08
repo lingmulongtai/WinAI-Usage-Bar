@@ -2,42 +2,62 @@ using WinAiUsageBar.Core.Models;
 
 namespace WinAiUsageBar.App.ViewModels;
 
-public sealed class ProviderCardViewModel(UsageSnapshot snapshot)
+public sealed class ProviderCardViewModel
 {
-    public ProviderId ProviderId { get; } = snapshot.ProviderId;
+    public ProviderCardViewModel(UsageSnapshot snapshot, Func<DateTimeOffset>? nowProvider = null)
+    {
+        var now = (nowProvider ?? (() => DateTimeOffset.Now))();
+        var timestamp = ProviderSnapshotTimestampFormatter.Format(snapshot.UpdatedAt, now);
 
-    public string DisplayName { get; } = snapshot.DisplayName;
+        ProviderId = snapshot.ProviderId;
+        DisplayName = snapshot.DisplayName;
+        HealthText = snapshot.Health.ToString();
+        ProgressValue = snapshot.PrimaryWindow?.UsedPercent ?? 0;
+        PercentText = snapshot.PrimaryWindow?.RemainingPercent is double remaining
+            ? $"{remaining:0.#}% left"
+            : "Usage unknown";
+        ResetText = FormatResetText(snapshot.PrimaryWindow, now);
+        CreditsLine = FormatCredits(snapshot.Credits);
+        SourceText = snapshot.SourceKind.ToString();
+        UpdatedText = $"Updated {timestamp.DisplayText}";
+        TimestampWarningText = timestamp.WarningText ?? string.Empty;
+        StatusText = (snapshot.StatusMessage ?? string.Empty).Trim();
+        ErrorMessage = snapshot.ErrorMessage;
+        Snapshot = snapshot;
+    }
 
-    public string HealthText { get; } = snapshot.Health.ToString();
+    public ProviderId ProviderId { get; }
 
-    public double ProgressValue { get; } = snapshot.PrimaryWindow?.UsedPercent ?? 0;
+    public string DisplayName { get; }
 
-    public string PercentText { get; } = snapshot.PrimaryWindow?.RemainingPercent is double remaining
-        ? $"{remaining:0.#}% left"
-        : "Usage unknown";
+    public string HealthText { get; }
 
-    public string ResetText { get; } = snapshot.PrimaryWindow?.ResetsAt is DateTimeOffset resetsAt
-        ? resetsAt > DateTimeOffset.Now
-            ? $"Resets in {FormatRelative(resetsAt - DateTimeOffset.Now)}"
-            : "Reset time passed"
-        : snapshot.PrimaryWindow?.ResetDescription ?? "Reset unknown";
+    public double ProgressValue { get; }
 
-    public string CreditsLine { get; } = FormatCredits(snapshot.Credits);
+    public string PercentText { get; }
 
-    public string SourceText { get; } = snapshot.SourceKind.ToString();
+    public string ResetText { get; }
 
-    public string UpdatedText { get; } = $"Updated {FormatAgo(DateTimeOffset.Now - snapshot.UpdatedAt)} ago";
+    public string CreditsLine { get; }
 
-    public string StatusText { get; } = (snapshot.StatusMessage ?? string.Empty).Trim();
+    public string SourceText { get; }
+
+    public string UpdatedText { get; }
+
+    public string TimestampWarningText { get; }
+
+    public bool HasTimestampWarning => !string.IsNullOrWhiteSpace(TimestampWarningText);
+
+    public string StatusText { get; }
 
     public bool HasStatusMessage => !string.IsNullOrWhiteSpace(StatusText)
         && !string.Equals(StatusText, ErrorMessage, StringComparison.Ordinal);
 
-    public string? ErrorMessage { get; } = snapshot.ErrorMessage;
+    public string? ErrorMessage { get; }
 
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
 
-    public UsageSnapshot Snapshot { get; } = snapshot;
+    public UsageSnapshot Snapshot { get; }
 
     private static string FormatCredits(ProviderCredits? credits)
     {
@@ -65,24 +85,16 @@ public sealed class ProviderCardViewModel(UsageSnapshot snapshot)
         return string.Join(" / ", parts);
     }
 
-    private static string FormatAgo(TimeSpan elapsed)
+    private static string FormatResetText(UsageWindow? window, DateTimeOffset now)
     {
-        if (elapsed.TotalSeconds < 60)
+        if (window?.ResetsAt is DateTimeOffset resetsAt)
         {
-            return "just now";
+            return resetsAt > now
+                ? $"Resets in {FormatRelative(resetsAt - now)}"
+                : "Reset time passed";
         }
 
-        if (elapsed.TotalMinutes < 60)
-        {
-            return $"{Math.Floor(elapsed.TotalMinutes):0}m";
-        }
-
-        if (elapsed.TotalHours < 24)
-        {
-            return $"{Math.Floor(elapsed.TotalHours):0}h";
-        }
-
-        return $"{Math.Floor(elapsed.TotalDays):0}d";
+        return window?.ResetDescription ?? "Reset unknown";
     }
 
     private static string FormatRelative(TimeSpan duration)

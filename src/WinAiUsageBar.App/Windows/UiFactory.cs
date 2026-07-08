@@ -76,6 +76,10 @@ public static class UiFactory
         }
 
         root.Children.Add(Text($"{provider.SourceText} / {provider.UpdatedText}", 12));
+        if (provider.HasTimestampWarning)
+        {
+            root.Children.Add(Text(provider.TimestampWarningText, 12));
+        }
 
         if (provider.HasError)
         {

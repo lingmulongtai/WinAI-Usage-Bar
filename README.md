@@ -22,7 +22,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - Providers shows per-provider setup guidance for source choices, Manual fallback, CLI/app-server caveats, API reference requirements, and stale/future snapshot timestamp warnings without echoing configured secret or scope values.
 - CLI-backed provider settings can store a non-secret command override so refresh can use a known launchable CLI path when PATH discovery finds a broken WindowsApps alias; balanced outer quotes pasted around a Windows path are normalized away.
 - Desktop widget window shows up to three selected providers, remembers placement, and has settings for startup/topmost/provider selection.
-- Provider cards show health, usage percentage, reset text, status messages, credits/costs, source, update time, and errors.
+- Provider cards show health, usage percentage, reset text, status messages, credits/costs, source, update time, stale/future timestamp warnings, and errors.
 - Provider Details shows non-secret snapshot details for identity, usage windows, credits, status, errors, and repair guidance.
 - History page summarizes retained `history.ndjson` entries by provider without showing raw snapshot messages.
 - Refresh settings include interval, notification enablement, history retention limits, a manual update check button, a confirmation-gated latest-update install action, startup update checks, optional verified auto-download/auto-install launch policy, and the last non-secret update status including the observed GitHub Release page, zip package/checksum assets, staged package/checksum/script/result paths, setup installer assets, and reconciled install result plus post-install validation status when present.

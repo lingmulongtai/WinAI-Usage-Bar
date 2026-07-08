@@ -39,6 +39,7 @@ All notable changes to WinAI Usage Bar are documented here.
 - First-run setup now shows provider-specific setup decisions for Manual, Mock, CLI, local app-server, API, disabled, and unsupported source states without exposing secrets.
 - Provider Details now includes Claude and Claude Code CLI repair guidance without echoing paths, scopes, or secret-shaped diagnostics.
 - Provider Details now flags stale cached snapshots and future-dated timestamps so clock skew or old data is visible.
+- Provider cards now use the same snapshot freshness checks as Provider Details for stale and future-dated timestamps.
 
 ## 0.1.4 - 2026-07-08
 

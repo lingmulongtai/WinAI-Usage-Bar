@@ -26,17 +26,13 @@ public sealed class ProviderDetailsPageViewModel
 
 public sealed class ProviderDetailsRowViewModel
 {
-    // Twice the longest automatic refresh interval keeps one missed tick from looking stale.
-    private static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(30);
-    private static readonly TimeSpan FutureTimestampTolerance = TimeSpan.FromSeconds(5);
-
     public ProviderDetailsRowViewModel(
         UsageSnapshot snapshot,
         Func<DateTimeOffset> nowProvider)
     {
-        var elapsed = nowProvider() - snapshot.UpdatedAt;
+        var timestamp = ProviderSnapshotTimestampFormatter.Format(snapshot.UpdatedAt, nowProvider());
         DisplayName = snapshot.DisplayName;
-        SummaryLines = BuildSummaryLines(snapshot, elapsed);
+        SummaryLines = BuildSummaryLines(snapshot, timestamp);
         IdentityLines = BuildIdentityLines(snapshot.Identity);
         UsageLines = BuildUsageLines(snapshot.PrimaryWindow, snapshot.SecondaryWindow);
         CreditLines = BuildCreditLines(snapshot.Credits);
@@ -68,20 +64,21 @@ public sealed class ProviderDetailsRowViewModel
 
     public bool HasErrorText => !string.IsNullOrWhiteSpace(ErrorText);
 
-    private static IReadOnlyList<string> BuildSummaryLines(UsageSnapshot snapshot, TimeSpan elapsed)
+    private static IReadOnlyList<string> BuildSummaryLines(
+        UsageSnapshot snapshot,
+        ProviderSnapshotTimestampText timestamp)
     {
         var lines = new List<string>
         {
             $"Provider ID: {snapshot.ProviderId}",
             $"Health: {snapshot.Health}",
             $"Source: {snapshot.SourceKind}",
-            FormatUpdatedLine(elapsed)
+            $"Updated: {timestamp.DisplayText}"
         };
 
-        var freshnessWarning = FormatFreshnessWarning(elapsed);
-        if (!string.IsNullOrWhiteSpace(freshnessWarning))
+        if (timestamp.HasWarning)
         {
-            lines.Add(freshnessWarning);
+            lines.Add(timestamp.WarningText!);
         }
 
         return lines;
@@ -196,54 +193,4 @@ public sealed class ProviderDetailsRowViewModel
         return string.IsNullOrWhiteSpace(safe) ? "units" : safe;
     }
 
-    private static string FormatAgo(TimeSpan elapsed)
-    {
-        elapsed = elapsed.Duration();
-        if (elapsed.TotalSeconds < 60)
-        {
-            return "just now";
-        }
-
-        if (elapsed.TotalMinutes < 60)
-        {
-            return $"{Math.Floor(elapsed.TotalMinutes):0}m";
-        }
-
-        if (elapsed.TotalHours < 24)
-        {
-            return $"{Math.Floor(elapsed.TotalHours):0}h";
-        }
-
-        return $"{Math.Floor(elapsed.TotalDays):0}d";
-    }
-
-    private static string FormatUpdatedLine(TimeSpan elapsed)
-    {
-        return elapsed < -FutureTimestampTolerance
-            ? $"Updated: in {FormatFuture(elapsed)} (future timestamp)"
-            : $"Updated: {FormatAgo(elapsed)} ago";
-    }
-
-    private static string? FormatFreshnessWarning(TimeSpan elapsed)
-    {
-        if (elapsed < -FutureTimestampTolerance)
-        {
-            return $"Timestamp warning: snapshot is {FormatFuture(elapsed)} in the future; check the system clock or refresh again.";
-        }
-
-        if (elapsed > StaleAfter)
-        {
-            return $"Timestamp warning: cached snapshot is stale ({FormatAgo(elapsed)} old); refresh now or inspect provider errors.";
-        }
-
-        return null;
-    }
-
-    private static string FormatFuture(TimeSpan elapsed)
-    {
-        var duration = elapsed.Duration();
-        return duration.TotalMinutes < 1
-            ? "under 1m"
-            : FormatAgo(duration);
-    }
 }

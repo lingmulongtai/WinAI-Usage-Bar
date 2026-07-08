@@ -70,7 +70,7 @@ Provider cards show:
 - Status message
 - Credits/cost line
 - Source kind
-- Updated time
+- Updated time and stale/future timestamp warning when applicable
 - Error message
 
 Provider Details shows current provider snapshots in a fuller non-secret format:
