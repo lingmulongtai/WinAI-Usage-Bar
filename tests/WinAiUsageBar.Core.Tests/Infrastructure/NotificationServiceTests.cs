@@ -19,6 +19,20 @@ public sealed class NotificationServiceTests
         Assert.Contains("Sign in again.", payload.Body, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void LocalNotificationPayloadFactory_RedactsAuthFailurePayload()
+    {
+        var secret = "gh" + "p_" + new string('a', 8);
+        var payload = LocalNotificationPayloadFactory.Create(Snapshot(
+            ProviderHealth.AuthRequired,
+            remainingPercent: null,
+            errorMessage: "authorization: bearer " + secret));
+
+        Assert.NotNull(payload);
+        Assert.Contains("[REDACTED]", payload.Body, StringComparison.Ordinal);
+        Assert.DoesNotContain(secret, payload.Body, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData(19.9, "quota-low")]
     [InlineData(9.9, "quota-critical")]
@@ -32,6 +46,22 @@ public sealed class NotificationServiceTests
         Assert.NotNull(payload);
         Assert.Equal(reason, payload.Reason);
         Assert.Contains($"{remainingPercent:0.#}% remaining", payload.Body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LocalNotificationPayloadFactory_RedactsLowQuotaResetDescription()
+    {
+        var secret = "gh" + "p_" + new string('b', 8);
+        var payload = LocalNotificationPayloadFactory.Create(Snapshot(
+            ProviderHealth.Warning,
+            remainingPercent: 12,
+            errorMessage: null,
+            resetDescription: "reset token=" + secret));
+
+        Assert.NotNull(payload);
+        Assert.Equal("quota-low", payload.Reason);
+        Assert.Contains("[REDACTED]", payload.Body, StringComparison.Ordinal);
+        Assert.DoesNotContain(secret, payload.Body, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -76,7 +106,8 @@ public sealed class NotificationServiceTests
     private static UsageSnapshot Snapshot(
         ProviderHealth health,
         double? remainingPercent,
-        string? errorMessage)
+        string? errorMessage,
+        string? resetDescription = null)
     {
         var window = remainingPercent is null
             ? null
@@ -85,7 +116,7 @@ public sealed class NotificationServiceTests
                 100 - remainingPercent.Value,
                 remainingPercent,
                 ResetsAt: null,
-                "reset later",
+                resetDescription ?? "reset later",
                 "%",
                 Used: null,
                 Limit: null);

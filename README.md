@@ -26,6 +26,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - Provider Details shows non-secret snapshot details for identity, usage windows, credits, status, errors, and repair guidance.
 - History page summarizes retained `history.ndjson` entries by provider without showing raw snapshot messages.
 - Refresh settings include interval, notification enablement, history retention limits, a manual update check button, a confirmation-gated latest-update install action, startup update checks, optional verified auto-download/auto-install launch policy, and the last non-secret update status including the observed GitHub Release page, zip package/checksum assets, staged package/checksum/script/result paths, setup installer assets, and reconciled install result plus post-install validation status when present.
+- Provider notifications redact snapshot-derived titles and body text before display.
 - Appearance settings apply System, Light, or Dark theme to app windows.
 - Privacy & Data shows a diagnostics summary with local file paths, config version, cached snapshot count, latest update time, diagnostics export counts, crash report counts, recent crash report metadata, and tracked file sizes.
 - Privacy & Data shows storage pressure guidance for retained history, config backups, diagnostics exports, crash reports, and diagnostics log growth.

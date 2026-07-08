@@ -1,6 +1,7 @@
 using Microsoft.Windows.AppNotifications;
 using Microsoft.Windows.AppNotifications.Builder;
 using WinAiUsageBar.Core.Models;
+using WinAiUsageBar.Infrastructure.Security;
 
 namespace WinAiUsageBar.Infrastructure.Notifications;
 
@@ -113,8 +114,8 @@ public static class LocalNotificationPayloadFactory
         if (snapshot.Health == ProviderHealth.AuthRequired)
         {
             return new LocalNotificationPayload(
-                $"{snapshot.DisplayName} authentication required",
-                snapshot.ErrorMessage ?? "Sign in again or switch this provider to Manual mode.",
+                $"{Safe(snapshot.DisplayName)} authentication required",
+                Safe(snapshot.ErrorMessage ?? "Sign in again or switch this provider to Manual mode."),
                 snapshot.ProviderId.ToString(),
                 "auth-required");
         }
@@ -122,13 +123,18 @@ public static class LocalNotificationPayloadFactory
         if (snapshot.PrimaryWindow?.RemainingPercent is double remaining && remaining < 20)
         {
             return new LocalNotificationPayload(
-                $"{snapshot.DisplayName} usage is low",
-                $"{remaining:0.#}% remaining. {snapshot.PrimaryWindow.ResetDescription ?? "Check the provider for reset details."}",
+                $"{Safe(snapshot.DisplayName)} usage is low",
+                $"{remaining:0.#}% remaining. {Safe(snapshot.PrimaryWindow.ResetDescription ?? "Check the provider for reset details.")}",
                 snapshot.ProviderId.ToString(),
                 remaining < 10 ? "quota-critical" : "quota-low");
         }
 
         return null;
+    }
+
+    private static string Safe(string? value)
+    {
+        return DiagnosticRedactor.RedactForDisplay(value).Trim();
     }
 }
 
