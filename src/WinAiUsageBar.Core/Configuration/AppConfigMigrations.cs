@@ -110,6 +110,8 @@ public static class AppConfigMigrations
         updates.LastCurrentVersion = NullIfWhiteSpace(updates.LastCurrentVersion);
         updates.LastLatestVersion = NullIfWhiteSpace(updates.LastLatestVersion);
         updates.LastPackagePath = NullIfWhiteSpace(updates.LastPackagePath);
+        updates.LastInstallerAssetName = NullIfWhiteSpace(updates.LastInstallerAssetName);
+        updates.LastInstallerChecksumAssetName = NullIfWhiteSpace(updates.LastInstallerChecksumAssetName);
         updates.LastInstallScriptPath = NullIfWhiteSpace(updates.LastInstallScriptPath);
         updates.LastInstallResultPath = NullIfWhiteSpace(updates.LastInstallResultPath);
         updates.LastInstallResultStatus = NullIfWhiteSpace(updates.LastInstallResultStatus);

@@ -6,6 +6,7 @@ All notable changes to WinAI Usage Bar are documented here.
 
 ### Added
 
+- Latest-release checks now persist observed setup installer asset status for Refresh settings and health reports.
 - Update checks now report setup installer and setup checksum asset availability alongside the zip package assets.
 - Published release dogfooding can now exercise the startup update policy path with isolated app data.
 - Reconcile app-owned update `install-result.json` files into saved update status during startup checks and health reports.

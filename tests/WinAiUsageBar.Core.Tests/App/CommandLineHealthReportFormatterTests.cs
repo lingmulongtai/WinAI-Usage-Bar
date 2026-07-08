@@ -102,6 +102,8 @@ public sealed class CommandLineHealthReportFormatterTests
             LastLatestVersion = "0.1.5",
             LastInstallLaunchedVersion = "0.1.3",
             LastPackagePath = @"C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\WinAIUsageBar-0.1.5-win-x64.zip",
+            LastInstallerAssetName = "WinAIUsageBar-0.1.5-setup.exe",
+            LastInstallerChecksumAssetName = "WinAIUsageBar-0.1.5-setup.exe.sha256",
             LastInstallScriptPath = @"C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\install-1\apply-update.ps1",
             LastInstallResultPath = @"C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\install-1\install-result.json",
             LastInstallResultStatus = "Succeeded",
@@ -139,6 +141,8 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.Contains("Latest version: 0.1.5", report, StringComparison.Ordinal);
         Assert.Contains("Last launched install: 0.1.3", report, StringComparison.Ordinal);
         Assert.Contains(@"Package path: C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\WinAIUsageBar-0.1.5-win-x64.zip", report, StringComparison.Ordinal);
+        Assert.Contains("Installer asset: WinAIUsageBar-0.1.5-setup.exe", report, StringComparison.Ordinal);
+        Assert.Contains("Installer checksum asset: WinAIUsageBar-0.1.5-setup.exe.sha256", report, StringComparison.Ordinal);
         Assert.Contains(@"Install script: C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\install-1\apply-update.ps1", report, StringComparison.Ordinal);
         Assert.Contains(@"Install result: C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\install-1\install-result.json", report, StringComparison.Ordinal);
         Assert.Contains("Install result status: Succeeded", report, StringComparison.Ordinal);
@@ -195,12 +199,40 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.Contains("Current version: n/a", report, StringComparison.Ordinal);
         Assert.Contains("Latest version: n/a", report, StringComparison.Ordinal);
         Assert.Contains("Package path: n/a", report, StringComparison.Ordinal);
+        Assert.Contains("Installer asset: n/a", report, StringComparison.Ordinal);
+        Assert.Contains("Installer checksum asset: n/a", report, StringComparison.Ordinal);
         Assert.Contains("Install script: n/a", report, StringComparison.Ordinal);
         Assert.Contains("Install result: n/a", report, StringComparison.Ordinal);
         Assert.Contains("Install result status: n/a", report, StringComparison.Ordinal);
         Assert.Contains("Install result completed: n/a", report, StringComparison.Ordinal);
         Assert.Contains("Install result message: n/a", report, StringComparison.Ordinal);
         Assert.Contains("Message: n/a", report, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Format_RedactsInstallerAssetStatus()
+    {
+        var generatedAt = new DateTimeOffset(2026, 7, 8, 8, 25, 0, TimeSpan.FromHours(9));
+        var updates = new UpdateSettings
+        {
+            LastInstallerAssetName = "WinAIUsageBar-setup.exe token=installer-secret",
+            LastInstallerChecksumAssetName = "WinAIUsageBar-setup.exe.sha256 secret=checksum-secret"
+        };
+
+        var report = CommandLineHealthReportFormatter.Format(
+            new AppInfo("WinAI Usage Bar", "1.2.3.0", "1.2.3"),
+            EmptyDiagnostics(generatedAt),
+            EmptyHistory(generatedAt),
+            generatedAt,
+            updates: updates);
+
+        Assert.Contains("Installer asset:", report, StringComparison.Ordinal);
+        Assert.Contains("Installer checksum asset:", report, StringComparison.Ordinal);
+        Assert.Contains("[REDACTED]", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("installer-secret", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("checksum-secret", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("token", report, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("secret", report, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

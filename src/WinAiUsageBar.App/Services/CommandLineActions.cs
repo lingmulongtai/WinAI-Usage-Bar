@@ -209,23 +209,35 @@ public static class CommandLineActions
         CommandLineUpdateVersionOptions options,
         CancellationToken cancellationToken)
     {
+        var paths = AppDataPaths.CreateDefault();
         var service = new ReleaseUpdateCheckService(new GitHubLatestReleaseClient());
         return await CheckForUpdatesAsync(
             AppInfoProvider.Get(),
             service,
             cancellationToken,
-            options.CurrentVersionOverride).ConfigureAwait(false);
+            options.CurrentVersionOverride,
+            paths).ConfigureAwait(false);
     }
 
     public static async Task<CommandLineActionResult> CheckForUpdatesAsync(
         AppInfo appInfo,
         IReleaseUpdateCheckService service,
         CancellationToken cancellationToken,
-        string? currentVersionOverride = null)
+        string? currentVersionOverride = null,
+        AppDataPaths? paths = null)
     {
         var result = await service.CheckAsync(
             ResolveCurrentVersion(appInfo, currentVersionOverride),
             cancellationToken).ConfigureAwait(false);
+        if (paths is not null)
+        {
+            await SaveCliUpdateCheckStatusAsync(
+                result,
+                paths,
+                persistVersionStatus: string.IsNullOrWhiteSpace(currentVersionOverride),
+                cancellationToken).ConfigureAwait(false);
+        }
+
         return new CommandLineActionResult(
             CommandLineUpdateCheckFormatter.Format(result),
             result.Status == UpdateCheckStatus.Error ? 1 : 0);
@@ -441,6 +453,32 @@ public static class CommandLineActions
         return string.IsNullOrWhiteSpace(currentVersionOverride)
             ? appInfo.InformationalVersion
             : currentVersionOverride.Trim();
+    }
+
+    private static async Task SaveCliUpdateCheckStatusAsync(
+        ReleaseUpdateCheckResult result,
+        AppDataPaths paths,
+        bool persistVersionStatus,
+        CancellationToken cancellationToken)
+    {
+        var configStore = new JsonAppConfigStore(paths);
+        var config = await configStore.LoadAsync(cancellationToken).ConfigureAwait(false);
+        if (persistVersionStatus)
+        {
+            config.Updates.LastStatus = result.IsUpdateAvailable
+                ? StartupUpdateStatus.UpdateAvailable.ToString()
+                : result.Status is UpdateCheckStatus.UpToDate or UpdateCheckStatus.NoRelease
+                    ? StartupUpdateStatus.NoUpdate.ToString()
+                    : StartupUpdateStatus.UpdateCheckFailed.ToString();
+            config.Updates.LastMessage = result.Message;
+            config.Updates.LastCurrentVersion = result.CurrentVersion;
+        }
+
+        config.Updates.LastLatestVersion = result.LatestVersion;
+        config.Updates.LastInstallerAssetName = result.Installer?.Name;
+        config.Updates.LastInstallerChecksumAssetName = result.InstallerChecksum?.Name;
+        config.Updates.LastCheckedAt = DateTimeOffset.Now;
+        await configStore.SaveAsync(config, cancellationToken).ConfigureAwait(false);
     }
 
     public static async Task<CommandLineActionResult> PruneSupportArtifactsAsync(

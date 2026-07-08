@@ -585,6 +585,7 @@ public sealed class AppHost : IAsyncDisposable
         config.Updates.LastMessage = result.Message;
         config.Updates.LastCurrentVersion = result.CurrentVersion;
         config.Updates.LastLatestVersion = result.LatestVersion;
+        SaveInstallerAssetStatus(config.Updates, result);
         config.Updates.LastCheckedAt = DateTimeOffset.Now;
         await ConfigStore.SaveAsync(config, cancellationToken).ConfigureAwait(false);
     }
@@ -599,6 +600,11 @@ public sealed class AppHost : IAsyncDisposable
         config.Updates.LastMessage = result.Message;
         config.Updates.LastCurrentVersion = result.UpdateCheck?.CurrentVersion ?? fallbackCurrentVersion;
         config.Updates.LastLatestVersion = result.UpdateCheck?.LatestVersion;
+        if (result.UpdateCheck is not null)
+        {
+            SaveInstallerAssetStatus(config.Updates, result.UpdateCheck);
+        }
+
         config.Updates.LastPackagePath = result.Download?.PackagePath;
         var nextInstallScriptPath = result.Preparation?.ScriptPath ?? result.Launch?.ScriptPath;
         if (!string.IsNullOrWhiteSpace(nextInstallScriptPath))
@@ -628,6 +634,14 @@ public sealed class AppHost : IAsyncDisposable
         }
 
         await ConfigStore.SaveAsync(config, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static void SaveInstallerAssetStatus(
+        UpdateSettings settings,
+        ReleaseUpdateCheckResult result)
+    {
+        settings.LastInstallerAssetName = result.Installer?.Name;
+        settings.LastInstallerChecksumAssetName = result.InstallerChecksum?.Name;
     }
 
     private static string? GetInstallResultPath(string? installScriptPath)

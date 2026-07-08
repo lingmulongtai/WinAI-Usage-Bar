@@ -95,6 +95,7 @@ public sealed class StartupUpdateService(
 
             var update = await updateCheck.CheckAsync(request.CurrentVersion, cancellationToken)
                 .ConfigureAwait(false);
+            SaveInstallerAssetStatus(config.Updates, update);
             if (!update.IsUpdateAvailable
                 && update.Status is UpdateCheckStatus.UpToDate or UpdateCheckStatus.NoRelease)
             {
@@ -364,6 +365,14 @@ public sealed class StartupUpdateService(
         {
             return string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
         }
+    }
+
+    private static void SaveInstallerAssetStatus(
+        UpdateSettings settings,
+        ReleaseUpdateCheckResult result)
+    {
+        settings.LastInstallerAssetName = result.Installer?.Name;
+        settings.LastInstallerChecksumAssetName = result.InstallerChecksum?.Name;
     }
 
     private bool ShouldSkipRecentCheck(UpdateSettings updates, out string message)

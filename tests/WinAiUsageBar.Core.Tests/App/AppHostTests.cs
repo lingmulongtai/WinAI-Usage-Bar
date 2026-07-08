@@ -261,6 +261,8 @@ public sealed class AppHostTests
         Assert.Equal("A newer GitHub release is available.", config.Updates.LastMessage);
         Assert.Equal("0.1.0", config.Updates.LastCurrentVersion);
         Assert.Equal("0.2.0", config.Updates.LastLatestVersion);
+        Assert.Equal("WinAIUsageBar-0.2.0-setup.exe", config.Updates.LastInstallerAssetName);
+        Assert.Equal("WinAIUsageBar-0.2.0-setup.exe.sha256", config.Updates.LastInstallerChecksumAssetName);
         Assert.NotNull(config.Updates.LastCheckedAt);
         Assert.Contains(diagnostics.InfoMessages, message => message.StartsWith(
             "Manual update check result: UpdateAvailable - ",
@@ -307,6 +309,8 @@ public sealed class AppHostTests
         Assert.Equal("Latest update install script launched.", config.Updates.LastMessage);
         Assert.Equal("0.1.0", config.Updates.LastCurrentVersion);
         Assert.Equal("0.2.0", config.Updates.LastLatestVersion);
+        Assert.Equal("WinAIUsageBar-0.2.0-setup.exe", config.Updates.LastInstallerAssetName);
+        Assert.Equal("WinAIUsageBar-0.2.0-setup.exe.sha256", config.Updates.LastInstallerChecksumAssetName);
         Assert.Equal(Path.Combine(paths.UpdatesDirectory, "WinAIUsageBar-0.2.0-win-x64.zip"), config.Updates.LastPackagePath);
         Assert.Equal(Path.Combine(paths.UpdatesDirectory, "install-1", "apply-update.ps1"), config.Updates.LastInstallScriptPath);
         Assert.Equal(Path.Combine(paths.UpdatesDirectory, "install-1", "install-result.json"), config.Updates.LastInstallResultPath);
@@ -628,6 +632,14 @@ public sealed class AppHostTests
             new UpdatePackageAsset(
                 "WinAIUsageBar-0.2.0-win-x64.zip.sha256",
                 new Uri("https://example.test/package.zip.sha256"),
+                128),
+            new UpdatePackageAsset(
+                "WinAIUsageBar-0.2.0-setup.exe",
+                new Uri("https://example.test/setup.exe"),
+                4096),
+            new UpdatePackageAsset(
+                "WinAIUsageBar-0.2.0-setup.exe.sha256",
+                new Uri("https://example.test/setup.exe.sha256"),
                 128));
     }
 

@@ -278,6 +278,10 @@ public sealed class UpdateSettings
 
     public string? LastPackagePath { get; set; }
 
+    public string? LastInstallerAssetName { get; set; }
+
+    public string? LastInstallerChecksumAssetName { get; set; }
+
     public string? LastInstallScriptPath { get; set; }
 
     public string? LastInstallResultPath { get; set; }

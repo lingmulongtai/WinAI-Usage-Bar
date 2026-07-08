@@ -494,6 +494,7 @@ public sealed class CommandLineActionsTests
     [Fact]
     public async Task CheckForUpdatesAsync_FormatsUpdateCheckResult()
     {
+        var paths = TestPaths();
         var updateCheck = new FakeUpdateCheckService(new ReleaseUpdateCheckResult(
             UpdateCheckStatus.UpdateAvailable,
             CurrentVersion: "0.1.2",
@@ -508,23 +509,48 @@ public sealed class CommandLineActionsTests
             new UpdatePackageAsset(
                 "WinAIUsageBar-0.2.0-win-x64.zip.sha256",
                 new Uri("https://example.test/package.zip.sha256"),
+                128),
+            new UpdatePackageAsset(
+                "WinAIUsageBar-0.2.0-setup.exe",
+                new Uri("https://example.test/setup.exe"),
+                4096),
+            new UpdatePackageAsset(
+                "WinAIUsageBar-0.2.0-setup.exe.sha256",
+                new Uri("https://example.test/setup.exe.sha256"),
                 128)));
 
-        var result = await CommandLineActions.CheckForUpdatesAsync(
-            new AppInfo("WinAI Usage Bar", "0.1.0.0", "0.1.0+local"),
-            updateCheck,
-            CancellationToken.None,
-            currentVersionOverride: "0.1.2");
+        try
+        {
+            var result = await CommandLineActions.CheckForUpdatesAsync(
+                new AppInfo("WinAI Usage Bar", "0.1.0.0", "0.1.0+local"),
+                updateCheck,
+                CancellationToken.None,
+                currentVersionOverride: "0.1.2",
+                paths);
+            var config = await new JsonAppConfigStore(paths).LoadAsync(CancellationToken.None);
 
-        Assert.Equal(0, result.ExitCode);
-        Assert.Equal("0.1.2", updateCheck.LastCurrentVersion);
-        Assert.Contains("Update check", result.Output, StringComparison.Ordinal);
-        Assert.Contains("Status: UpdateAvailable", result.Output, StringComparison.Ordinal);
-        Assert.Contains("Current version: 0.1.2", result.Output, StringComparison.Ordinal);
-        Assert.Contains("Latest version: 0.2.0", result.Output, StringComparison.Ordinal);
-        Assert.Contains("Update available: yes", result.Output, StringComparison.Ordinal);
-        Assert.Contains("WinAIUsageBar-0.2.0-win-x64.zip", result.Output, StringComparison.Ordinal);
-        Assert.Contains("package.zip.sha256", result.Output, StringComparison.Ordinal);
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal("0.1.2", updateCheck.LastCurrentVersion);
+            Assert.Contains("Update check", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Status: UpdateAvailable", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Current version: 0.1.2", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Latest version: 0.2.0", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Update available: yes", result.Output, StringComparison.Ordinal);
+            Assert.Contains("WinAIUsageBar-0.2.0-win-x64.zip", result.Output, StringComparison.Ordinal);
+            Assert.Contains("package.zip.sha256", result.Output, StringComparison.Ordinal);
+            Assert.Equal("0.2.0", config.Updates.LastLatestVersion);
+            Assert.Equal("WinAIUsageBar-0.2.0-setup.exe", config.Updates.LastInstallerAssetName);
+            Assert.Equal("WinAIUsageBar-0.2.0-setup.exe.sha256", config.Updates.LastInstallerChecksumAssetName);
+            Assert.Null(config.Updates.LastStatus);
+            Assert.Null(config.Updates.LastCurrentVersion);
+        }
+        finally
+        {
+            if (Directory.Exists(paths.RootDirectory))
+            {
+                Directory.Delete(paths.RootDirectory, recursive: true);
+            }
+        }
     }
 
     [Fact]

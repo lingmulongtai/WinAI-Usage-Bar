@@ -95,6 +95,8 @@ public sealed class RefreshSettingsPageViewModelTests
         config.Updates.LastMessage = "Update package downloaded and verified.";
         config.Updates.LastInstallLaunchedVersion = "0.1.9";
         config.Updates.LastPackagePath = @"C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\WinAIUsageBar-0.2.0-win-x64.zip";
+        config.Updates.LastInstallerAssetName = "WinAIUsageBar-0.2.0-setup.exe";
+        config.Updates.LastInstallerChecksumAssetName = "WinAIUsageBar-0.2.0-setup.exe.sha256";
         config.Updates.LastInstallScriptPath = @"C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\install-1\apply-update.ps1";
         config.Updates.LastInstallResultPath = @"C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\install-1\install-result.json";
         config.Updates.LastInstallResultStatus = "Succeeded";
@@ -110,6 +112,8 @@ public sealed class RefreshSettingsPageViewModelTests
         Assert.Contains("0.1.9", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("Package path:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("WinAIUsageBar-0.2.0-win-x64.zip", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.Contains("Installer asset: WinAIUsageBar-0.2.0-setup.exe", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.Contains("Installer checksum asset: WinAIUsageBar-0.2.0-setup.exe.sha256", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("Install script:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("apply-update.ps1", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("Install result:", viewModel.UpdateStatusText, StringComparison.Ordinal);
@@ -131,6 +135,8 @@ public sealed class RefreshSettingsPageViewModelTests
         config.Updates.LastMessage = "Authorization: Bearer bearer-secret and ghp_1234567890";
         config.Updates.LastInstallLaunchedVersion = "0.2.0 patSecretName=install-secret";
         config.Updates.LastPackagePath = @"C:\Updates\token=sk-secret-value\WinAIUsageBar.zip";
+        config.Updates.LastInstallerAssetName = "setup.exe token=installer-secret";
+        config.Updates.LastInstallerChecksumAssetName = "setup.exe.sha256 secret=checksum-secret";
         config.Updates.LastInstallScriptPath = @"C:\Updates\secret=script-secret\apply-update.ps1";
         config.Updates.LastInstallResultPath = @"C:\Updates\secret=result-secret\install-result.json";
         config.Updates.LastInstallResultStatus = "Failed token=result-status-secret";
@@ -145,6 +151,8 @@ public sealed class RefreshSettingsPageViewModelTests
         Assert.DoesNotContain("bearer-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("ghp_1234567890", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("install-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("installer-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("checksum-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("script-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("result-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("result-status-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
@@ -168,6 +176,8 @@ public sealed class RefreshSettingsPageViewModelTests
         Assert.Contains("Status: NoUpdate", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("Current version:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("Package path:", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("Installer asset:", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("Installer checksum asset:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("Install script:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("Message: The current app version is up to date.", viewModel.UpdateStatusText, StringComparison.Ordinal);
     }

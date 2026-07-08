@@ -133,6 +133,16 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
             lines.Add($"Package path: {SafeValue(updates.LastPackagePath)}");
         }
 
+        if (!string.IsNullOrWhiteSpace(updates.LastInstallerAssetName))
+        {
+            lines.Add($"Installer asset: {SafeValue(updates.LastInstallerAssetName)}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(updates.LastInstallerChecksumAssetName))
+        {
+            lines.Add($"Installer checksum asset: {SafeValue(updates.LastInstallerChecksumAssetName)}");
+        }
+
         if (!string.IsNullOrWhiteSpace(updates.LastInstallScriptPath))
         {
             lines.Add($"Install script: {SafeValue(updates.LastInstallScriptPath)}");
