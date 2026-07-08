@@ -59,7 +59,7 @@ public sealed class HistorySummaryServiceTests
             new DateTimeOffset(2026, 7, 8, 11, 0, 0, TimeSpan.Zero),
             ProviderHealth.Ok,
             remainingPercent: 64,
-            "ghp_secret_like_status");
+            "token=sample-history-token");
 
         try
         {
@@ -97,7 +97,7 @@ public sealed class HistorySummaryServiceTests
             Assert.Contains("3 retained history", viewModel.SummaryText);
             Assert.Contains("1 invalid history", viewModel.InvalidLineText);
             Assert.DoesNotContain("super-secret", visibleText, StringComparison.Ordinal);
-            Assert.DoesNotContain("ghp_secret_like_status", visibleText, StringComparison.Ordinal);
+            Assert.DoesNotContain("sample-history-token", visibleText, StringComparison.Ordinal);
         }
         finally
         {

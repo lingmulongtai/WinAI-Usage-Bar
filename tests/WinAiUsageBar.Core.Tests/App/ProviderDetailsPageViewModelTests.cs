@@ -46,16 +46,16 @@ public sealed class ProviderDetailsPageViewModelTests
         var now = new DateTimeOffset(2026, 7, 8, 12, 30, 0, TimeSpan.Zero);
         var snapshot = Snapshot(
             now,
-            statusMessage: "authorization: bearer sk-live123456789",
-            errorMessage: "token=ghp_123456789abcdef");
+            statusMessage: "authorization: bearer sample-api-key-value",
+            errorMessage: "token=sample-token-value");
 
         var viewModel = new ProviderDetailsPageViewModel([snapshot], nowProvider: () => now);
         var provider = Assert.Single(viewModel.Providers);
 
         Assert.Contains("[REDACTED]", provider.StatusText, StringComparison.Ordinal);
         Assert.Contains("[REDACTED]", provider.ErrorText, StringComparison.Ordinal);
-        Assert.DoesNotContain("sk-live123456789", provider.StatusText, StringComparison.Ordinal);
-        Assert.DoesNotContain("ghp_123456789abcdef", provider.ErrorText, StringComparison.Ordinal);
+        Assert.DoesNotContain("sample-api-key-value", provider.StatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("sample-token-value", provider.ErrorText, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -83,7 +83,7 @@ public sealed class ProviderDetailsPageViewModelTests
         var snapshot = Snapshot(
             now,
             statusMessage: "missing github-copilot-pat for my-org",
-            errorMessage: "token=ghp_123456789abcdef",
+            errorMessage: "token=sample-token-value",
             providerId: ProviderId.GitHubCopilot,
             displayName: "GitHub Copilot",
             health: ProviderHealth.AuthRequired,
@@ -98,7 +98,7 @@ public sealed class ProviderDetailsPageViewModelTests
         Assert.Contains("PAT secret reference", repairText, StringComparison.Ordinal);
         Assert.DoesNotContain("github-copilot-pat", repairText, StringComparison.Ordinal);
         Assert.DoesNotContain("my-org", repairText, StringComparison.Ordinal);
-        Assert.DoesNotContain("ghp_123456789abcdef", repairText, StringComparison.Ordinal);
+        Assert.DoesNotContain("sample-token-value", repairText, StringComparison.Ordinal);
     }
 
     [Fact]

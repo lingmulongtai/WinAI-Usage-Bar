@@ -35,7 +35,7 @@ public sealed class GitHubCopilotMetricsHttpClientTests
             new GitHubCopilotMetricsRequest(
                 GitHubCopilotMetricsScope.Organization,
                 "octo-org",
-                "ghp_secret_token"),
+                "sample-github-token"),
             CancellationToken.None);
 
         Assert.True(result.Success);
@@ -77,7 +77,7 @@ public sealed class GitHubCopilotMetricsHttpClientTests
     {
         var handler = new RecordingHandler(new HttpResponseMessage(HttpStatusCode.Forbidden)
         {
-            ReasonPhrase = "Forbidden token=ghp_secret_token"
+            ReasonPhrase = "Forbidden token=sample-github-token"
         });
         var client = new GitHubCopilotMetricsHttpClient(
             new HttpClient(handler),
@@ -87,13 +87,13 @@ public sealed class GitHubCopilotMetricsHttpClientTests
             new GitHubCopilotMetricsRequest(
                 GitHubCopilotMetricsScope.Organization,
                 "octo-org",
-                "ghp_secret_token"),
+                "sample-github-token"),
             CancellationToken.None);
 
         Assert.False(result.Success);
         Assert.Equal(ProviderHealth.AuthRequired, result.Health);
         Assert.Contains("permissions", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Contains("ghp_secret_token", StringComparison.Ordinal));
+        Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Contains("sample-github-token", StringComparison.Ordinal));
     }
 
     private sealed class RecordingHandler(HttpResponseMessage response) : HttpMessageHandler

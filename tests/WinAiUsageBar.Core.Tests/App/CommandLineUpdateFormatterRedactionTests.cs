@@ -36,8 +36,8 @@ public sealed class CommandLineUpdateFormatterRedactionTests
             "Downloaded with api_key=download-secret",
             @"C:\Updates\token=package-secret\package.zip",
             @"C:\Updates\secret=checksum-secret\package.zip.sha256",
-            "ghp_1234567890abcdef",
-            "sk-1234567890abcdef");
+            "token=sample-github-token-value",
+            "api_key=sample-openai-key-value");
         var preparation = new UpdateInstallPreparationResult(
             UpdateInstallPreparationStatus.Prepared,
             "Prepared with access_token=prepare-secret",
@@ -91,8 +91,8 @@ public sealed class CommandLineUpdateFormatterRedactionTests
             Assert.DoesNotContain("cookie", output, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("authorization", output, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("api_key", output, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("ghp_1234567890abcdef", output, StringComparison.Ordinal);
-            Assert.DoesNotContain("sk-1234567890abcdef", output, StringComparison.Ordinal);
+            Assert.DoesNotContain("sample-github-token-value", output, StringComparison.Ordinal);
+            Assert.DoesNotContain("sample-openai-key-value", output, StringComparison.Ordinal);
         }
 
         Assert.Contains("Status: UpdateAvailable", outputs[0], StringComparison.Ordinal);

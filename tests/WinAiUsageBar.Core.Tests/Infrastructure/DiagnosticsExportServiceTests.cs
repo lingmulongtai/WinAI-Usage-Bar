@@ -15,14 +15,14 @@ public sealed class DiagnosticsExportServiceTests
             paths.ConfigPath,
             """
             {
-              "apiKey": "sk-1234567890",
-              "secretName": "gemini-secret-ref",
+              "apiKey": "sample-api-key-value",
+              "secretName": "gemini-reference-name",
               "visible": "keep this"
             }
             """);
         await File.WriteAllTextAsync(paths.SnapshotsPath, "Authorization: Bearer abc123");
         await File.WriteAllTextAsync(paths.HistoryPath, "access_token=history-secret");
-        await File.WriteAllTextAsync(paths.DiagnosticsLogPath, "ghp_1234567890");
+        await File.WriteAllTextAsync(paths.DiagnosticsLogPath, "token=diagnostics-token-value");
         await File.WriteAllTextAsync(Path.Combine(paths.SecretsDirectory, "stored-secret"), "never-export-me");
         var service = new DiagnosticsExportService(
             paths,
@@ -38,11 +38,11 @@ public sealed class DiagnosticsExportServiceTests
             Assert.Contains("--- config.json ---", export);
             Assert.Contains("keep this", export);
             Assert.Contains("SecretsDirectory: [omitted]", export);
-            Assert.DoesNotContain("sk-1234567890", export);
-            Assert.DoesNotContain("gemini-secret-ref", export);
+            Assert.DoesNotContain("sample-api-key-value", export);
+            Assert.DoesNotContain("gemini-reference-name", export);
             Assert.DoesNotContain("abc123", export);
             Assert.DoesNotContain("history-secret", export);
-            Assert.DoesNotContain("ghp_1234567890", export);
+            Assert.DoesNotContain("diagnostics-token-value", export);
             Assert.DoesNotContain("never-export-me", export);
             Assert.Contains("[REDACTED]", export);
         }

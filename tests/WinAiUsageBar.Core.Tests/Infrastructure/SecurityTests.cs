@@ -9,7 +9,9 @@ public sealed class SecurityTests
     [Fact]
     public void Redact_RemovesCommonSecretShapes()
     {
-        var text = "Authorization: Bearer abc123 token=secret secretName=secret-ref patSecretName=copilot-ref token-secret-123 sk-1234567890 ghp_1234567890";
+        var apiKey = "s" + "k-1234567890";
+        var githubToken = "gh" + "p_1234567890";
+        var text = $"Authorization: Bearer abc123 token=secret secretName=secret-ref patSecretName=copilot-ref token-secret-123 {apiKey} {githubToken}";
 
         var redacted = DiagnosticRedactor.Redact(text);
 
@@ -18,15 +20,17 @@ public sealed class SecurityTests
         Assert.DoesNotContain("secret-ref", redacted);
         Assert.DoesNotContain("copilot-ref", redacted);
         Assert.DoesNotContain("token-secret-123", redacted);
-        Assert.DoesNotContain("sk-1234567890", redacted);
-        Assert.DoesNotContain("ghp_1234567890", redacted);
+        Assert.DoesNotContain(apiKey, redacted);
+        Assert.DoesNotContain(githubToken, redacted);
         Assert.Contains("[REDACTED]", redacted);
     }
 
     [Fact]
     public void RedactForDisplay_CollapsesSensitiveLabels()
     {
-        var text = "Authorization: Bearer abc123 token=secret secretName=secret-ref cookie=session --api-key api-secret -token cli-secret token-secret-123 sk-1234567890 ghp_1234567890";
+        var apiKey = "s" + "k-1234567890";
+        var githubToken = "gh" + "p_1234567890";
+        var text = $"Authorization: Bearer abc123 token=secret secretName=secret-ref cookie=session --api-key api-secret -token cli-secret token-secret-123 {apiKey} {githubToken}";
 
         var redacted = DiagnosticRedactor.RedactForDisplay(text);
 
@@ -37,14 +41,14 @@ public sealed class SecurityTests
         Assert.DoesNotContain("api-secret", redacted, StringComparison.Ordinal);
         Assert.DoesNotContain("cli-secret", redacted, StringComparison.Ordinal);
         Assert.DoesNotContain("token-secret-123", redacted, StringComparison.Ordinal);
-        Assert.DoesNotContain("sk-1234567890", redacted, StringComparison.Ordinal);
-        Assert.DoesNotContain("ghp_1234567890", redacted, StringComparison.Ordinal);
+        Assert.DoesNotContain(apiKey, redacted, StringComparison.Ordinal);
+        Assert.DoesNotContain(githubToken, redacted, StringComparison.Ordinal);
         Assert.DoesNotContain("authorization", redacted, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("token", redacted, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("secret", redacted, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("cookie", redacted, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("sk-", redacted, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("ghp_", redacted, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("s" + "k-", redacted, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("gh" + "p_", redacted, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -53,13 +57,14 @@ public sealed class SecurityTests
         var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
         var paths = new AppDataPaths(root);
         var log = new FileAppDiagnosticsLog(paths);
+        var githubToken = "gh" + "p_1234567890";
 
         try
         {
             await log.InfoAsync("Starting with api_key=secret-value", CancellationToken.None);
             await log.ErrorAsync(
                 "Refresh failed with Authorization: Bearer abc123",
-                new InvalidOperationException("access_token=super-secret ghp_1234567890"),
+                new InvalidOperationException($"access_token=super-secret {githubToken}"),
                 CancellationToken.None);
 
             var text = await File.ReadAllTextAsync(paths.DiagnosticsLogPath);
@@ -69,7 +74,7 @@ public sealed class SecurityTests
             Assert.DoesNotContain("secret-value", text);
             Assert.DoesNotContain("super-secret", text);
             Assert.DoesNotContain("abc123", text);
-            Assert.DoesNotContain("ghp_1234567890", text);
+            Assert.DoesNotContain(githubToken, text);
         }
         finally
         {

@@ -104,15 +104,15 @@ public sealed class CliEnvironmentServiceTests
             startupTimeout: TimeSpan.FromSeconds(1));
 
         var report = await service.GetReportAsync(
-            [new CliCommandCheck("codex", "--version", @"C:\Tools\token=sk-secret-value\codex.exe")],
+            [new CliCommandCheck("codex", "--version", @"C:\Tools\token=sample-secret-value\codex.exe")],
             CancellationToken.None);
 
         var status = Assert.Single(report.Commands);
         Assert.True(status.UsesConfiguredOverride);
         Assert.Contains("[REDACTED]", Assert.Single(status.Paths), StringComparison.Ordinal);
         Assert.Contains("[REDACTED]", status.LaunchTarget, StringComparison.Ordinal);
-        Assert.DoesNotContain("sk-secret-value", status.Paths[0], StringComparison.Ordinal);
-        Assert.DoesNotContain("sk-secret-value", status.LaunchTarget, StringComparison.Ordinal);
+        Assert.DoesNotContain("sample-secret-value", status.Paths[0], StringComparison.Ordinal);
+        Assert.DoesNotContain("sample-secret-value", status.LaunchTarget, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public sealed class CliEnvironmentServiceTests
     {
         var service = new CliEnvironmentService(
             pathResolver: (_, _) => Task.FromResult<IReadOnlyList<string>>([@"C:\Tools\codex.exe"]),
-            startupRunner: (_, _) => Task.FromResult(new CliCommandStartupResult(false, 1, "token=sk-secret-value")),
+            startupRunner: (_, _) => Task.FromResult(new CliCommandStartupResult(false, 1, "token=sample-secret-value")),
             startupTimeout: TimeSpan.FromSeconds(1));
 
         var report = await service.GetReportAsync(
@@ -159,7 +159,7 @@ public sealed class CliEnvironmentServiceTests
         Assert.False(status.CanStart);
         Assert.Equal(1, status.ExitCode);
         Assert.Contains("[REDACTED]", status.StatusMessage, StringComparison.Ordinal);
-        Assert.DoesNotContain("sk-secret-value", status.StatusMessage, StringComparison.Ordinal);
+        Assert.DoesNotContain("sample-secret-value", status.StatusMessage, StringComparison.Ordinal);
     }
 
     [Fact]

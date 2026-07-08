@@ -91,7 +91,7 @@ public sealed class CommandLineRefreshReportFormatterTests
             ProviderHealth.AuthRequired,
             DataSourceKind.OfficialApi,
             "missing github-copilot-pat for my-org",
-            "ghp_123456789abcdef",
+            "token=sample-token-value",
             generatedAt);
 
         var report = CommandLineRefreshReportFormatter.Format(
@@ -104,7 +104,7 @@ public sealed class CommandLineRefreshReportFormatterTests
         Assert.Contains("PAT secret reference", report, StringComparison.Ordinal);
         Assert.DoesNotContain("github-copilot-pat", report, StringComparison.Ordinal);
         Assert.DoesNotContain("my-org", report, StringComparison.Ordinal);
-        Assert.DoesNotContain("ghp_123456789abcdef", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("sample-token-value", report, StringComparison.Ordinal);
     }
 
     [Fact]

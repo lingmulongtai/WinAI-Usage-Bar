@@ -294,7 +294,7 @@ public sealed class UsageRefreshServiceTests
                 descriptor => new DiagnosticProviderAdapter(
                     descriptor,
                     [
-                        "authorization: bearer sk-provider-secret",
+                        "authorization: bearer sample-provider-secret",
                         "started local app-server"
                     ])),
             TestPaths(),
@@ -305,7 +305,7 @@ public sealed class UsageRefreshServiceTests
 
         Assert.Contains(diagnostics.InfoMessages, message => message.Contains("Codex provider diagnostic", StringComparison.Ordinal));
         Assert.Contains(diagnostics.InfoMessages, message => message.Contains("started local app-server", StringComparison.Ordinal));
-        Assert.DoesNotContain(diagnostics.InfoMessages, message => message.Contains("sk-provider-secret", StringComparison.Ordinal));
+        Assert.DoesNotContain(diagnostics.InfoMessages, message => message.Contains("sample-provider-secret", StringComparison.Ordinal));
         Assert.Contains(diagnostics.InfoMessages, message => message.Contains("[REDACTED]", StringComparison.Ordinal));
     }
 

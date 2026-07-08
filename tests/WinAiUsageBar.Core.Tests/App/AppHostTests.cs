@@ -345,14 +345,14 @@ public sealed class AppHostTests
                 new FakeWindowActivator(),
                 new FakeExitService()));
 
-        await host.SetSecretAsync("  gemini-api-key  ", "sk-test-secret", CancellationToken.None);
+        await host.SetSecretAsync("  gemini-api-key  ", "sample-test-secret", CancellationToken.None);
         var existsAfterSave = await host.HasSecretAsync("gemini-api-key", CancellationToken.None);
         await host.DeleteSecretAsync("gemini-api-key", CancellationToken.None);
         var existsAfterDelete = await host.HasSecretAsync("gemini-api-key", CancellationToken.None);
 
         Assert.True(existsAfterSave);
         Assert.False(existsAfterDelete);
-        Assert.DoesNotContain(diagnostics.InfoMessages, message => message.Contains("sk-test-secret", StringComparison.Ordinal));
+        Assert.DoesNotContain(diagnostics.InfoMessages, message => message.Contains("sample-test-secret", StringComparison.Ordinal));
         Assert.Equal("gemini-api-key", secrets.LastSetName);
     }
 

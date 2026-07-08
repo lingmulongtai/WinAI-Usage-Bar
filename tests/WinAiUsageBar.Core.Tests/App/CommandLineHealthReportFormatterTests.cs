@@ -109,7 +109,7 @@ public sealed class CommandLineHealthReportFormatterTests
             LastInstallResultStatus = "Succeeded",
             LastInstallResultMessage = "Update installed successfully with token=install-secret-value",
             LastInstallResultCompletedAt = generatedAt.AddMinutes(-1),
-            LastMessage = "Downloaded with token=sk-secret-value"
+            LastMessage = "Downloaded with token=sample-secret-value"
         };
 
         var report = CommandLineHealthReportFormatter.Format(
@@ -174,7 +174,7 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.Contains("diagnostics.log: Missing", report, StringComparison.Ordinal);
         Assert.DoesNotContain("secret", report, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("token", report, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("sk-secret-value", report, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("sample-secret-value", report, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

@@ -261,7 +261,7 @@ public sealed class ProviderAdapterTests
         var metricsClient = new RecordingGitHubCopilotMetricsClient();
         var adapter = new GitHubCopilotMetricsProviderAdapter(
             descriptor,
-            new FixedSecretResolver("ghp_secret_token"),
+            new FixedSecretResolver("sample-github-token"),
             metricsClient);
         var config = ProviderConfig.CreateDefault(descriptor);
         config.SourceKind = DataSourceKind.OfficialApi;
@@ -279,7 +279,7 @@ public sealed class ProviderAdapterTests
         Assert.Equal(2, result.Snapshot?.PrimaryWindow?.Used);
         Assert.Equal("2026-06-01 to 2026-06-28", result.Snapshot?.PrimaryWindow?.ResetDescription);
         Assert.Equal(GitHubCopilotMetricsScope.Organization, metricsClient.LastRequest?.Scope);
-        Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Contains("ghp_secret_token", StringComparison.Ordinal));
+        Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Contains("sample-github-token", StringComparison.Ordinal));
     }
 
     private sealed class FixedCommandProbe(CommandProbeResult result) : ICommandProbe
