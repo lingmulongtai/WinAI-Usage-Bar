@@ -14,6 +14,7 @@ public sealed class AppDataPathsTests
 
         Assert.Equal(Path.GetFullPath(root), paths.RootDirectory);
         Assert.Equal(Path.Combine(Path.GetFullPath(root), "updates"), paths.UpdatesDirectory);
+        Assert.Equal(Path.Combine(Path.GetFullPath(root), "crash-reports"), paths.CrashReportsDirectory);
     }
 
     [Fact]

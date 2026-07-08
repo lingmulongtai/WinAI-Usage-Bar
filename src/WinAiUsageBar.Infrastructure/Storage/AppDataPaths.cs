@@ -12,6 +12,7 @@ public sealed class AppDataPaths
         HistoryPath = Path.Combine(rootDirectory, "history.ndjson");
         DiagnosticsLogPath = Path.Combine(rootDirectory, "diagnostics.log");
         DiagnosticsExportsDirectory = Path.Combine(rootDirectory, "diagnostics-exports");
+        CrashReportsDirectory = Path.Combine(rootDirectory, "crash-reports");
         ConfigBackupsDirectory = Path.Combine(rootDirectory, "config-backups");
         UpdatesDirectory = Path.Combine(rootDirectory, "updates");
         SecretsDirectory = Path.Combine(rootDirectory, "secrets");
@@ -28,6 +29,8 @@ public sealed class AppDataPaths
     public string DiagnosticsLogPath { get; }
 
     public string DiagnosticsExportsDirectory { get; }
+
+    public string CrashReportsDirectory { get; }
 
     public string ConfigBackupsDirectory { get; }
 
@@ -61,6 +64,7 @@ public sealed class AppDataPaths
     {
         Directory.CreateDirectory(RootDirectory);
         Directory.CreateDirectory(DiagnosticsExportsDirectory);
+        Directory.CreateDirectory(CrashReportsDirectory);
         Directory.CreateDirectory(ConfigBackupsDirectory);
         Directory.CreateDirectory(UpdatesDirectory);
         Directory.CreateDirectory(SecretsDirectory);

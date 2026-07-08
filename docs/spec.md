@@ -96,6 +96,7 @@ Files are stored under `%AppData%\WinAiUsageBar`:
 - `snapshots.json`
 - `history.ndjson`
 - `config-backups/`
+- `crash-reports/`
 - `secrets/`
 
 `config.json` also stores non-secret onboarding state, including whether first-run setup has been completed and when it was completed.
@@ -115,6 +116,8 @@ The Privacy & Data page shows recovery guidance derived from the non-secret diag
 The Privacy & Data page can clear `snapshots.json` and `history.ndjson` as local maintenance actions. These actions must not delete `config.json`, diagnostics exports, or files under `secrets/`.
 
 The Privacy & Data page can prune old retained support artifacts for config backups and diagnostics exports while keeping the newest 5 matched files. Pruning must only match app-owned top-level filename patterns under `config-backups/` and `diagnostics-exports/`. It must not delete `config.json`, `snapshots.json`, `history.ndjson`, `diagnostics.log`, unrelated files, nested files, or files under `secrets/`.
+
+Unexpected startup and WinUI failures should write a local structured crash report under `crash-reports/`. Crash reports must be JSON with timestamp, source, exception type, redacted message, redacted stack trace, app version when available, and optional redacted context. The writer must never read provider auth files or secret-store contents, must redact sensitive-looking context names and values, must use collision-resistant generated file names, and must prune to a bounded recent set when the app writes reports.
 
 The CLI can run the same support artifact pruning with `--prune-support-artifacts [--keep-newest <N>]`. The default keep count is 5. Invalid, missing, duplicate, or unknown prune options must exit with code 2 and print help. Successful output must include non-secret matched, kept, deleted, and freed-byte counts for config backups and diagnostics exports.
 
@@ -215,6 +218,8 @@ The CLI `--smoke-test` command runs without opening WinUI windows. It should use
 The Privacy & Data page can create a diagnostics export under `%AppData%\WinAiUsageBar\diagnostics-exports`. The export may include `config.json`, `snapshots.json`, `history.ndjson`, and `diagnostics.log`, but it must redact common secret shapes at export time and must never include files from `secrets/`. Diagnostics export writes should use create-new semantics and add a numeric filename suffix when the timestamp-based export name already exists.
 
 Diagnostics summary is separate from diagnostics export: the summary is for quick on-screen troubleshooting, while the export creates a redacted text bundle for deeper inspection.
+
+Crash reports are local support artifacts only. They must not be uploaded automatically, and catalog/pruning helpers must only match top-level app-generated `crash-report-<timestamp>-<id>.json` files under `crash-reports/`.
 
 The CLI health report includes a storage pressure section derived from the same non-secret guidance used by Privacy & Data. It should list retained history, config backups, diagnostics exports, and diagnostics log pressure with level, detail, and recommendation text. When `config.json` is already normalized, this read-only report should not rewrite the config file.
 

@@ -30,6 +30,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - Privacy & Data shows a diagnostics summary with local file paths, config version, cached snapshot count, latest update time, diagnostics export counts, and tracked file sizes.
 - Privacy & Data shows storage pressure guidance for retained history, config backups, diagnostics exports, and diagnostics log growth.
 - Privacy & Data shows recovery guidance for choosing config backup export, latest-backup restore, reset-to-default recovery, or diagnostics export.
+- Unexpected startup and WinUI failures write local redacted JSON crash reports under `%AppData%\WinAiUsageBar\crash-reports`; reports are pruned to a bounded recent set and are never sent anywhere automatically.
 - Privacy & Data can clear cached snapshots and retained history without deleting config or saved secrets.
 - Privacy & Data can export a timestamped `config.json` backup without copying secret values.
 - Privacy & Data can validate and restore the latest config backup after explicit confirmation.
@@ -58,7 +59,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - Codex CLI startup uses provider command overrides when configured, otherwise resolved Windows command paths, including `.cmd` shims and `.exe` paths. Startup failures are classified separately from auth and JSON-RPC errors with repair-oriented messages for WindowsApps/App Execution Alias or permission problems, including the option to set a provider CLI override to a launchable path.
 - Claude, Claude Code, Gemini, OpenCode Zen, and GitHub Copilot have MVP-safe descriptors and manual mode support.
 - Gemini and OpenCode Zen expose API key secret-name fields without storing API key values in config.
-- JSON config, snapshot cache, and history are stored under `%AppData%\WinAiUsageBar`; config saves use unique temporary files so parallel CLI commands do not collide on a fixed temp file, and loading an already-normalized config does not rewrite it during read-only diagnostics.
+- JSON config, snapshot cache, history, diagnostics exports, crash reports, update staging, and local secrets are stored under `%AppData%\WinAiUsageBar`; config saves use unique temporary files so parallel CLI commands do not collide on a fixed temp file, and loading an already-normalized config does not rewrite it during read-only diagnostics.
 
 ## Build And Run
 
@@ -237,6 +238,7 @@ The release workflow builds, tests, publishes, smoke-tests, packages the app, bu
 - Privacy & Data shows non-secret diagnostics metadata only; it does not list secret names or values.
 - Privacy & Data recovery guidance is derived from non-secret diagnostics metadata only.
 - Diagnostics can be exported from Privacy & Data; exports redact common secret shapes, never include files under `secrets/`, and avoid overwriting same-second exports by adding a numeric suffix when needed.
+- Crash reports are local JSON files only. They include timestamp, source, exception type, redacted message, redacted stack trace, app version, and optional redacted context.
 - Secret values can be saved or deleted by secret name from Privacy & Data; values are never displayed back.
 - Snapshot cache and retained history can be cleared from Privacy & Data; `config.json` and `secrets/` are left untouched.
 - `config.json` can be backed up from Privacy & Data; backup files include non-secret settings only and do not copy `secrets/`.

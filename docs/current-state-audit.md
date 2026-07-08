@@ -17,7 +17,7 @@ Latest published release: `v0.1.4`. It adds English release-note generation from
 | Product usability | 6/10 | The app now has guided first-run checklist state, provider details, backup export/restore, and recovery checks, but it is still mostly useful with Mock/Manual data today. |
 | Packaging and release | 9/10 | Self-contained publish, zip packaging, checksums, readiness gates, artifacts, release workflow, English release notes generated from the changelog, published setup assets, update-check, verified download, install-script preparation, rollback-capable guarded script launch, explicit latest-update install orchestration, setup installer artifact/release paths, throttled startup update policy, current-version update dogfooding, and published disposable release-to-release update dogfooding exist. No signing yet. |
 | Test confidence | 8/10 | Core, infrastructure, view model, CLI, storage, parser, refresh, app-composition smoke, and packaging smoke paths are covered without external CLIs. UI runtime coverage remains limited. |
-| Observability and support | 8/10 | Diagnostics summary, provider repair guidance, recovery guidance, redacted export, health report, isolated app-data dogfooding, provider dogfooding notes, release dogfooding notes, and logs are solid for an MVP. No structured crash reports yet. |
+| Observability and support | 8/10 | Diagnostics summary, provider repair guidance, recovery guidance, redacted export, health report, isolated app-data dogfooding, provider dogfooding notes, release dogfooding notes, logs, and local redacted crash reports are solid for an MVP. No remote crash reporting or crash-report UI yet. |
 
 Overall:
 
@@ -58,6 +58,7 @@ Overall:
 - Config backup exports and restore/reset rollback backups use unique temp files and suffix duplicate timestamp names instead of overwriting same-second backups.
 - Diagnostics exports also use create-new writes and suffix duplicate timestamp names instead of overwriting same-second support bundles.
 - Privacy & Data and `--health-report` now include non-secret storage pressure guidance for history, backups, diagnostics exports, and diagnostics logs, plus recovery guidance for backup, restore, reset, diagnostics export choices, and persisted startup update status.
+- Startup and WinUI unhandled failures now write local redacted JSON crash reports under app data and prune them to a bounded recent set.
 - Privacy & Data and the CLI can prune old config backups and diagnostics exports while keeping the newest matched files and leaving config, cache, logs, and `secrets/` alone.
 - Windows shell dogfooding now has a concrete manual verification checklist and a timestamped local report script.
 - The issue and commit history is becoming meaningful rather than fake contribution noise.
