@@ -276,6 +276,8 @@ public sealed class UpdateSettings
 
     public string? LastLatestVersion { get; set; }
 
+    public string? LastReleasePageUrl { get; set; }
+
     public string? LastPackagePath { get; set; }
 
     public string? LastInstallerAssetName { get; set; }

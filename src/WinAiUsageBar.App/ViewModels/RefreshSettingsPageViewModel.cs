@@ -126,6 +126,11 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
             lines.Add($"Current version: {current}");
         }
 
+        if (!string.IsNullOrWhiteSpace(updates.LastReleasePageUrl))
+        {
+            lines.Add($"Release page: {SafeValue(updates.LastReleasePageUrl)}");
+        }
+
         lines.Add(launchedVersion);
 
         if (!string.IsNullOrWhiteSpace(updates.LastPackagePath))

@@ -33,6 +33,7 @@ public sealed class StartupUpdateServiceTests
         config.Updates.MinimumCheckIntervalHours = 24;
         config.Updates.LastCheckedAt = lastChecked;
         config.Updates.LastLatestVersion = "0.1.0";
+        config.Updates.LastReleasePageUrl = "https://example.test/releases/v0.1.0";
         config.Updates.LastInstallerAssetName = "WinAIUsageBar-0.1.0-setup.exe";
         config.Updates.LastInstallerChecksumAssetName = "WinAIUsageBar-0.1.0-setup.exe.sha256";
         var store = new InMemoryConfigStore(config);
@@ -45,6 +46,7 @@ public sealed class StartupUpdateServiceTests
         Assert.Equal(0, updateCheck.CheckCount);
         Assert.Equal("SkippedRecentCheck", config.Updates.LastStatus);
         Assert.Equal(lastChecked, config.Updates.LastCheckedAt);
+        Assert.Equal("https://example.test/releases/v0.1.0", config.Updates.LastReleasePageUrl);
         Assert.Equal("WinAIUsageBar-0.1.0-setup.exe", config.Updates.LastInstallerAssetName);
         Assert.Equal("WinAIUsageBar-0.1.0-setup.exe.sha256", config.Updates.LastInstallerChecksumAssetName);
         Assert.Contains("still fresh", config.Updates.LastMessage, StringComparison.OrdinalIgnoreCase);
@@ -110,6 +112,7 @@ public sealed class StartupUpdateServiceTests
         Assert.Equal("NoUpdate", config.Updates.LastStatus);
         Assert.Equal("0.1.0", config.Updates.LastCurrentVersion);
         Assert.Equal("0.1.0", config.Updates.LastLatestVersion);
+        Assert.Equal("https://example.test/releases/v0.1.0", config.Updates.LastReleasePageUrl);
     }
 
     [Fact]
@@ -127,6 +130,7 @@ public sealed class StartupUpdateServiceTests
         Assert.Equal(0, downloader.DownloadCount);
         Assert.Equal("UpdateAvailable", config.Updates.LastStatus);
         Assert.Equal("0.2.0", config.Updates.LastLatestVersion);
+        Assert.Equal("https://example.test/releases/v0.2.0", config.Updates.LastReleasePageUrl);
         Assert.Equal("WinAIUsageBar-0.2.0-setup.exe", config.Updates.LastInstallerAssetName);
         Assert.Equal("WinAIUsageBar-0.2.0-setup.exe.sha256", config.Updates.LastInstallerChecksumAssetName);
         Assert.Null(config.Updates.LastPackagePath);

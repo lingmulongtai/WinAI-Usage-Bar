@@ -126,6 +126,7 @@ public static class CommandLineHealthReportFormatter
         builder.AppendLine($"  Status: {SafeValue(updates.LastStatus)}");
         builder.AppendLine($"  Current version: {SafeValue(updates.LastCurrentVersion)}");
         builder.AppendLine($"  Latest version: {SafeValue(updates.LastLatestVersion)}");
+        builder.AppendLine($"  Release page: {SafeValue(updates.LastReleasePageUrl)}");
         builder.AppendLine($"  Last launched install: {SafeValue(updates.LastInstallLaunchedVersion)}");
         builder.AppendLine($"  Package path: {SafeValue(updates.LastPackagePath)}");
         builder.AppendLine($"  Installer asset: {SafeValue(updates.LastInstallerAssetName)}");

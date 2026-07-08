@@ -475,6 +475,7 @@ public static class CommandLineActions
         }
 
         config.Updates.LastLatestVersion = result.LatestVersion;
+        config.Updates.LastReleasePageUrl = result.ReleasePageUrl?.ToString();
         config.Updates.LastInstallerAssetName = result.Installer?.Name;
         config.Updates.LastInstallerChecksumAssetName = result.InstallerChecksum?.Name;
         config.Updates.LastCheckedAt = DateTimeOffset.Now;

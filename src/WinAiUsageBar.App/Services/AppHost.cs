@@ -585,6 +585,7 @@ public sealed class AppHost : IAsyncDisposable
         config.Updates.LastMessage = result.Message;
         config.Updates.LastCurrentVersion = result.CurrentVersion;
         config.Updates.LastLatestVersion = result.LatestVersion;
+        config.Updates.LastReleasePageUrl = result.ReleasePageUrl?.ToString();
         SaveInstallerAssetStatus(config.Updates, result);
         config.Updates.LastCheckedAt = DateTimeOffset.Now;
         await ConfigStore.SaveAsync(config, cancellationToken).ConfigureAwait(false);
@@ -600,6 +601,7 @@ public sealed class AppHost : IAsyncDisposable
         config.Updates.LastMessage = result.Message;
         config.Updates.LastCurrentVersion = result.UpdateCheck?.CurrentVersion ?? fallbackCurrentVersion;
         config.Updates.LastLatestVersion = result.UpdateCheck?.LatestVersion;
+        config.Updates.LastReleasePageUrl = result.UpdateCheck?.ReleasePageUrl?.ToString();
         if (result.UpdateCheck is not null)
         {
             SaveInstallerAssetStatus(config.Updates, result.UpdateCheck);

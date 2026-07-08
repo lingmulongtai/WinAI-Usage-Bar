@@ -27,6 +27,7 @@ public sealed class JsonConfigStoreTests
         config.Updates.LastInstallResultStatus = "Succeeded";
         config.Updates.LastInstallResultMessage = "Update installed successfully.";
         config.Updates.LastInstallResultCompletedAt = new DateTimeOffset(2026, 7, 8, 9, 32, 0, TimeSpan.FromHours(9));
+        config.Updates.LastReleasePageUrl = "https://example.test/releases/v0.2.0";
         config.Updates.LastInstallerAssetName = "WinAIUsageBar-0.2.0-setup.exe";
         config.Updates.LastInstallerChecksumAssetName = "WinAIUsageBar-0.2.0-setup.exe.sha256";
 
@@ -45,6 +46,7 @@ public sealed class JsonConfigStoreTests
         Assert.Equal("Succeeded", reloaded.Updates.LastInstallResultStatus);
         Assert.Equal("Update installed successfully.", reloaded.Updates.LastInstallResultMessage);
         Assert.Equal(new DateTimeOffset(2026, 7, 8, 9, 32, 0, TimeSpan.FromHours(9)), reloaded.Updates.LastInstallResultCompletedAt);
+        Assert.Equal("https://example.test/releases/v0.2.0", reloaded.Updates.LastReleasePageUrl);
         Assert.Equal("WinAIUsageBar-0.2.0-setup.exe", reloaded.Updates.LastInstallerAssetName);
         Assert.Equal("WinAIUsageBar-0.2.0-setup.exe.sha256", reloaded.Updates.LastInstallerChecksumAssetName);
 
@@ -106,6 +108,7 @@ public sealed class JsonConfigStoreTests
             "providerIds": ["Gemini", "Gemini"]
           },
           "updates": {
+            "lastReleasePageUrl": "   ",
             "lastInstallerAssetName": "   ",
             "lastInstallerChecksumAssetName": ""
           }
@@ -141,6 +144,7 @@ public sealed class JsonConfigStoreTests
             Assert.False(config.Updates.DownloadAutomatically);
             Assert.False(config.Updates.InstallAutomatically);
             Assert.Null(config.Updates.LastStatus);
+            Assert.Null(config.Updates.LastReleasePageUrl);
             Assert.Null(config.Updates.LastInstallerAssetName);
             Assert.Null(config.Updates.LastInstallerChecksumAssetName);
             Assert.Equal(123, config.Widget.Left);

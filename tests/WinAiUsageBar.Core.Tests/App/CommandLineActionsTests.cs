@@ -401,6 +401,7 @@ public sealed class CommandLineActionsTests
         config.Updates.LastStatus = "InstallLaunched";
         config.Updates.LastCurrentVersion = "0.1.4";
         config.Updates.LastLatestVersion = "0.1.5";
+        config.Updates.LastReleasePageUrl = "https://example.test/releases/v0.1.5";
         config.Updates.LastInstallLaunchedVersion = "0.1.5";
         config.Updates.LastPackagePath = @"C:\Updates\WinAIUsageBar-0.1.5-win-x64.zip";
         config.Updates.LastInstallScriptPath = @"C:\Updates\install-1\apply-update.ps1";
@@ -427,6 +428,7 @@ public sealed class CommandLineActionsTests
             Assert.Contains("Status: InstallLaunched", report, StringComparison.Ordinal);
             Assert.Contains("Current version: 0.1.4", report, StringComparison.Ordinal);
             Assert.Contains("Latest version: 0.1.5", report, StringComparison.Ordinal);
+            Assert.Contains("Release page: https://example.test/releases/v0.1.5", report, StringComparison.Ordinal);
             Assert.Contains("Last launched install: 0.1.5", report, StringComparison.Ordinal);
             Assert.Contains(@"Package path: C:\Updates\WinAIUsageBar-0.1.5-win-x64.zip", report, StringComparison.Ordinal);
             Assert.Contains(@"Install script: C:\Updates\install-1\apply-update.ps1", report, StringComparison.Ordinal);
@@ -539,6 +541,7 @@ public sealed class CommandLineActionsTests
             Assert.Contains("WinAIUsageBar-0.2.0-win-x64.zip", result.Output, StringComparison.Ordinal);
             Assert.Contains("package.zip.sha256", result.Output, StringComparison.Ordinal);
             Assert.Equal("0.2.0", config.Updates.LastLatestVersion);
+            Assert.Equal("https://example.test/releases/v0.2.0", config.Updates.LastReleasePageUrl);
             Assert.Equal("WinAIUsageBar-0.2.0-setup.exe", config.Updates.LastInstallerAssetName);
             Assert.Equal("WinAIUsageBar-0.2.0-setup.exe.sha256", config.Updates.LastInstallerChecksumAssetName);
             Assert.Null(config.Updates.LastStatus);

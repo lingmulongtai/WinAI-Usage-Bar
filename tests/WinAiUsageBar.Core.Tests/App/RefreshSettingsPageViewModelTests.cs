@@ -92,6 +92,7 @@ public sealed class RefreshSettingsPageViewModelTests
         config.Updates.LastStatus = "Downloaded";
         config.Updates.LastCurrentVersion = "0.1.9";
         config.Updates.LastLatestVersion = "0.2.0";
+        config.Updates.LastReleasePageUrl = "https://example.test/releases/v0.2.0";
         config.Updates.LastMessage = "Update package downloaded and verified.";
         config.Updates.LastInstallLaunchedVersion = "0.1.9";
         config.Updates.LastPackagePath = @"C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\WinAIUsageBar-0.2.0-win-x64.zip";
@@ -109,6 +110,7 @@ public sealed class RefreshSettingsPageViewModelTests
         Assert.Contains("Downloaded", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("Current version: 0.1.9", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("0.2.0", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.Contains("Release page: https://example.test/releases/v0.2.0", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("0.1.9", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("Package path:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("WinAIUsageBar-0.2.0-win-x64.zip", viewModel.UpdateStatusText, StringComparison.Ordinal);
@@ -132,6 +134,7 @@ public sealed class RefreshSettingsPageViewModelTests
         config.Updates.LastStatus = "Downloaded token=sample-secret-value";
         config.Updates.LastCurrentVersion = "0.1.9 access_token=current-secret";
         config.Updates.LastLatestVersion = "0.2.0 cookie=session-secret";
+        config.Updates.LastReleasePageUrl = "https://example.test/releases/v0.2.0?token=release-secret";
         config.Updates.LastMessage = "Authorization: Bearer bearer-secret and token=github-token-value";
         config.Updates.LastInstallLaunchedVersion = "0.2.0 patSecretName=install-secret";
         config.Updates.LastPackagePath = @"C:\Updates\token=sample-secret-value\WinAIUsageBar.zip";
@@ -148,6 +151,7 @@ public sealed class RefreshSettingsPageViewModelTests
         Assert.DoesNotContain("sample-secret-value", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("current-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("session-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("release-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("bearer-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("github-token-value", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("install-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
@@ -175,6 +179,7 @@ public sealed class RefreshSettingsPageViewModelTests
 
         Assert.Contains("Status: NoUpdate", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("Current version:", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("Release page:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("Package path:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("Installer asset:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("Installer checksum asset:", viewModel.UpdateStatusText, StringComparison.Ordinal);
