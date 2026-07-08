@@ -228,6 +228,46 @@ public sealed class AppHostTests
     }
 
     [Fact]
+    public async Task CheckForUpdatesNowAsync_RecordsUpdateStatusAndLogsResult()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        var config = AppConfig.CreateDefault();
+        var diagnostics = new RecordingDiagnosticsLog();
+        var updateCheck = new FakeReleaseUpdateCheckService(AvailableUpdateCheck());
+        var host = new AppHost(
+            new ImmediateDispatcher(),
+            new AppHostServices(
+                paths,
+                new InMemoryConfigStore(config),
+                new FakeRefreshService([]),
+                new FakeTrayIconService(),
+                diagnostics,
+                new FakeDiagnosticsExportService(paths),
+                new FakeDiagnosticsSummaryService(paths),
+                new FakeHistorySummaryService(),
+                new FakeDataMaintenanceService(paths),
+                new FakeSecretStore(),
+                new FakeStartupRegistrationService(),
+                new FakeWindowActivator(),
+                new FakeExitService(),
+                UpdateCheckService: updateCheck));
+
+        var result = await host.CheckForUpdatesNowAsync(CancellationToken.None);
+
+        Assert.True(result.IsUpdateAvailable);
+        Assert.Equal(1, updateCheck.CheckCount);
+        Assert.Equal("UpdateAvailable", config.Updates.LastStatus);
+        Assert.Equal("A newer GitHub release is available.", config.Updates.LastMessage);
+        Assert.Equal("0.1.0", config.Updates.LastCurrentVersion);
+        Assert.Equal("0.2.0", config.Updates.LastLatestVersion);
+        Assert.NotNull(config.Updates.LastCheckedAt);
+        Assert.Contains(diagnostics.InfoMessages, message => message.StartsWith(
+            "Manual update check result: UpdateAvailable - ",
+            StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task SecretMethods_UseInjectedSecretStoreWithoutLoggingValues()
     {
         var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
@@ -520,6 +560,25 @@ public sealed class AppHostTests
         {
             await Task.Delay(10, timeout.Token);
         }
+    }
+
+    private static ReleaseUpdateCheckResult AvailableUpdateCheck()
+    {
+        return new ReleaseUpdateCheckResult(
+            UpdateCheckStatus.UpdateAvailable,
+            CurrentVersion: "0.1.0",
+            LatestVersion: "0.2.0",
+            "A newer GitHub release is available.",
+            IsUpdateAvailable: true,
+            ReleasePageUrl: new Uri("https://example.test/releases/v0.2.0"),
+            new UpdatePackageAsset(
+                "WinAIUsageBar-0.2.0-win-x64.zip",
+                new Uri("https://example.test/package.zip"),
+                2048),
+            new UpdatePackageAsset(
+                "WinAIUsageBar-0.2.0-win-x64.zip.sha256",
+                new Uri("https://example.test/package.zip.sha256"),
+                128));
     }
 
     private sealed class ImmediateDispatcher : IAppDispatcher
@@ -856,6 +915,21 @@ public sealed class AppHostTests
                 LatestVersion: "0.1.0",
                 PackagePath: null,
                 InstallScriptPath: null));
+        }
+    }
+
+    private sealed class FakeReleaseUpdateCheckService(ReleaseUpdateCheckResult result) : IReleaseUpdateCheckService
+    {
+        public int CheckCount { get; private set; }
+
+        public Task<ReleaseUpdateCheckResult> CheckAsync(
+            string currentVersion,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            CheckCount++;
+            Assert.False(string.IsNullOrWhiteSpace(currentVersion));
+            return Task.FromResult(result);
         }
     }
 

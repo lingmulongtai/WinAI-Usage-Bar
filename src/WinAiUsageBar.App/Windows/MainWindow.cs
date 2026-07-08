@@ -10,6 +10,7 @@ using WinAiUsageBar.Core.Models;
 using WinAiUsageBar.Core.Providers;
 using WinAiUsageBar.Infrastructure.Diagnostics;
 using WinAiUsageBar.Infrastructure.Storage;
+using WinAiUsageBar.Infrastructure.Updates;
 
 namespace WinAiUsageBar.App.Windows;
 
@@ -747,6 +748,27 @@ public sealed class MainWindow : Window
         var refresh = new Button { Content = "Refresh Now" };
         refresh.Click += (_, _) => _ = host.RefreshNowAsync(CancellationToken.None);
         actions.Children.Add(refresh);
+
+        var checkUpdates = new Button { Content = "Check for Updates Now" };
+        checkUpdates.Click += async (_, _) =>
+        {
+            try
+            {
+                var result = await host.CheckForUpdatesNowAsync(CancellationToken.None);
+                validationInfo.Severity = SeverityForUpdateCheck(result);
+                validationInfo.Title = "Update check complete";
+                validationInfo.Message = FormatUpdateCheckResult(result);
+                validationInfo.IsOpen = true;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                validationInfo.Severity = InfoBarSeverity.Error;
+                validationInfo.Title = "Update check failed";
+                validationInfo.Message = ex.Message;
+                validationInfo.IsOpen = true;
+            }
+        };
+        actions.Children.Add(checkUpdates);
         panel.Children.Add(actions);
 
         return Wrap(panel);
@@ -1453,6 +1475,39 @@ public sealed class MainWindow : Window
             $"Deleted: {result.DeletedCount}",
             $"Freed: {DiagnosticsSummaryViewModel.FormatBytes(result.DeletedBytes)}",
             $"Directory: {result.DirectoryPath}");
+    }
+
+    private static InfoBarSeverity SeverityForUpdateCheck(ReleaseUpdateCheckResult result)
+    {
+        if (result.Status is UpdateCheckStatus.Error or UpdateCheckStatus.InvalidRelease)
+        {
+            return InfoBarSeverity.Error;
+        }
+
+        if (result.IsUpdateAvailable || result.Status is UpdateCheckStatus.MissingAssets)
+        {
+            return InfoBarSeverity.Warning;
+        }
+
+        return InfoBarSeverity.Success;
+    }
+
+    private static string FormatUpdateCheckResult(ReleaseUpdateCheckResult result)
+    {
+        var lines = new List<string>
+        {
+            result.Message,
+            $"Status: {result.Status}",
+            $"Current version: {result.CurrentVersion}",
+            $"Latest version: {result.LatestVersion ?? "n/a"}"
+        };
+
+        if (result.ReleasePageUrl is not null)
+        {
+            lines.Add($"Release: {result.ReleasePageUrl}");
+        }
+
+        return string.Join(Environment.NewLine, lines);
     }
 
     private sealed record ProviderEditor(

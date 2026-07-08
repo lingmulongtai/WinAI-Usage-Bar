@@ -29,6 +29,7 @@ public sealed class AppHost : IAsyncDisposable
     private readonly IAppWindowActivator windowActivator;
     private readonly IApplicationExitService exitService;
     private readonly IStartupUpdateService startupUpdateService;
+    private readonly IReleaseUpdateCheckService updateCheckService;
 
     public AppHost(IAppDispatcher dispatcher, AppHostServices services)
     {
@@ -51,6 +52,7 @@ public sealed class AppHost : IAsyncDisposable
         windowActivator = services.WindowActivator;
         exitService = services.ExitService;
         startupUpdateService = services.StartupUpdateService ?? new NoOpStartupUpdateService();
+        updateCheckService = services.UpdateCheckService ?? new NoOpReleaseUpdateCheckService();
     }
 
     public ShellViewModel ViewModel { get; } = new();
@@ -122,6 +124,27 @@ public sealed class AppHost : IAsyncDisposable
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             await DiagnosticsLog.ErrorAsync("Refresh schedule restart failed.", ex, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    public async Task<ReleaseUpdateCheckResult> CheckForUpdatesNowAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var appInfo = AppInfoProvider.Get();
+            var result = await updateCheckService.CheckAsync(appInfo.InformationalVersion, cancellationToken)
+                .ConfigureAwait(false);
+            await SaveUpdateCheckStatusAsync(result, cancellationToken).ConfigureAwait(false);
+            await DiagnosticsLog.InfoAsync(
+                $"Manual update check result: {result.Status} - {result.Message}",
+                cancellationToken).ConfigureAwait(false);
+            return result;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await DiagnosticsLog.ErrorAsync("Manual update check failed.", ex, CancellationToken.None)
+                .ConfigureAwait(false);
             throw;
         }
     }
@@ -517,6 +540,23 @@ public sealed class AppHost : IAsyncDisposable
             cancellationToken).ConfigureAwait(false);
     }
 
+    private async Task SaveUpdateCheckStatusAsync(
+        ReleaseUpdateCheckResult result,
+        CancellationToken cancellationToken)
+    {
+        var config = await ConfigStore.LoadAsync(cancellationToken).ConfigureAwait(false);
+        config.Updates.LastStatus = result.IsUpdateAvailable
+            ? StartupUpdateStatus.UpdateAvailable.ToString()
+            : result.Status is UpdateCheckStatus.UpToDate or UpdateCheckStatus.NoRelease
+                ? StartupUpdateStatus.NoUpdate.ToString()
+                : StartupUpdateStatus.UpdateCheckFailed.ToString();
+        config.Updates.LastMessage = result.Message;
+        config.Updates.LastCurrentVersion = result.CurrentVersion;
+        config.Updates.LastLatestVersion = result.LatestVersion;
+        config.Updates.LastCheckedAt = DateTimeOffset.Now;
+        await ConfigStore.SaveAsync(config, cancellationToken).ConfigureAwait(false);
+    }
+
     private static string RequireSecretName(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -540,6 +580,25 @@ public sealed class AppHost : IAsyncDisposable
                 LatestVersion: null,
                 PackagePath: null,
                 InstallScriptPath: null));
+        }
+    }
+
+    private sealed class NoOpReleaseUpdateCheckService : IReleaseUpdateCheckService
+    {
+        public Task<ReleaseUpdateCheckResult> CheckAsync(
+            string currentVersion,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(new ReleaseUpdateCheckResult(
+                UpdateCheckStatus.Error,
+                currentVersion,
+                LatestVersion: null,
+                "Update check service is unavailable.",
+                IsUpdateAvailable: false,
+                ReleasePageUrl: null,
+                Package: null,
+                Checksum: null));
         }
     }
 }

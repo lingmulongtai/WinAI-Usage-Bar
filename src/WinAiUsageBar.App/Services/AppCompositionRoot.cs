@@ -98,7 +98,8 @@ public static class AppCompositionRoot
             configBackupValidationService,
             configBackupRestoreService,
             configResetService,
-            startupUpdateService);
+            startupUpdateService,
+            updateCheck);
     }
 }
 
@@ -119,7 +120,8 @@ public sealed record AppHostServices(
     IConfigBackupValidationService? ConfigBackupValidationService = null,
     IConfigBackupRestoreService? ConfigBackupRestoreService = null,
     IConfigResetService? ConfigResetService = null,
-    IStartupUpdateService? StartupUpdateService = null);
+    IStartupUpdateService? StartupUpdateService = null,
+    IReleaseUpdateCheckService? UpdateCheckService = null);
 
 public interface IAppDispatcher
 {

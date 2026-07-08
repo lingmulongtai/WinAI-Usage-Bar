@@ -22,7 +22,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - Provider cards show health, usage percentage, reset text, status messages, credits/costs, source, update time, and errors.
 - Provider Details shows non-secret snapshot details for identity, usage windows, credits, status, errors, and repair guidance.
 - History page summarizes retained `history.ndjson` entries by provider without showing raw snapshot messages.
-- Refresh settings include interval, notification enablement, history retention limits, startup update checks, and optional verified auto-download/auto-install launch policy.
+- Refresh settings include interval, notification enablement, history retention limits, a manual update check button, startup update checks, and optional verified auto-download/auto-install launch policy.
 - Appearance settings apply System, Light, or Dark theme to app windows.
 - Privacy & Data shows a diagnostics summary with local file paths, config version, cached snapshot count, latest update time, diagnostics export counts, and tracked file sizes.
 - Privacy & Data shows storage pressure guidance for retained history, config backups, diagnostics exports, and diagnostics log growth.
