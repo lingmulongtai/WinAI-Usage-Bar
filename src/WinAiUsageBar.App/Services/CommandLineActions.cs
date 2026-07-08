@@ -508,6 +508,28 @@ public static class CommandLineActions
             0);
     }
 
+    public static async Task<CommandLineActionResult> ListConfigBackupsAsync(
+        CommandLineListConfigBackupsOptions options,
+        CancellationToken cancellationToken)
+    {
+        return await ListConfigBackupsAsync(
+            options,
+            cancellationToken,
+            AppDataPaths.CreateDefault()).ConfigureAwait(false);
+    }
+
+    public static async Task<CommandLineActionResult> ListConfigBackupsAsync(
+        CommandLineListConfigBackupsOptions options,
+        CancellationToken cancellationToken,
+        AppDataPaths paths)
+    {
+        var service = new ConfigBackupCatalogService(paths);
+        var result = await service.ListAsync(options.Limit, cancellationToken).ConfigureAwait(false);
+        return new CommandLineActionResult(
+            CommandLineConfigBackupCatalogFormatter.Format(result),
+            0);
+    }
+
     public static async Task<CommandLineActionResult> RefreshOnceAsync(
         CommandLineRefreshOnceOptions options,
         CancellationToken cancellationToken)

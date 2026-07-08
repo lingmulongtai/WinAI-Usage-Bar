@@ -35,7 +35,8 @@ public static class Program
             runStartupUpdate: CommandLineActions.RunStartupUpdateAsync,
             restoreLatestConfigBackup: CommandLineActions.RestoreLatestConfigBackupAsync,
             resetConfigToDefaults: CommandLineActions.ResetConfigToDefaultsAsync,
-            validateLatestConfigBackup: CommandLineActions.ValidateLatestConfigBackupAsync)
+            validateLatestConfigBackup: CommandLineActions.ValidateLatestConfigBackupAsync,
+            listConfigBackups: CommandLineActions.ListConfigBackupsAsync)
             .GetAwaiter()
             .GetResult();
 

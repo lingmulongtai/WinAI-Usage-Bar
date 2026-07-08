@@ -18,6 +18,9 @@ public sealed record CommandLineClearProviderCliOverrideOptions(
 public sealed record CommandLinePruneSupportArtifactsOptions(
     int KeepNewest);
 
+public sealed record CommandLineListConfigBackupsOptions(
+    int Limit);
+
 public sealed record CommandLineUpdateVersionOptions(
     string? CurrentVersionOverride);
 
@@ -36,6 +39,8 @@ public sealed record CommandLineInstallLatestUpdateOptions(
 public static class CommandLineHandler
 {
     private const int DefaultPruneKeepNewest = 5;
+    private const int DefaultConfigBackupListLimit = 10;
+    private const int MaxConfigBackupListLimit = 100;
 
     public static async Task<CommandLineHandleResult> TryHandleAsync(
         IReadOnlyList<string> args,
@@ -62,7 +67,8 @@ public static class CommandLineHandler
         Func<CancellationToken, Task<CommandLineActionResult>>? runStartupUpdate = null,
         Func<CancellationToken, Task<CommandLineActionResult>>? restoreLatestConfigBackup = null,
         Func<CancellationToken, Task<CommandLineActionResult>>? resetConfigToDefaults = null,
-        Func<CancellationToken, Task<CommandLineActionResult>>? validateLatestConfigBackup = null)
+        Func<CancellationToken, Task<CommandLineActionResult>>? validateLatestConfigBackup = null,
+        Func<CommandLineListConfigBackupsOptions, CancellationToken, Task<CommandLineActionResult>>? listConfigBackups = null)
     {
         if (args.Count == 0)
         {
@@ -196,6 +202,30 @@ public static class CommandLineHandler
             }
 
             var result = await refreshOnce(parseResult.Options, cancellationToken).ConfigureAwait(false);
+            await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, result.ExitCode);
+        }
+
+        if (args.Count >= 1
+            && string.Equals(args[0].Trim(), "--list-config-backups", StringComparison.OrdinalIgnoreCase))
+        {
+            if (listConfigBackups is null)
+            {
+                await error.WriteLineAsync(
+                    "--list-config-backups is unavailable in this host.".AsMemory(),
+                    cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var parseResult = ParseListConfigBackupsOptions(args);
+            if (!parseResult.IsValid || parseResult.Options is null)
+            {
+                await error.WriteLineAsync(parseResult.ErrorMessage.AsMemory(), cancellationToken).ConfigureAwait(false);
+                await error.WriteLineAsync(CreateHelpText().AsMemory(), cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var result = await listConfigBackups(parseResult.Options, cancellationToken).ConfigureAwait(false);
             await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
             return new CommandLineHandleResult(Handled: true, result.ExitCode);
         }
@@ -501,8 +531,9 @@ public static class CommandLineHandler
         WinAI Usage Bar
 
         Usage:
-          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--export-config-backup|--health-report|--refresh-once|--set-provider-cli-override|--clear-provider-cli-override|--provider-catalog|--check-for-updates|--download-update|--launch-prepared-update|--install-latest-update|--run-startup-update-check|--validate-latest-config-backup|--restore-latest-config-backup|--reset-config-to-defaults]
+          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--export-config-backup|--health-report|--refresh-once|--list-config-backups|--set-provider-cli-override|--clear-provider-cli-override|--provider-catalog|--check-for-updates|--download-update|--launch-prepared-update|--install-latest-update|--run-startup-update-check|--validate-latest-config-backup|--restore-latest-config-backup|--reset-config-to-defaults]
           WinAiUsageBar.App.exe --refresh-once --provider <ProviderId> [--source <DataSourceKind>]
+          WinAiUsageBar.App.exe --list-config-backups [--limit <N>]
           WinAiUsageBar.App.exe --set-provider-cli-override --provider <ProviderId> --command <path-or-command>
           WinAiUsageBar.App.exe --clear-provider-cli-override --provider <ProviderId>
           WinAiUsageBar.App.exe --prune-support-artifacts [--keep-newest <N>]
@@ -530,6 +561,9 @@ public static class CommandLineHandler
                                 Limit --refresh-once to one provider.
           --source <DataSourceKind>
                                 Temporarily override the selected provider source for --refresh-once.
+          --list-config-backups
+                                List app-owned config backups without reading or applying them.
+          --limit <N>           Limit config backup listing to N entries, from 1 to 100.
           --set-provider-cli-override
                                 Save a non-secret CLI command override for a CLI/local app-server provider.
           --clear-provider-cli-override
@@ -761,6 +795,45 @@ public static class CommandLineHandler
 
         return CommandLinePruneSupportArtifactsParseResult.Valid(
             new CommandLinePruneSupportArtifactsOptions(keepNewest ?? DefaultPruneKeepNewest));
+    }
+
+    private static CommandLineListConfigBackupsParseResult ParseListConfigBackupsOptions(
+        IReadOnlyList<string> args)
+    {
+        int? limit = null;
+
+        for (var index = 1; index < args.Count; index++)
+        {
+            var option = args[index].Trim();
+            if (string.Equals(option, "--limit", StringComparison.OrdinalIgnoreCase))
+            {
+                if (limit is not null)
+                {
+                    return CommandLineListConfigBackupsParseResult.Invalid("Duplicate --limit option.");
+                }
+
+                if (++index >= args.Count || string.IsNullOrWhiteSpace(args[index]))
+                {
+                    return CommandLineListConfigBackupsParseResult.Invalid("Missing value for --limit.");
+                }
+
+                if (!int.TryParse(args[index].Trim(), out var parsedLimit)
+                    || parsedLimit < 1
+                    || parsedLimit > MaxConfigBackupListLimit)
+                {
+                    return CommandLineListConfigBackupsParseResult.Invalid(
+                        "--limit must be a whole number from 1 to 100.");
+                }
+
+                limit = parsedLimit;
+                continue;
+            }
+
+            return CommandLineListConfigBackupsParseResult.Invalid($"Unknown --list-config-backups option: {option}");
+        }
+
+        return CommandLineListConfigBackupsParseResult.Valid(
+            new CommandLineListConfigBackupsOptions(limit ?? DefaultConfigBackupListLimit));
     }
 
     private static CommandLinePrepareUpdateInstallParseResult ParsePrepareUpdateInstallOptions(
@@ -1026,6 +1099,23 @@ internal sealed record CommandLinePruneSupportArtifactsParseResult(
     public static CommandLinePruneSupportArtifactsParseResult Invalid(string errorMessage)
     {
         return new CommandLinePruneSupportArtifactsParseResult(false, null, errorMessage);
+    }
+}
+
+internal sealed record CommandLineListConfigBackupsParseResult(
+    bool IsValid,
+    CommandLineListConfigBackupsOptions? Options,
+    string ErrorMessage)
+{
+    public static CommandLineListConfigBackupsParseResult Valid(
+        CommandLineListConfigBackupsOptions options)
+    {
+        return new CommandLineListConfigBackupsParseResult(true, options, string.Empty);
+    }
+
+    public static CommandLineListConfigBackupsParseResult Invalid(string errorMessage)
+    {
+        return new CommandLineListConfigBackupsParseResult(false, null, errorMessage);
     }
 }
 

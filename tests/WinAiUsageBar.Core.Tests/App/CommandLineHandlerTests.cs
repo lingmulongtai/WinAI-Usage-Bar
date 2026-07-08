@@ -66,6 +66,8 @@ public sealed class CommandLineHandlerTests
         Assert.Contains("--prune-support-artifacts", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--keep-newest <N>", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--export-config-backup", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--list-config-backups", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--limit <N>", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--validate-config-backup", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--validate-latest-config-backup", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--restore-config-backup", output.ToString(), StringComparison.Ordinal);
@@ -1187,6 +1189,127 @@ public sealed class CommandLineHandlerTests
 
         var result = await CommandLineHandler.TryHandleAsync(
             ["--prune-support-artifacts"],
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains("unavailable", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ListsConfigBackupsWithDefaultLimit()
+    {
+        using var output = new StringWriter();
+        CommandLineListConfigBackupsOptions? capturedOptions = null;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--list-config-backups"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            listConfigBackups: (options, cancellationToken) =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                capturedOptions = options;
+                return Task.FromResult(new CommandLineActionResult("backup list body", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(10, capturedOptions?.Limit);
+        Assert.Contains("backup list body", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ListsConfigBackupsWithLimitOption()
+    {
+        using var output = new StringWriter();
+        CommandLineListConfigBackupsOptions? capturedOptions = null;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--list-config-backups", "--limit", "3"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            listConfigBackups: (options, cancellationToken) =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                capturedOptions = options;
+                return Task.FromResult(new CommandLineActionResult("three backups", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(3, capturedOptions?.Limit);
+        Assert.Contains("three backups", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("--list-config-backups", "--limit")]
+    [InlineData("--list-config-backups", "--limit", "0")]
+    [InlineData("--list-config-backups", "--limit", "101")]
+    [InlineData("--list-config-backups", "--limit", "nope")]
+    [InlineData("--list-config-backups", "--limit", "5", "--limit", "6")]
+    [InlineData("--list-config-backups", "--unknown")]
+    public async Task TryHandleAsync_ReturnsErrorForInvalidListConfigBackupsOptions(params string[] args)
+    {
+        using var error = new StringWriter();
+        var listCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            args,
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            listConfigBackups: (_, _) =>
+            {
+                listCount++;
+                return Task.FromResult(new CommandLineActionResult("should not run", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Equal(0, listCount);
+        Assert.Contains("--list-config-backups", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ReturnsErrorWhenListConfigBackupsIsUnavailable()
+    {
+        using var error = new StringWriter();
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--list-config-backups"],
             new StringWriter(),
             error,
             _ => Task.FromResult(1),

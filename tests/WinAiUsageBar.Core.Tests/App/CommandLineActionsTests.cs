@@ -244,6 +244,92 @@ public sealed class CommandLineActionsTests
     }
 
     [Fact]
+    public async Task ListConfigBackupsAsync_ListsOnlyTopLevelMatchedBackups()
+    {
+        var paths = TestPaths();
+        paths.EnsureCreated();
+        var secretPath = Path.Combine(paths.SecretsDirectory, "config-backup-20260708-090000.json");
+        await File.WriteAllTextAsync(secretPath, "secret");
+        var unrelatedBackupPath = Path.Combine(paths.ConfigBackupsDirectory, "manual-note.json");
+        await File.WriteAllTextAsync(unrelatedBackupPath, "keep");
+        var nestedDirectory = Path.Combine(paths.ConfigBackupsDirectory, "nested");
+        Directory.CreateDirectory(nestedDirectory);
+        var nestedBackupPath = Path.Combine(nestedDirectory, "config-backup-20260708-140000.json");
+        await File.WriteAllTextAsync(nestedBackupPath, "nested");
+        var oldBackup = await WriteTimestampedFileAsync(
+            paths.ConfigBackupsDirectory,
+            "config-backup-20260708-100000.json",
+            "old backup",
+            new DateTime(2026, 7, 8, 10, 0, 0, DateTimeKind.Utc));
+        var newestBackup = await WriteTimestampedFileAsync(
+            paths.ConfigBackupsDirectory,
+            "config-backup-before-reset-20260708-120000.json",
+            "newest backup",
+            new DateTime(2026, 7, 8, 12, 0, 0, DateTimeKind.Utc));
+
+        try
+        {
+            var result = await CommandLineActions.ListConfigBackupsAsync(
+                new CommandLineListConfigBackupsOptions(1),
+                CancellationToken.None,
+                paths);
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("Config backups", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Matched: 2", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Listed: 1", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Limit: 1", result.Output, StringComparison.Ordinal);
+            Assert.Contains(newestBackup, result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain(oldBackup, result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain(unrelatedBackupPath, result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain(nestedBackupPath, result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain(secretPath, result.Output, StringComparison.Ordinal);
+            Assert.True(File.Exists(oldBackup));
+            Assert.True(File.Exists(newestBackup));
+            Assert.True(File.Exists(unrelatedBackupPath));
+            Assert.True(File.Exists(nestedBackupPath));
+            Assert.True(File.Exists(secretPath));
+        }
+        finally
+        {
+            if (Directory.Exists(paths.RootDirectory))
+            {
+                Directory.Delete(paths.RootDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ListConfigBackupsAsync_ReturnsEmptyListWithoutMutatingFiles()
+    {
+        var paths = TestPaths();
+        paths.EnsureCreated();
+        var unrelatedBackupPath = Path.Combine(paths.ConfigBackupsDirectory, "manual-note.json");
+        await File.WriteAllTextAsync(unrelatedBackupPath, "keep");
+
+        try
+        {
+            var result = await CommandLineActions.ListConfigBackupsAsync(
+                new CommandLineListConfigBackupsOptions(10),
+                CancellationToken.None,
+                paths);
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("Matched: 0", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Listed: 0", result.Output, StringComparison.Ordinal);
+            Assert.Contains("No config backups are available.", result.Output, StringComparison.Ordinal);
+            Assert.True(File.Exists(unrelatedBackupPath));
+        }
+        finally
+        {
+            if (Directory.Exists(paths.RootDirectory))
+            {
+                Directory.Delete(paths.RootDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task ExportConfigBackupAsync_WritesConfigOnlyBackup()
     {
         var paths = TestPaths();
