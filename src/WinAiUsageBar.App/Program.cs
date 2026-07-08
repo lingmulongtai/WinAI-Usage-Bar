@@ -27,7 +27,8 @@ public static class Program
             checkForUpdates: CommandLineActions.CheckForUpdatesAsync,
             downloadUpdate: CommandLineActions.DownloadUpdateAsync,
             prepareUpdateInstall: CommandLineActions.PrepareUpdateInstallAsync,
-            launchPreparedUpdate: CommandLineActions.LaunchPreparedUpdateAsync)
+            launchPreparedUpdate: CommandLineActions.LaunchPreparedUpdateAsync,
+            installLatestUpdate: CommandLineActions.InstallLatestUpdateAsync)
             .GetAwaiter()
             .GetResult();
 

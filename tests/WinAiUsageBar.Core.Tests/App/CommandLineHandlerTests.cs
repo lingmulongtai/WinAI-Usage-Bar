@@ -57,6 +57,7 @@ public sealed class CommandLineHandlerTests
         Assert.Contains("--download-update", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--prepare-update-install", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--launch-prepared-update", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--install-latest-update", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--prune-support-artifacts", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--keep-newest <N>", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--validate-config-backup", output.ToString(), StringComparison.Ordinal);
@@ -599,6 +600,92 @@ public sealed class CommandLineHandlerTests
 
         var result = await CommandLineHandler.TryHandleAsync(
             ["--launch-prepared-update", "--script", @"C:\Updates\install-1\apply-update.ps1"],
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains("unavailable", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_InstallsLatestUpdate()
+    {
+        using var output = new StringWriter();
+        CommandLineInstallLatestUpdateOptions? capturedOptions = null;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--install-latest-update", "--restart-after-install"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            installLatestUpdate: (options, cancellationToken) =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                capturedOptions = options;
+                return Task.FromResult(new CommandLineActionResult("install body", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(0, result.ExitCode);
+        Assert.True(capturedOptions?.RestartAfterInstall);
+        Assert.Contains("install body", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("--install-latest-update", "--restart-after-install", "--restart-after-install")]
+    [InlineData("--install-latest-update", "--unknown")]
+    public async Task TryHandleAsync_ReturnsErrorForInvalidInstallLatestUpdateOptions(params string[] args)
+    {
+        using var error = new StringWriter();
+        var installCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            args,
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            installLatestUpdate: (_, _) =>
+            {
+                installCount++;
+                return Task.FromResult(new CommandLineActionResult("should not run", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Equal(0, installCount);
+        Assert.Contains("--install-latest-update", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ReturnsErrorWhenInstallLatestUpdateIsUnavailable()
+    {
+        using var error = new StringWriter();
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--install-latest-update"],
             new StringWriter(),
             error,
             _ => Task.FromResult(1),

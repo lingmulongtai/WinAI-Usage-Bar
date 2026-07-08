@@ -19,6 +19,9 @@ public sealed record CommandLinePrepareUpdateInstallOptions(
 public sealed record CommandLineLaunchPreparedUpdateOptions(
     string ScriptPath);
 
+public sealed record CommandLineInstallLatestUpdateOptions(
+    bool RestartAfterInstall);
+
 public static class CommandLineHandler
 {
     private const int DefaultPruneKeepNewest = 5;
@@ -40,7 +43,8 @@ public static class CommandLineHandler
         Func<CancellationToken, Task<CommandLineActionResult>>? checkForUpdates = null,
         Func<CancellationToken, Task<CommandLineActionResult>>? downloadUpdate = null,
         Func<CommandLinePrepareUpdateInstallOptions, CancellationToken, Task<CommandLineActionResult>>? prepareUpdateInstall = null,
-        Func<CommandLineLaunchPreparedUpdateOptions, CancellationToken, Task<CommandLineActionResult>>? launchPreparedUpdate = null)
+        Func<CommandLineLaunchPreparedUpdateOptions, CancellationToken, Task<CommandLineActionResult>>? launchPreparedUpdate = null,
+        Func<CommandLineInstallLatestUpdateOptions, CancellationToken, Task<CommandLineActionResult>>? installLatestUpdate = null)
     {
         if (args.Count == 0)
         {
@@ -170,6 +174,30 @@ public static class CommandLineHandler
             return new CommandLineHandleResult(Handled: true, result.ExitCode);
         }
 
+        if (args.Count >= 1
+            && string.Equals(args[0].Trim(), "--install-latest-update", StringComparison.OrdinalIgnoreCase))
+        {
+            if (installLatestUpdate is null)
+            {
+                await error.WriteLineAsync(
+                    "--install-latest-update is unavailable in this host.".AsMemory(),
+                    cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var parseResult = ParseInstallLatestUpdateOptions(args);
+            if (!parseResult.IsValid || parseResult.Options is null)
+            {
+                await error.WriteLineAsync(parseResult.ErrorMessage.AsMemory(), cancellationToken).ConfigureAwait(false);
+                await error.WriteLineAsync(CreateHelpText().AsMemory(), cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var result = await installLatestUpdate(parseResult.Options, cancellationToken).ConfigureAwait(false);
+            await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, result.ExitCode);
+        }
+
         if (args.Count != 1)
         {
             await WriteUnknownArgumentsAsync(args, error, cancellationToken).ConfigureAwait(false);
@@ -269,11 +297,12 @@ public static class CommandLineHandler
         WinAI Usage Bar
 
         Usage:
-          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--health-report|--refresh-once|--provider-catalog|--check-for-updates|--download-update|--launch-prepared-update]
+          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--health-report|--refresh-once|--provider-catalog|--check-for-updates|--download-update|--launch-prepared-update|--install-latest-update]
           WinAiUsageBar.App.exe --refresh-once --provider <ProviderId> [--source <DataSourceKind>]
           WinAiUsageBar.App.exe --prune-support-artifacts [--keep-newest <N>]
           WinAiUsageBar.App.exe --prepare-update-install --package <path> [--install-dir <path>] [--restart-after-install]
           WinAiUsageBar.App.exe --launch-prepared-update --script <path>
+          WinAiUsageBar.App.exe --install-latest-update [--restart-after-install]
           WinAiUsageBar.App.exe --validate-config-backup <path>
           WinAiUsageBar.App.exe --restore-config-backup <path> --confirm
 
@@ -303,6 +332,8 @@ public static class CommandLineHandler
           --launch-prepared-update
                                 Launch an app-owned apply-update.ps1 script created by --prepare-update-install.
           --script <path>       Prepared update install script to launch.
+          --install-latest-update
+                                Check, download, verify, prepare, and launch the latest update install script.
           --validate-config-backup <path>
                                 Validate a config backup without applying it.
           --restore-config-backup <path> --confirm
@@ -505,6 +536,32 @@ public static class CommandLineHandler
             new CommandLineLaunchPreparedUpdateOptions(scriptPath));
     }
 
+    private static CommandLineInstallLatestUpdateParseResult ParseInstallLatestUpdateOptions(
+        IReadOnlyList<string> args)
+    {
+        var restartAfterInstall = false;
+
+        for (var index = 1; index < args.Count; index++)
+        {
+            var option = args[index].Trim();
+            if (string.Equals(option, "--restart-after-install", StringComparison.OrdinalIgnoreCase))
+            {
+                if (restartAfterInstall)
+                {
+                    return CommandLineInstallLatestUpdateParseResult.Invalid("Duplicate --restart-after-install option.");
+                }
+
+                restartAfterInstall = true;
+                continue;
+            }
+
+            return CommandLineInstallLatestUpdateParseResult.Invalid($"Unknown --install-latest-update option: {option}");
+        }
+
+        return CommandLineInstallLatestUpdateParseResult.Valid(
+            new CommandLineInstallLatestUpdateOptions(restartAfterInstall));
+    }
+
     private static async Task WriteUnknownArgumentsAsync(
         IReadOnlyList<string> args,
         TextWriter error,
@@ -581,5 +638,22 @@ internal sealed record CommandLineLaunchPreparedUpdateParseResult(
     public static CommandLineLaunchPreparedUpdateParseResult Invalid(string errorMessage)
     {
         return new CommandLineLaunchPreparedUpdateParseResult(false, null, errorMessage);
+    }
+}
+
+internal sealed record CommandLineInstallLatestUpdateParseResult(
+    bool IsValid,
+    CommandLineInstallLatestUpdateOptions? Options,
+    string ErrorMessage)
+{
+    public static CommandLineInstallLatestUpdateParseResult Valid(
+        CommandLineInstallLatestUpdateOptions options)
+    {
+        return new CommandLineInstallLatestUpdateParseResult(true, options, string.Empty);
+    }
+
+    public static CommandLineInstallLatestUpdateParseResult Invalid(string errorMessage)
+    {
+        return new CommandLineInstallLatestUpdateParseResult(false, null, errorMessage);
     }
 }

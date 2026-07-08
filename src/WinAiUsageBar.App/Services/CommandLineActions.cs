@@ -188,6 +188,52 @@ public static class CommandLineActions
             isFailure ? 1 : 0);
     }
 
+    public static async Task<CommandLineActionResult> InstallLatestUpdateAsync(
+        CommandLineInstallLatestUpdateOptions options,
+        CancellationToken cancellationToken)
+    {
+        var paths = AppDataPaths.CreateDefault();
+        var updateCheck = new ReleaseUpdateCheckService(new GitHubLatestReleaseClient());
+        var downloader = new UpdatePackageDownloader();
+        var preparation = new UpdateInstallPreparationService(paths);
+        var launcher = new UpdateInstallLaunchService(paths);
+        var service = new LatestUpdateInstallService(
+            updateCheck,
+            downloader,
+            preparation,
+            launcher,
+            paths);
+        return await InstallLatestUpdateAsync(
+            options,
+            service,
+            AppInfoProvider.Get(),
+            installDirectory: AppContext.BaseDirectory,
+            processIdToWait: Environment.ProcessId,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public static async Task<CommandLineActionResult> InstallLatestUpdateAsync(
+        CommandLineInstallLatestUpdateOptions options,
+        ILatestUpdateInstallService service,
+        AppInfo appInfo,
+        string installDirectory,
+        int processIdToWait,
+        CancellationToken cancellationToken)
+    {
+        var result = await service.InstallLatestAsync(
+            new LatestUpdateInstallRequest(
+                appInfo.InformationalVersion,
+                installDirectory,
+                processIdToWait,
+                options.RestartAfterInstall),
+            cancellationToken).ConfigureAwait(false);
+        var isFailure = result.Status is not LatestUpdateInstallStatus.SkippedNoUpdate
+            and not LatestUpdateInstallStatus.Launched;
+        return new CommandLineActionResult(
+            CommandLineLatestUpdateInstallFormatter.Format(result),
+            isFailure ? 1 : 0);
+    }
+
     public static async Task<CommandLineActionResult> PruneSupportArtifactsAsync(
         CommandLinePruneSupportArtifactsOptions options,
         CancellationToken cancellationToken)

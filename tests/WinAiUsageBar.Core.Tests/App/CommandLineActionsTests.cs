@@ -412,6 +412,67 @@ public sealed class CommandLineActionsTests
         Assert.Contains("bad script", result.Output, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task InstallLatestUpdateAsync_FormatsSkippedResult()
+    {
+        var service = new FakeLatestUpdateInstallService(new LatestUpdateInstallResult(
+            LatestUpdateInstallStatus.SkippedNoUpdate,
+            "up to date",
+            new ReleaseUpdateCheckResult(
+                UpdateCheckStatus.UpToDate,
+                CurrentVersion: "0.1.0",
+                LatestVersion: "0.1.0",
+                "The current app version is up to date.",
+                IsUpdateAvailable: false,
+                ReleasePageUrl: null,
+                Package: null,
+                Checksum: null),
+            Download: null,
+            Preparation: null,
+            Launch: null));
+
+        var result = await CommandLineActions.InstallLatestUpdateAsync(
+            new CommandLineInstallLatestUpdateOptions(RestartAfterInstall: true),
+            service,
+            new AppInfo("WinAI Usage Bar", "0.1.0.0", "0.1.0"),
+            installDirectory: @"C:\App",
+            processIdToWait: 777,
+            CancellationToken.None);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(1, service.InstallCount);
+        Assert.Equal("0.1.0", service.LastRequest?.CurrentVersion);
+        Assert.Equal(@"C:\App", service.LastRequest?.InstallDirectory);
+        Assert.Equal(777, service.LastRequest?.ProcessIdToWait);
+        Assert.True(service.LastRequest?.RestartAfterInstall);
+        Assert.Contains("Latest update install", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Status: SkippedNoUpdate", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task InstallLatestUpdateAsync_ReturnsNonZeroForFailures()
+    {
+        var service = new FakeLatestUpdateInstallService(new LatestUpdateInstallResult(
+            LatestUpdateInstallStatus.DownloadFailed,
+            "hash mismatch",
+            UpdateCheck: null,
+            Download: null,
+            Preparation: null,
+            Launch: null));
+
+        var result = await CommandLineActions.InstallLatestUpdateAsync(
+            new CommandLineInstallLatestUpdateOptions(RestartAfterInstall: false),
+            service,
+            new AppInfo("WinAI Usage Bar", "0.1.0.0", "0.1.0"),
+            installDirectory: @"C:\App",
+            processIdToWait: 777,
+            CancellationToken.None);
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Status: DownloadFailed", result.Output, StringComparison.Ordinal);
+        Assert.Contains("hash mismatch", result.Output, StringComparison.Ordinal);
+    }
+
     private static AppDataPaths TestPaths()
     {
         return new AppDataPaths(Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N")));
@@ -520,6 +581,24 @@ public sealed class CommandLineActionsTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             LaunchCount++;
+            LastRequest = request;
+            return Task.FromResult(result);
+        }
+    }
+
+    private sealed class FakeLatestUpdateInstallService(
+        LatestUpdateInstallResult result) : ILatestUpdateInstallService
+    {
+        public int InstallCount { get; private set; }
+
+        public LatestUpdateInstallRequest? LastRequest { get; private set; }
+
+        public Task<LatestUpdateInstallResult> InstallLatestAsync(
+            LatestUpdateInstallRequest request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            InstallCount++;
             LastRequest = request;
             return Task.FromResult(result);
         }

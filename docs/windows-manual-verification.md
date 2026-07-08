@@ -106,6 +106,7 @@ Record the environment for each run.
 | Run `--download-update` from CLI | Command skips when no update is available or stages a SHA256-verified package under app data without installing it |  |  |
 | Run `--prepare-update-install --package <zip>` from CLI with a test install directory | Command creates an apply script under app data and does not execute it automatically |  |  |
 | Run `--launch-prepared-update --script <path>` with an app-owned test apply script | Command launches only an app-owned `apply-update.ps1` under updates and rejects arbitrary script paths |  |  |
+| Run `--install-latest-update` from CLI | Command reports up-to-date safely or runs check/download/verify/prepare/guarded-launch when a newer release exists |  |  |
 | Run `--refresh-once` from CLI | Enabled providers refresh once, snapshots/history update, and output contains no secret values or identity fields |  |  |
 | Run `--refresh-once --provider Codex --source LocalAppServer` | Codex source is tested for this run only, repair guidance is printed for failures, and `config.json` keeps the previously saved provider settings |  |  |
 | Restore config backup from CLI with `--confirm` | Current config is backed up before restore and `secrets/` is unchanged |  |  |
