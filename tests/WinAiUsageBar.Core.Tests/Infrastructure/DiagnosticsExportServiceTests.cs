@@ -79,4 +79,32 @@ public sealed class DiagnosticsExportServiceTests
             Directory.Delete(root, recursive: true);
         }
     }
+
+    [Fact]
+    public async Task ExportAsync_UsesUniquePathWhenSameSecondExportExists()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        paths.EnsureCreated();
+        await File.WriteAllTextAsync(paths.ConfigPath, """{"visible":"keep"}""");
+        var now = new DateTimeOffset(2026, 7, 8, 12, 35, 0, TimeSpan.Zero);
+        var service = new DiagnosticsExportService(paths, () => now);
+
+        try
+        {
+            var first = await service.ExportAsync(CancellationToken.None);
+            var second = await service.ExportAsync(CancellationToken.None);
+
+            Assert.Equal("diagnostics-export-20260708-123500.txt", Path.GetFileName(first.Path));
+            Assert.Equal("diagnostics-export-20260708-123500-1.txt", Path.GetFileName(second.Path));
+            Assert.True(File.Exists(first.Path));
+            Assert.True(File.Exists(second.Path));
+            Assert.Contains("keep", await File.ReadAllTextAsync(first.Path));
+            Assert.Contains("keep", await File.ReadAllTextAsync(second.Path));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
 }

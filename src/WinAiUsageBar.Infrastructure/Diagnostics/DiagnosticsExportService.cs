@@ -25,12 +25,11 @@ public sealed class DiagnosticsExportService(
     {
         paths.EnsureCreated();
         var createdAt = nowProvider();
-        var exportPath = Path.Combine(
-            paths.DiagnosticsExportsDirectory,
-            $"diagnostics-export-{createdAt:yyyyMMdd-HHmmss}.txt");
         var sections = new List<string>();
 
-        await using var stream = File.Create(exportPath);
+        var export = CreateUniqueExportStream(createdAt);
+        var exportPath = export.Path;
+        await using var stream = export.Stream;
         await using var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 
         await writer.WriteLineAsync("WinAI Usage Bar Diagnostics Export").ConfigureAwait(false);
@@ -46,6 +45,36 @@ public sealed class DiagnosticsExportService(
 
         return new DiagnosticsExportResult(exportPath, createdAt, sections);
     }
+
+    private DiagnosticsExportStream CreateUniqueExportStream(DateTimeOffset createdAt)
+    {
+        var baseFileName = $"diagnostics-export-{createdAt:yyyyMMdd-HHmmss}";
+        for (var suffix = 0; suffix < 1000; suffix++)
+        {
+            var fileName = suffix == 0
+                ? $"{baseFileName}.txt"
+                : $"{baseFileName}-{suffix}.txt";
+            var path = Path.Combine(paths.DiagnosticsExportsDirectory, fileName);
+            try
+            {
+                var stream = new FileStream(
+                    path,
+                    FileMode.CreateNew,
+                    FileAccess.Write,
+                    FileShare.None);
+                return new DiagnosticsExportStream(path, stream);
+            }
+            catch (IOException)
+            {
+            }
+        }
+
+        throw new IOException("Unable to reserve a unique diagnostics export path.");
+    }
+
+    private sealed record DiagnosticsExportStream(
+        string Path,
+        FileStream Stream);
 
     private async Task AppendFileSectionAsync(
         TextWriter writer,

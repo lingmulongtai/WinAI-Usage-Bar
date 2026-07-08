@@ -147,7 +147,7 @@ The release workflow builds, tests, publishes, smoke-tests, packages the app, an
 - Diagnostics pass through redaction before being stored or surfaced.
 - Privacy & Data shows non-secret diagnostics metadata only; it does not list secret names or values.
 - Privacy & Data recovery guidance is derived from non-secret diagnostics metadata only.
-- Diagnostics can be exported from Privacy & Data; exports redact common secret shapes and never include files under `secrets/`.
+- Diagnostics can be exported from Privacy & Data; exports redact common secret shapes, never include files under `secrets/`, and avoid overwriting same-second exports by adding a numeric suffix when needed.
 - Secret values can be saved or deleted by secret name from Privacy & Data; values are never displayed back.
 - Snapshot cache and retained history can be cleared from Privacy & Data; `config.json` and `secrets/` are left untouched.
 - `config.json` can be backed up from Privacy & Data; backup files include non-secret settings only and do not copy `secrets/`.
