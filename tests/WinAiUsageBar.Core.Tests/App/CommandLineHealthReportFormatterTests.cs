@@ -90,6 +90,21 @@ public sealed class CommandLineHealthReportFormatterTests
         ]);
         var storagePressure = new StoragePressureGuidanceService().CreateGuidance(diagnostics);
         var recoveryGuidance = new RecoveryGuidanceService().CreateGuidance(diagnostics);
+        var updates = new UpdateSettings
+        {
+            CheckOnStartup = true,
+            MinimumCheckIntervalHours = 6,
+            DownloadAutomatically = true,
+            InstallAutomatically = false,
+            LastCheckedAt = generatedAt.AddMinutes(-2),
+            LastStatus = "Downloaded",
+            LastCurrentVersion = "0.1.4",
+            LastLatestVersion = "0.1.5",
+            LastInstallLaunchedVersion = "0.1.3",
+            LastPackagePath = @"C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\WinAIUsageBar-0.1.5-win-x64.zip",
+            LastInstallScriptPath = @"C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\install-1\apply-update.ps1",
+            LastMessage = "Downloaded with token=sk-secret-value"
+        };
 
         var report = CommandLineHealthReportFormatter.Format(
             new AppInfo("WinAI Usage Bar", "1.2.3.0", "1.2.3"),
@@ -98,7 +113,8 @@ public sealed class CommandLineHealthReportFormatterTests
             generatedAt,
             cliEnvironment,
             storagePressure,
-            recoveryGuidance);
+            recoveryGuidance,
+            updates);
 
         Assert.Contains("WinAI Usage Bar 1.2.3", report, StringComparison.Ordinal);
         Assert.Contains("Generated: 2026-07-08 06:45:00 +09:00", report, StringComparison.Ordinal);
@@ -108,6 +124,19 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.Contains("Latest config backup time: 2026-07-08 06:40:00 +09:00", report, StringComparison.Ordinal);
         Assert.Contains("Diagnostics exports: 3 export(s), 8 KB total", report, StringComparison.Ordinal);
         Assert.Contains("Latest diagnostics export time: 2026-07-08 06:40:00 +09:00", report, StringComparison.Ordinal);
+        Assert.Contains("Updates", report, StringComparison.Ordinal);
+        Assert.Contains("Check on startup: On", report, StringComparison.Ordinal);
+        Assert.Contains("Startup interval: at most every 6 hour(s)", report, StringComparison.Ordinal);
+        Assert.Contains("Automatic download: On", report, StringComparison.Ordinal);
+        Assert.Contains("Automatic install launch: Off", report, StringComparison.Ordinal);
+        Assert.Contains("Last checked: 2026-07-08 06:43:00 +09:00", report, StringComparison.Ordinal);
+        Assert.Contains("Status: Downloaded", report, StringComparison.Ordinal);
+        Assert.Contains("Current version: 0.1.4", report, StringComparison.Ordinal);
+        Assert.Contains("Latest version: 0.1.5", report, StringComparison.Ordinal);
+        Assert.Contains("Last launched install: 0.1.3", report, StringComparison.Ordinal);
+        Assert.Contains(@"Package path: C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\WinAIUsageBar-0.1.5-win-x64.zip", report, StringComparison.Ordinal);
+        Assert.Contains(@"Install script: C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\install-1\apply-update.ps1", report, StringComparison.Ordinal);
+        Assert.Contains("Message: Downloaded with [REDACTED]", report, StringComparison.Ordinal);
         Assert.Contains("Storage pressure", report, StringComparison.Ordinal);
         Assert.Contains("Retained history: High", report, StringComparison.Ordinal);
         Assert.Contains("Use Clear History soon", report, StringComparison.Ordinal);
@@ -133,6 +162,33 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.Contains("diagnostics.log: Missing", report, StringComparison.Ordinal);
         Assert.DoesNotContain("secret", report, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("token", report, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("sk-secret-value", report, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Format_IncludesDefaultUpdateStatus()
+    {
+        var generatedAt = new DateTimeOffset(2026, 7, 8, 8, 20, 0, TimeSpan.FromHours(9));
+
+        var report = CommandLineHealthReportFormatter.Format(
+            new AppInfo("WinAI Usage Bar", "1.2.3.0", "1.2.3"),
+            EmptyDiagnostics(generatedAt),
+            EmptyHistory(generatedAt),
+            generatedAt,
+            updates: new UpdateSettings());
+
+        Assert.Contains("Updates", report, StringComparison.Ordinal);
+        Assert.Contains("Check on startup: On", report, StringComparison.Ordinal);
+        Assert.Contains("Startup interval: at most every 24 hour(s)", report, StringComparison.Ordinal);
+        Assert.Contains("Automatic download: Off", report, StringComparison.Ordinal);
+        Assert.Contains("Automatic install launch: Off", report, StringComparison.Ordinal);
+        Assert.Contains("Last checked: n/a", report, StringComparison.Ordinal);
+        Assert.Contains("Status: n/a", report, StringComparison.Ordinal);
+        Assert.Contains("Current version: n/a", report, StringComparison.Ordinal);
+        Assert.Contains("Latest version: n/a", report, StringComparison.Ordinal);
+        Assert.Contains("Package path: n/a", report, StringComparison.Ordinal);
+        Assert.Contains("Install script: n/a", report, StringComparison.Ordinal);
+        Assert.Contains("Message: n/a", report, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -1,7 +1,10 @@
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
+using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Infrastructure.Diagnostics;
 using WinAiUsageBar.Infrastructure.Process;
+using WinAiUsageBar.Infrastructure.Security;
 using WinAiUsageBar.Infrastructure.Storage;
 
 namespace WinAiUsageBar.App.Services;
@@ -15,7 +18,8 @@ public static class CommandLineHealthReportFormatter
         DateTimeOffset generatedAt,
         CliEnvironmentReport? cliEnvironment = null,
         IReadOnlyList<StoragePressureGuidanceItem>? storagePressure = null,
-        IReadOnlyList<RecoveryGuidanceItem>? recoveryGuidance = null)
+        IReadOnlyList<RecoveryGuidanceItem>? recoveryGuidance = null,
+        UpdateSettings? updates = null)
     {
         var builder = new StringBuilder();
         builder.AppendLine($"{appInfo.ProductName} {appInfo.InformationalVersion}");
@@ -42,6 +46,11 @@ public static class CommandLineHealthReportFormatter
         builder.AppendLine($"  Diagnostics exports: {diagnostics.DiagnosticsExportCount} export(s), {FormatBytes(diagnostics.DiagnosticsExportTotalBytes)} total");
         builder.AppendLine($"  Latest diagnostics export: {diagnostics.LatestDiagnosticsExportPath ?? "n/a"}");
         builder.AppendLine($"  Latest diagnostics export time: {FormatDate(diagnostics.LatestDiagnosticsExportCreatedAt)}");
+
+        if (updates is not null)
+        {
+            AppendUpdates(builder, updates);
+        }
 
         if (storagePressure is { Count: > 0 })
         {
@@ -101,6 +110,28 @@ public static class CommandLineHealthReportFormatter
         AppendFile(builder, "diagnostics.log", diagnostics.DiagnosticsLogFile);
 
         return builder.ToString().TrimEnd();
+    }
+
+    private static void AppendUpdates(StringBuilder builder, UpdateSettings updates)
+    {
+        var interval = updates.MinimumCheckIntervalHours <= 0
+            ? "every startup"
+            : $"at most every {updates.MinimumCheckIntervalHours} hour(s)";
+
+        builder.AppendLine();
+        builder.AppendLine("Updates");
+        builder.AppendLine($"  Check on startup: {(updates.CheckOnStartup ? "On" : "Off")}");
+        builder.AppendLine($"  Startup interval: {interval}");
+        builder.AppendLine($"  Automatic download: {(updates.DownloadAutomatically ? "On" : "Off")}");
+        builder.AppendLine($"  Automatic install launch: {(updates.InstallAutomatically ? "On" : "Off")}");
+        builder.AppendLine($"  Last checked: {FormatDate(updates.LastCheckedAt)}");
+        builder.AppendLine($"  Status: {SafeValue(updates.LastStatus)}");
+        builder.AppendLine($"  Current version: {SafeValue(updates.LastCurrentVersion)}");
+        builder.AppendLine($"  Latest version: {SafeValue(updates.LastLatestVersion)}");
+        builder.AppendLine($"  Last launched install: {SafeValue(updates.LastInstallLaunchedVersion)}");
+        builder.AppendLine($"  Package path: {SafeValue(updates.LastPackagePath)}");
+        builder.AppendLine($"  Install script: {SafeValue(updates.LastInstallScriptPath)}");
+        builder.AppendLine($"  Message: {SafeValue(updates.LastMessage)}");
     }
 
     private static void AppendFile(StringBuilder builder, string label, DiagnosticsFileSummary file)
@@ -206,5 +237,19 @@ public static class CommandLineHealthReportFormatter
         }
 
         return $"{bytes} B";
+    }
+
+    private static string SafeValue(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "n/a";
+        }
+
+        var redacted = DiagnosticRedactor.Redact(value);
+        return Regex.Replace(
+            redacted,
+            @"(?i)\b(?:authorization\s*[:=]\s*bearer|api[_-]?key|access[_-]?token|refresh[_-]?token|token|secret(?:[_-]?name)?|pat[_-]?secret(?:[_-]?name)?|cookie)\s*[:=]\s*\[REDACTED\]",
+            "[REDACTED]");
     }
 }

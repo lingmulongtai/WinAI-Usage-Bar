@@ -73,7 +73,8 @@ public static class CommandLineActions
             DateTimeOffset.Now,
             cliEnvironment,
             storagePressure,
-            recoveryGuidance);
+            recoveryGuidance,
+            config.Updates);
     }
 
     private static IReadOnlyList<CliCommandCheck> CreateHealthReportCliChecks(AppConfig config)

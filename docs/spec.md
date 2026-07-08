@@ -202,6 +202,8 @@ The CLI health report includes a storage pressure section derived from the same 
 
 The CLI health report includes a recovery guidance section derived from the same non-secret recovery guidance used by Privacy & Data. It should list config backup export, latest-backup restore, reset-to-defaults, and diagnostics export actions with availability and recommendation text. The CLI report should not add raw safety notes that mention secret-store paths; it must not include secret names, secret values, tokens, cookies, or raw auth details.
 
+The CLI health report includes an Updates section derived from `config.updates`. It should list startup update enablement, interval, automatic download/install launch policy, last checked time, last status, current/latest versions, last launched install version, staged package path, prepared install script path, and message when present. User-controlled strings and paths must be redacted before display, and missing optional fields should appear as `n/a` without blank values.
+
 The CLI health report also includes a safe CLI environment section for `codex`, `claude`, `gh`, and `git`. It should use configured provider CLI overrides for matching CLI/local app-server providers before falling back to PATH discovery, label those configured overrides in output, show the launch target selected by the shared CLI launch planner, and run short startup checks such as `--version`, but it must not read provider auth files, cookies, or secret store values. Startup failures should include short non-secret repair hints for common local issues such as WindowsApps access denial, command shims, stale PATH entries, timeouts, interactive login prompts, or setting a provider CLI override to a launchable path.
 
 ## Startup

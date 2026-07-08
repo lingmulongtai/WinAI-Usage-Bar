@@ -55,7 +55,7 @@ Overall:
 - Config saves use per-save unique temporary files, avoiding fixed `config.json.tmp` collisions when headless commands are run in parallel, and read-only diagnostics no longer rewrite already-normalized config files.
 - Config backup exports and restore/reset rollback backups use unique temp files and suffix duplicate timestamp names instead of overwriting same-second backups.
 - Diagnostics exports also use create-new writes and suffix duplicate timestamp names instead of overwriting same-second support bundles.
-- Privacy & Data and `--health-report` now include non-secret storage pressure guidance for history, backups, diagnostics exports, and diagnostics logs, plus recovery guidance for backup, restore, reset, and diagnostics export choices.
+- Privacy & Data and `--health-report` now include non-secret storage pressure guidance for history, backups, diagnostics exports, and diagnostics logs, plus recovery guidance for backup, restore, reset, diagnostics export choices, and persisted startup update status.
 - Privacy & Data and the CLI can prune old config backups and diagnostics exports while keeping the newest matched files and leaving config, cache, logs, and `secrets/` alone.
 - Windows shell dogfooding now has a concrete manual verification checklist and a timestamped local report script.
 - The issue and commit history is becoming meaningful rather than fake contribution noise.

@@ -388,6 +388,56 @@ public sealed class CommandLineActionsTests
     }
 
     [Fact]
+    public async Task CreateHealthReportAsync_IncludesSavedUpdateStatus()
+    {
+        var paths = TestPaths();
+        var configStore = new JsonAppConfigStore(paths);
+        var config = AppConfig.CreateDefault();
+        config.Updates.CheckOnStartup = true;
+        config.Updates.MinimumCheckIntervalHours = 3;
+        config.Updates.DownloadAutomatically = true;
+        config.Updates.InstallAutomatically = true;
+        config.Updates.LastCheckedAt = new DateTimeOffset(2026, 7, 8, 9, 30, 0, TimeSpan.FromHours(9));
+        config.Updates.LastStatus = "InstallLaunched";
+        config.Updates.LastCurrentVersion = "0.1.4";
+        config.Updates.LastLatestVersion = "0.1.5";
+        config.Updates.LastInstallLaunchedVersion = "0.1.5";
+        config.Updates.LastPackagePath = @"C:\Updates\WinAIUsageBar-0.1.5-win-x64.zip";
+        config.Updates.LastInstallScriptPath = @"C:\Updates\install-1\apply-update.ps1";
+        config.Updates.LastMessage = "Install script launched.";
+
+        try
+        {
+            await configStore.SaveAsync(config, CancellationToken.None);
+
+            var report = await CommandLineActions.CreateHealthReportAsync(
+                CancellationToken.None,
+                paths,
+                new FakeCliEnvironmentService());
+
+            Assert.Contains("Updates", report, StringComparison.Ordinal);
+            Assert.Contains("Startup interval: at most every 3 hour(s)", report, StringComparison.Ordinal);
+            Assert.Contains("Automatic download: On", report, StringComparison.Ordinal);
+            Assert.Contains("Automatic install launch: On", report, StringComparison.Ordinal);
+            Assert.Contains("Last checked: 2026-07-08 09:30:00 +09:00", report, StringComparison.Ordinal);
+            Assert.Contains("Status: InstallLaunched", report, StringComparison.Ordinal);
+            Assert.Contains("Current version: 0.1.4", report, StringComparison.Ordinal);
+            Assert.Contains("Latest version: 0.1.5", report, StringComparison.Ordinal);
+            Assert.Contains("Last launched install: 0.1.5", report, StringComparison.Ordinal);
+            Assert.Contains(@"Package path: C:\Updates\WinAIUsageBar-0.1.5-win-x64.zip", report, StringComparison.Ordinal);
+            Assert.Contains(@"Install script: C:\Updates\install-1\apply-update.ps1", report, StringComparison.Ordinal);
+            Assert.Contains("Message: Install script launched.", report, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(paths.RootDirectory))
+            {
+                Directory.Delete(paths.RootDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task CheckForUpdatesAsync_FormatsUpdateCheckResult()
     {
         var updateCheck = new FakeUpdateCheckService(new ReleaseUpdateCheckResult(
