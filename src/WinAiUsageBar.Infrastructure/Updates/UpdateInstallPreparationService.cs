@@ -148,6 +148,20 @@ public sealed class UpdateInstallPreparationService(
         $ProcessIdToWait = {{processIdToWait}}
         $RestartAfterInstall = ${{restartAfterInstall.ToString().ToLowerInvariant()}}
 
+        function Restore-Backup {
+            if (-not (Test-Path -LiteralPath $BackupDirectory -PathType Container)) {
+                return
+            }
+
+            Get-ChildItem -LiteralPath $InstallDirectory -Force -ErrorAction SilentlyContinue | ForEach-Object {
+                Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
+            }
+
+            Get-ChildItem -LiteralPath $BackupDirectory -Force | ForEach-Object {
+                Copy-Item -LiteralPath $_.FullName -Destination $InstallDirectory -Recurse -Force
+            }
+        }
+
         if ($ProcessIdToWait -gt 0) {
             try {
                 Wait-Process -Id $ProcessIdToWait -ErrorAction SilentlyContinue
@@ -177,11 +191,32 @@ public sealed class UpdateInstallPreparationService(
         New-Item -ItemType Directory -Force -Path $BackupDirectory | Out-Null
 
         Get-ChildItem -LiteralPath $InstallDirectory -Force | ForEach-Object {
-            Move-Item -LiteralPath $_.FullName -Destination (Join-Path $BackupDirectory $_.Name) -Force
+            Copy-Item -LiteralPath $_.FullName -Destination $BackupDirectory -Recurse -Force
         }
 
-        Get-ChildItem -LiteralPath $StagingDirectory -Force | ForEach-Object {
-            Copy-Item -LiteralPath $_.FullName -Destination $InstallDirectory -Recurse -Force
+        try {
+            Get-ChildItem -LiteralPath $InstallDirectory -Force | ForEach-Object {
+                Remove-Item -LiteralPath $_.FullName -Recurse -Force
+            }
+
+            Get-ChildItem -LiteralPath $StagingDirectory -Force | ForEach-Object {
+                Copy-Item -LiteralPath $_.FullName -Destination $InstallDirectory -Recurse -Force
+            }
+
+            $InstalledExe = Join-Path $InstallDirectory 'WinAiUsageBar.App.exe'
+            if (-not (Test-Path -LiteralPath $InstalledExe -PathType Leaf)) {
+                throw "Installed update does not contain WinAiUsageBar.App.exe."
+            }
+        }
+        catch {
+            try {
+                Restore-Backup
+            }
+            catch {
+                Write-Warning "Update install failed and rollback also failed: $($_.Exception.Message)"
+            }
+
+            throw
         }
 
         $RestartExe = Join-Path $InstallDirectory 'WinAiUsageBar.App.exe'

@@ -43,8 +43,11 @@ public sealed class UpdateInstallPreparationServiceTests
             Assert.Contains("$ProcessIdToWait = 1234", script, StringComparison.Ordinal);
             Assert.Contains("$RestartAfterInstall = $true", script, StringComparison.Ordinal);
             Assert.Contains("Expand-Archive -LiteralPath $PackagePath", script, StringComparison.Ordinal);
-            Assert.Contains("Move-Item -LiteralPath $_.FullName", script, StringComparison.Ordinal);
+            Assert.Contains("function Restore-Backup", script, StringComparison.Ordinal);
+            Assert.Contains("Copy-Item -LiteralPath $_.FullName -Destination $BackupDirectory -Recurse -Force", script, StringComparison.Ordinal);
+            Assert.Contains("Remove-Item -LiteralPath $_.FullName -Recurse -Force", script, StringComparison.Ordinal);
             Assert.Contains("Copy-Item -LiteralPath $_.FullName", script, StringComparison.Ordinal);
+            Assert.Contains("Restore-Backup", script, StringComparison.Ordinal);
             Assert.Contains("Start-Process -FilePath $RestartExe", script, StringComparison.Ordinal);
         }
         finally
