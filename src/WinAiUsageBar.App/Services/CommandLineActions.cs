@@ -126,22 +126,47 @@ public static class CommandLineActions
 
     public static async Task<CommandLineActionResult> CheckForUpdatesAsync(CancellationToken cancellationToken)
     {
+        return await CheckForUpdatesAsync(
+            new CommandLineUpdateVersionOptions(CurrentVersionOverride: null),
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public static async Task<CommandLineActionResult> CheckForUpdatesAsync(
+        CommandLineUpdateVersionOptions options,
+        CancellationToken cancellationToken)
+    {
         var service = new ReleaseUpdateCheckService(new GitHubLatestReleaseClient());
-        return await CheckForUpdatesAsync(AppInfoProvider.Get(), service, cancellationToken).ConfigureAwait(false);
+        return await CheckForUpdatesAsync(
+            AppInfoProvider.Get(),
+            service,
+            cancellationToken,
+            options.CurrentVersionOverride).ConfigureAwait(false);
     }
 
     public static async Task<CommandLineActionResult> CheckForUpdatesAsync(
         AppInfo appInfo,
         IReleaseUpdateCheckService service,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? currentVersionOverride = null)
     {
-        var result = await service.CheckAsync(appInfo.InformationalVersion, cancellationToken).ConfigureAwait(false);
+        var result = await service.CheckAsync(
+            ResolveCurrentVersion(appInfo, currentVersionOverride),
+            cancellationToken).ConfigureAwait(false);
         return new CommandLineActionResult(
             CommandLineUpdateCheckFormatter.Format(result),
             result.Status == UpdateCheckStatus.Error ? 1 : 0);
     }
 
     public static async Task<CommandLineActionResult> DownloadUpdateAsync(CancellationToken cancellationToken)
+    {
+        return await DownloadUpdateAsync(
+            new CommandLineUpdateVersionOptions(CurrentVersionOverride: null),
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public static async Task<CommandLineActionResult> DownloadUpdateAsync(
+        CommandLineUpdateVersionOptions options,
+        CancellationToken cancellationToken)
     {
         var paths = AppDataPaths.CreateDefault();
         var updateCheck = new ReleaseUpdateCheckService(new GitHubLatestReleaseClient());
@@ -151,7 +176,8 @@ public static class CommandLineActions
             updateCheck,
             downloader,
             paths,
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken,
+            options.CurrentVersionOverride).ConfigureAwait(false);
     }
 
     public static async Task<CommandLineActionResult> DownloadUpdateAsync(
@@ -159,9 +185,12 @@ public static class CommandLineActions
         IReleaseUpdateCheckService updateCheck,
         IUpdatePackageDownloader downloader,
         AppDataPaths paths,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? currentVersionOverride = null)
     {
-        var update = await updateCheck.CheckAsync(appInfo.InformationalVersion, cancellationToken).ConfigureAwait(false);
+        var update = await updateCheck.CheckAsync(
+            ResolveCurrentVersion(appInfo, currentVersionOverride),
+            cancellationToken).ConfigureAwait(false);
         if (!update.IsUpdateAvailable || update.Package is null || update.Checksum is null)
         {
             var exitCode = update.Status == UpdateCheckStatus.Error ? 1 : 0;
@@ -278,7 +307,7 @@ public static class CommandLineActions
     {
         var result = await service.InstallLatestAsync(
             new LatestUpdateInstallRequest(
-                appInfo.InformationalVersion,
+                ResolveCurrentVersion(appInfo, options.CurrentVersionOverride),
                 installDirectory,
                 processIdToWait,
                 options.RestartAfterInstall),
@@ -288,6 +317,13 @@ public static class CommandLineActions
         return new CommandLineActionResult(
             CommandLineLatestUpdateInstallFormatter.Format(result),
             isFailure ? 1 : 0);
+    }
+
+    private static string ResolveCurrentVersion(AppInfo appInfo, string? currentVersionOverride)
+    {
+        return string.IsNullOrWhiteSpace(currentVersionOverride)
+            ? appInfo.InformationalVersion
+            : currentVersionOverride.Trim();
     }
 
     public static async Task<CommandLineActionResult> PruneSupportArtifactsAsync(

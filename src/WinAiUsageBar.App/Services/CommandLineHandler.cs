@@ -15,6 +15,9 @@ public sealed record CommandLineSetProviderCliOverrideOptions(
 public sealed record CommandLinePruneSupportArtifactsOptions(
     int KeepNewest);
 
+public sealed record CommandLineUpdateVersionOptions(
+    string? CurrentVersionOverride);
+
 public sealed record CommandLinePrepareUpdateInstallOptions(
     string PackagePath,
     string? InstallDirectory,
@@ -24,7 +27,8 @@ public sealed record CommandLineLaunchPreparedUpdateOptions(
     string ScriptPath);
 
 public sealed record CommandLineInstallLatestUpdateOptions(
-    bool RestartAfterInstall);
+    bool RestartAfterInstall,
+    string? CurrentVersionOverride = null);
 
 public static class CommandLineHandler
 {
@@ -45,8 +49,8 @@ public static class CommandLineHandler
         Func<CommandLineRefreshOnceOptions, CancellationToken, Task<CommandLineActionResult>>? refreshOnce = null,
         Func<CommandLineSetProviderCliOverrideOptions, CancellationToken, Task<CommandLineActionResult>>? setProviderCliOverride = null,
         Func<CommandLinePruneSupportArtifactsOptions, CancellationToken, Task<CommandLineActionResult>>? pruneSupportArtifacts = null,
-        Func<CancellationToken, Task<CommandLineActionResult>>? checkForUpdates = null,
-        Func<CancellationToken, Task<CommandLineActionResult>>? downloadUpdate = null,
+        Func<CommandLineUpdateVersionOptions, CancellationToken, Task<CommandLineActionResult>>? checkForUpdates = null,
+        Func<CommandLineUpdateVersionOptions, CancellationToken, Task<CommandLineActionResult>>? downloadUpdate = null,
         Func<CommandLinePrepareUpdateInstallOptions, CancellationToken, Task<CommandLineActionResult>>? prepareUpdateInstall = null,
         Func<CommandLineLaunchPreparedUpdateOptions, CancellationToken, Task<CommandLineActionResult>>? launchPreparedUpdate = null,
         Func<CommandLineInstallLatestUpdateOptions, CancellationToken, Task<CommandLineActionResult>>? installLatestUpdate = null,
@@ -152,6 +156,54 @@ public static class CommandLineHandler
             }
 
             var result = await pruneSupportArtifacts(parseResult.Options, cancellationToken).ConfigureAwait(false);
+            await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, result.ExitCode);
+        }
+
+        if (args.Count >= 1
+            && string.Equals(args[0].Trim(), "--check-for-updates", StringComparison.OrdinalIgnoreCase))
+        {
+            if (checkForUpdates is null)
+            {
+                await error.WriteLineAsync(
+                    "--check-for-updates is unavailable in this host.".AsMemory(),
+                    cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var parseResult = ParseUpdateVersionOptions(args, "--check-for-updates");
+            if (!parseResult.IsValid || parseResult.Options is null)
+            {
+                await error.WriteLineAsync(parseResult.ErrorMessage.AsMemory(), cancellationToken).ConfigureAwait(false);
+                await error.WriteLineAsync(CreateHelpText().AsMemory(), cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var result = await checkForUpdates(parseResult.Options, cancellationToken).ConfigureAwait(false);
+            await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, result.ExitCode);
+        }
+
+        if (args.Count >= 1
+            && string.Equals(args[0].Trim(), "--download-update", StringComparison.OrdinalIgnoreCase))
+        {
+            if (downloadUpdate is null)
+            {
+                await error.WriteLineAsync(
+                    "--download-update is unavailable in this host.".AsMemory(),
+                    cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var parseResult = ParseUpdateVersionOptions(args, "--download-update");
+            if (!parseResult.IsValid || parseResult.Options is null)
+            {
+                await error.WriteLineAsync(parseResult.ErrorMessage.AsMemory(), cancellationToken).ConfigureAwait(false);
+                await error.WriteLineAsync(CreateHelpText().AsMemory(), cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var result = await downloadUpdate(parseResult.Options, cancellationToken).ConfigureAwait(false);
             await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
             return new CommandLineHandleResult(Handled: true, result.ExitCode);
         }
@@ -293,36 +345,6 @@ public static class CommandLineHandler
             return new CommandLineHandleResult(Handled: true, ExitCode: 0);
         }
 
-        if (string.Equals(command, "--check-for-updates", StringComparison.OrdinalIgnoreCase))
-        {
-            if (checkForUpdates is null)
-            {
-                await error.WriteLineAsync(
-                    "--check-for-updates is unavailable in this host.".AsMemory(),
-                    cancellationToken).ConfigureAwait(false);
-                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
-            }
-
-            var result = await checkForUpdates(cancellationToken).ConfigureAwait(false);
-            await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
-            return new CommandLineHandleResult(Handled: true, result.ExitCode);
-        }
-
-        if (string.Equals(command, "--download-update", StringComparison.OrdinalIgnoreCase))
-        {
-            if (downloadUpdate is null)
-            {
-                await error.WriteLineAsync(
-                    "--download-update is unavailable in this host.".AsMemory(),
-                    cancellationToken).ConfigureAwait(false);
-                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
-            }
-
-            var result = await downloadUpdate(cancellationToken).ConfigureAwait(false);
-            await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
-            return new CommandLineHandleResult(Handled: true, result.ExitCode);
-        }
-
         if (string.Equals(command, "--validate-config-backup", StringComparison.OrdinalIgnoreCase))
         {
             await error.WriteLineAsync(
@@ -346,9 +368,11 @@ public static class CommandLineHandler
           WinAiUsageBar.App.exe --refresh-once --provider <ProviderId> [--source <DataSourceKind>]
           WinAiUsageBar.App.exe --set-provider-cli-override --provider <ProviderId> --command <path-or-command>
           WinAiUsageBar.App.exe --prune-support-artifacts [--keep-newest <N>]
+          WinAiUsageBar.App.exe --check-for-updates [--current-version <version>]
+          WinAiUsageBar.App.exe --download-update [--current-version <version>]
           WinAiUsageBar.App.exe --prepare-update-install --package <path> [--install-dir <path>] [--restart-after-install]
           WinAiUsageBar.App.exe --launch-prepared-update --script <path>
-          WinAiUsageBar.App.exe --install-latest-update [--restart-after-install]
+          WinAiUsageBar.App.exe --install-latest-update [--restart-after-install] [--current-version <version>]
           WinAiUsageBar.App.exe --validate-config-backup <path>
           WinAiUsageBar.App.exe --restore-config-backup <path> --confirm
 
@@ -372,6 +396,8 @@ public static class CommandLineHandler
           --provider-catalog    Print supported provider descriptors without launching UI.
           --check-for-updates   Check GitHub Releases for a newer package without launching UI.
           --download-update     Download and verify the latest GitHub Release package without installing it.
+          --current-version <version>
+                                Dogfood update commands as if the current app version were <version>.
           --prune-support-artifacts
                                 Prune old config backups and diagnostics exports without launching UI.
           --keep-newest <N>     Keep the newest N matched support artifact files when pruning.
@@ -653,6 +679,7 @@ public static class CommandLineHandler
         IReadOnlyList<string> args)
     {
         var restartAfterInstall = false;
+        string? currentVersion = null;
 
         for (var index = 1; index < args.Count; index++)
         {
@@ -668,11 +695,104 @@ public static class CommandLineHandler
                 continue;
             }
 
+            if (string.Equals(option, "--current-version", StringComparison.OrdinalIgnoreCase))
+            {
+                if (currentVersion is not null)
+                {
+                    return CommandLineInstallLatestUpdateParseResult.Invalid("Duplicate --current-version option.");
+                }
+
+                if (++index >= args.Count || string.IsNullOrWhiteSpace(args[index]))
+                {
+                    return CommandLineInstallLatestUpdateParseResult.Invalid("Missing value for --current-version.");
+                }
+
+                var validation = ValidateCurrentVersionOverride(args[index]);
+                if (!validation.IsValid || validation.Value is null)
+                {
+                    return CommandLineInstallLatestUpdateParseResult.Invalid(validation.ErrorMessage);
+                }
+
+                currentVersion = validation.Value;
+                continue;
+            }
+
             return CommandLineInstallLatestUpdateParseResult.Invalid($"Unknown --install-latest-update option: {option}");
         }
 
         return CommandLineInstallLatestUpdateParseResult.Valid(
-            new CommandLineInstallLatestUpdateOptions(restartAfterInstall));
+            new CommandLineInstallLatestUpdateOptions(restartAfterInstall, currentVersion));
+    }
+
+    private static CommandLineUpdateVersionParseResult ParseUpdateVersionOptions(
+        IReadOnlyList<string> args,
+        string commandName)
+    {
+        string? currentVersion = null;
+
+        for (var index = 1; index < args.Count; index++)
+        {
+            var option = args[index].Trim();
+            if (string.Equals(option, "--current-version", StringComparison.OrdinalIgnoreCase))
+            {
+                if (currentVersion is not null)
+                {
+                    return CommandLineUpdateVersionParseResult.Invalid("Duplicate --current-version option.");
+                }
+
+                if (++index >= args.Count || string.IsNullOrWhiteSpace(args[index]))
+                {
+                    return CommandLineUpdateVersionParseResult.Invalid("Missing value for --current-version.");
+                }
+
+                var validation = ValidateCurrentVersionOverride(args[index]);
+                if (!validation.IsValid || validation.Value is null)
+                {
+                    return CommandLineUpdateVersionParseResult.Invalid(validation.ErrorMessage);
+                }
+
+                currentVersion = validation.Value;
+                continue;
+            }
+
+            return CommandLineUpdateVersionParseResult.Invalid($"Unknown {commandName} option: {option}");
+        }
+
+        return CommandLineUpdateVersionParseResult.Valid(
+            new CommandLineUpdateVersionOptions(currentVersion));
+    }
+
+    private static CurrentVersionOverrideValidationResult ValidateCurrentVersionOverride(string value)
+    {
+        var trimmed = value.Trim();
+        if (trimmed.Length > 64)
+        {
+            return CurrentVersionOverrideValidationResult.Invalid("--current-version must be 64 characters or fewer.");
+        }
+
+        if (trimmed.Contains('\r') || trimmed.Contains('\n'))
+        {
+            return CurrentVersionOverrideValidationResult.Invalid("--current-version must be a single value.");
+        }
+
+        var normalized = trimmed.StartsWith("v", StringComparison.OrdinalIgnoreCase)
+            ? trimmed[1..]
+            : trimmed;
+        var metadataIndex = normalized.IndexOfAny(['+', '-']);
+        if (metadataIndex >= 0)
+        {
+            normalized = normalized[..metadataIndex];
+        }
+
+        var versionParts = normalized.Split('.');
+        if (versionParts.Length != 3
+            || versionParts.Any(part => !int.TryParse(part, out _))
+            || !Version.TryParse(normalized, out _))
+        {
+            return CurrentVersionOverrideValidationResult.Invalid("--current-version must be a SemVer-like version such as 0.1.2.");
+        }
+
+        return CurrentVersionOverrideValidationResult.Valid(trimmed);
     }
 
     private static async Task WriteUnknownArgumentsAsync(
@@ -717,6 +837,39 @@ internal sealed record CommandLinePruneSupportArtifactsParseResult(
     public static CommandLinePruneSupportArtifactsParseResult Invalid(string errorMessage)
     {
         return new CommandLinePruneSupportArtifactsParseResult(false, null, errorMessage);
+    }
+}
+
+internal sealed record CommandLineUpdateVersionParseResult(
+    bool IsValid,
+    CommandLineUpdateVersionOptions? Options,
+    string ErrorMessage)
+{
+    public static CommandLineUpdateVersionParseResult Valid(
+        CommandLineUpdateVersionOptions options)
+    {
+        return new CommandLineUpdateVersionParseResult(true, options, string.Empty);
+    }
+
+    public static CommandLineUpdateVersionParseResult Invalid(string errorMessage)
+    {
+        return new CommandLineUpdateVersionParseResult(false, null, errorMessage);
+    }
+}
+
+internal sealed record CurrentVersionOverrideValidationResult(
+    bool IsValid,
+    string? Value,
+    string ErrorMessage)
+{
+    public static CurrentVersionOverrideValidationResult Valid(string value)
+    {
+        return new CurrentVersionOverrideValidationResult(true, value, string.Empty);
+    }
+
+    public static CurrentVersionOverrideValidationResult Invalid(string errorMessage)
+    {
+        return new CurrentVersionOverrideValidationResult(false, null, errorMessage);
     }
 }
 

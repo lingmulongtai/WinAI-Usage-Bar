@@ -96,3 +96,33 @@ Check output: ...\check.out.txt
 Finding:
 
 - The first manual run proved that `v0.1.2` writes update downloads under normal `%AppData%\WinAiUsageBar\updates` because isolated app-data override support was added later. The helper now guards that case before the download stage. Full isolated published release-to-release download/apply dogfooding should use `v0.1.3` or newer as the source release.
+
+## Update CLI Current-Version Override
+
+Current `main` supports `--current-version <version>` on update CLI commands. Use it with isolated app data when you want to exercise the current safe update code as though it were an older installed version:
+
+```powershell
+$env:WINAIUSAGEBAR_APPDATA = "$pwd\artifacts\update-dogfood\override-appdata"
+.\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --download-update --current-version 0.1.2
+```
+
+This override is for dogfooding only. It is not persisted and does not affect WinUI or startup update checks.
+
+## 2026-07-08 - Current Main Simulates v0.1.2 Update Check
+
+Result: passed.
+
+What was checked:
+
+- Ran current debug build with isolated `WINAIUSAGEBAR_APPDATA`.
+- Passed `--check-for-updates --current-version 0.1.2`.
+- Confirmed the real latest-release endpoint reports `v0.1.3` as available without changing the app assembly version.
+
+Observed output summary:
+
+```text
+Status: UpdateAvailable
+Current version: 0.1.2
+Latest version: 0.1.3
+Update available: yes
+```

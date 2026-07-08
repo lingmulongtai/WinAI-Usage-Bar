@@ -267,29 +267,33 @@ public sealed class CommandLineActionsTests
     [Fact]
     public async Task CheckForUpdatesAsync_FormatsUpdateCheckResult()
     {
+        var updateCheck = new FakeUpdateCheckService(new ReleaseUpdateCheckResult(
+            UpdateCheckStatus.UpdateAvailable,
+            CurrentVersion: "0.1.2",
+            LatestVersion: "0.2.0",
+            "A newer GitHub release is available.",
+            IsUpdateAvailable: true,
+            new Uri("https://example.test/releases/v0.2.0"),
+            new UpdatePackageAsset(
+                "WinAIUsageBar-0.2.0-win-x64.zip",
+                new Uri("https://example.test/package.zip"),
+                2048),
+            new UpdatePackageAsset(
+                "WinAIUsageBar-0.2.0-win-x64.zip.sha256",
+                new Uri("https://example.test/package.zip.sha256"),
+                128)));
+
         var result = await CommandLineActions.CheckForUpdatesAsync(
             new AppInfo("WinAI Usage Bar", "0.1.0.0", "0.1.0+local"),
-            new FakeUpdateCheckService(new ReleaseUpdateCheckResult(
-                UpdateCheckStatus.UpdateAvailable,
-                CurrentVersion: "0.1.0",
-                LatestVersion: "0.2.0",
-                "A newer GitHub release is available.",
-                IsUpdateAvailable: true,
-                new Uri("https://example.test/releases/v0.2.0"),
-                new UpdatePackageAsset(
-                    "WinAIUsageBar-0.2.0-win-x64.zip",
-                    new Uri("https://example.test/package.zip"),
-                    2048),
-                new UpdatePackageAsset(
-                    "WinAIUsageBar-0.2.0-win-x64.zip.sha256",
-                    new Uri("https://example.test/package.zip.sha256"),
-                    128))),
-            CancellationToken.None);
+            updateCheck,
+            CancellationToken.None,
+            currentVersionOverride: "0.1.2");
 
         Assert.Equal(0, result.ExitCode);
+        Assert.Equal("0.1.2", updateCheck.LastCurrentVersion);
         Assert.Contains("Update check", result.Output, StringComparison.Ordinal);
         Assert.Contains("Status: UpdateAvailable", result.Output, StringComparison.Ordinal);
-        Assert.Contains("Current version: 0.1.0", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Current version: 0.1.2", result.Output, StringComparison.Ordinal);
         Assert.Contains("Latest version: 0.2.0", result.Output, StringComparison.Ordinal);
         Assert.Contains("Update available: yes", result.Output, StringComparison.Ordinal);
         Assert.Contains("WinAIUsageBar-0.2.0-win-x64.zip", result.Output, StringComparison.Ordinal);
@@ -320,6 +324,7 @@ public sealed class CommandLineActionsTests
     public async Task DownloadUpdateAsync_DownloadsWhenUpdateIsAvailable()
     {
         var paths = TestPaths();
+        var updateCheck = new FakeUpdateCheckService(AvailableUpdate());
         var downloader = new FakeUpdatePackageDownloader(new UpdateDownloadResult(
             UpdateDownloadStatus.Downloaded,
             "downloaded",
@@ -330,12 +335,14 @@ public sealed class CommandLineActionsTests
 
         var result = await CommandLineActions.DownloadUpdateAsync(
             new AppInfo("WinAI Usage Bar", "0.1.0.0", "0.1.0"),
-            new FakeUpdateCheckService(AvailableUpdate()),
+            updateCheck,
             downloader,
             paths,
-            CancellationToken.None);
+            CancellationToken.None,
+            currentVersionOverride: "0.1.2");
 
         Assert.Equal(0, result.ExitCode);
+        Assert.Equal("0.1.2", updateCheck.LastCurrentVersion);
         Assert.Equal(1, downloader.DownloadCount);
         Assert.Contains("Update download", result.Output, StringComparison.Ordinal);
         Assert.Contains("Download status: Downloaded", result.Output, StringComparison.Ordinal);
@@ -522,7 +529,9 @@ public sealed class CommandLineActionsTests
             Launch: null));
 
         var result = await CommandLineActions.InstallLatestUpdateAsync(
-            new CommandLineInstallLatestUpdateOptions(RestartAfterInstall: true),
+            new CommandLineInstallLatestUpdateOptions(
+                RestartAfterInstall: true,
+                CurrentVersionOverride: "0.1.2"),
             service,
             new AppInfo("WinAI Usage Bar", "0.1.0.0", "0.1.0"),
             installDirectory: @"C:\App",
@@ -531,7 +540,7 @@ public sealed class CommandLineActionsTests
 
         Assert.Equal(0, result.ExitCode);
         Assert.Equal(1, service.InstallCount);
-        Assert.Equal("0.1.0", service.LastRequest?.CurrentVersion);
+        Assert.Equal("0.1.2", service.LastRequest?.CurrentVersion);
         Assert.Equal(@"C:\App", service.LastRequest?.InstallDirectory);
         Assert.Equal(777, service.LastRequest?.ProcessIdToWait);
         Assert.True(service.LastRequest?.RestartAfterInstall);
@@ -593,11 +602,14 @@ public sealed class CommandLineActionsTests
 
     private sealed class FakeUpdateCheckService(ReleaseUpdateCheckResult result) : IReleaseUpdateCheckService
     {
+        public string? LastCurrentVersion { get; private set; }
+
         public Task<ReleaseUpdateCheckResult> CheckAsync(
             string currentVersion,
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            LastCurrentVersion = currentVersion;
             return Task.FromResult(result);
         }
     }

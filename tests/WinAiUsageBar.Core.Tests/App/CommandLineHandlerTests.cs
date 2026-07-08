@@ -57,6 +57,7 @@ public sealed class CommandLineHandlerTests
         Assert.Contains("--provider-catalog", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--check-for-updates", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--download-update", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--current-version <version>", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--prepare-update-install", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--launch-prepared-update", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--install-latest-update", output.ToString(), StringComparison.Ordinal);
@@ -479,9 +480,10 @@ public sealed class CommandLineHandlerTests
     {
         using var output = new StringWriter();
         var updateCheckCount = 0;
+        CommandLineUpdateVersionOptions? capturedOptions = null;
 
         var result = await CommandLineHandler.TryHandleAsync(
-            ["--check-for-updates"],
+            ["--check-for-updates", "--current-version", "0.1.2"],
             output,
             new StringWriter(),
             _ => Task.FromResult(1),
@@ -492,17 +494,63 @@ public sealed class CommandLineHandlerTests
             RestoreConfigBackup,
             AppInfo,
             CancellationToken.None,
-            checkForUpdates: cancellationToken =>
+            checkForUpdates: (options, cancellationToken) =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 updateCheckCount++;
+                capturedOptions = options;
                 return Task.FromResult(new CommandLineActionResult("update check body", 0));
             });
 
         Assert.True(result.Handled);
         Assert.Equal(0, result.ExitCode);
         Assert.Equal(1, updateCheckCount);
+        Assert.Equal("0.1.2", capturedOptions?.CurrentVersionOverride);
         Assert.Contains("update check body", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("--check-for-updates", "--current-version")]
+    [InlineData("--check-for-updates", "--current-version", "")]
+    [InlineData("--check-for-updates", "--current-version", "nope")]
+    [InlineData("--check-for-updates", "--current-version", "0.1")]
+    [InlineData("--check-for-updates", "--current-version", "0.1.2", "--current-version", "0.1.3")]
+    [InlineData("--check-for-updates", "--unknown")]
+    [InlineData("--download-update", "--current-version")]
+    [InlineData("--download-update", "--current-version", "nope")]
+    [InlineData("--download-update", "--unknown")]
+    public async Task TryHandleAsync_ReturnsErrorForInvalidUpdateVersionOptions(params string[] args)
+    {
+        using var error = new StringWriter();
+        var updateCommandCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            args,
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            checkForUpdates: (_, _) =>
+            {
+                updateCommandCount++;
+                return Task.FromResult(new CommandLineActionResult("should not run", 0));
+            },
+            downloadUpdate: (_, _) =>
+            {
+                updateCommandCount++;
+                return Task.FromResult(new CommandLineActionResult("should not run", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Equal(0, updateCommandCount);
+        Assert.Contains("--current-version", error.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -533,9 +581,10 @@ public sealed class CommandLineHandlerTests
     {
         using var output = new StringWriter();
         var downloadUpdateCount = 0;
+        CommandLineUpdateVersionOptions? capturedOptions = null;
 
         var result = await CommandLineHandler.TryHandleAsync(
-            ["--download-update"],
+            ["--download-update", "--current-version", "v0.1.2+dogfood"],
             output,
             new StringWriter(),
             _ => Task.FromResult(1),
@@ -546,16 +595,18 @@ public sealed class CommandLineHandlerTests
             RestoreConfigBackup,
             AppInfo,
             CancellationToken.None,
-            downloadUpdate: cancellationToken =>
+            downloadUpdate: (options, cancellationToken) =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 downloadUpdateCount++;
+                capturedOptions = options;
                 return Task.FromResult(new CommandLineActionResult("download body", 0));
             });
 
         Assert.True(result.Handled);
         Assert.Equal(0, result.ExitCode);
         Assert.Equal(1, downloadUpdateCount);
+        Assert.Equal("v0.1.2+dogfood", capturedOptions?.CurrentVersionOverride);
         Assert.Contains("download body", output.ToString(), StringComparison.Ordinal);
     }
 
@@ -772,7 +823,7 @@ public sealed class CommandLineHandlerTests
         CommandLineInstallLatestUpdateOptions? capturedOptions = null;
 
         var result = await CommandLineHandler.TryHandleAsync(
-            ["--install-latest-update", "--restart-after-install"],
+            ["--install-latest-update", "--restart-after-install", "--current-version", "0.1.2"],
             output,
             new StringWriter(),
             _ => Task.FromResult(1),
@@ -793,11 +844,15 @@ public sealed class CommandLineHandlerTests
         Assert.True(result.Handled);
         Assert.Equal(0, result.ExitCode);
         Assert.True(capturedOptions?.RestartAfterInstall);
+        Assert.Equal("0.1.2", capturedOptions?.CurrentVersionOverride);
         Assert.Contains("install body", output.ToString(), StringComparison.Ordinal);
     }
 
     [Theory]
     [InlineData("--install-latest-update", "--restart-after-install", "--restart-after-install")]
+    [InlineData("--install-latest-update", "--current-version")]
+    [InlineData("--install-latest-update", "--current-version", "nope")]
+    [InlineData("--install-latest-update", "--current-version", "0.1.2", "--current-version", "0.1.3")]
     [InlineData("--install-latest-update", "--unknown")]
     public async Task TryHandleAsync_ReturnsErrorForInvalidInstallLatestUpdateOptions(params string[] args)
     {
