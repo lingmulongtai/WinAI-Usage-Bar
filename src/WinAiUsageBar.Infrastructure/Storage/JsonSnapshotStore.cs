@@ -50,14 +50,25 @@ public sealed class JsonSnapshotStore(AppDataPaths paths, Func<DateTimeOffset>? 
             .Select(UsageSnapshotSanitizer.Sanitize)
             .OrderBy(snapshot => snapshot.ProviderId)
             .ToList();
-        var tempPath = $"{paths.SnapshotsPath}.tmp";
+        var tempPath = CreateUniqueTempPath("snapshots");
 
-        await using (var stream = File.Create(tempPath))
+        try
         {
-            await JsonSerializer.SerializeAsync(stream, ordered, indentedOptions, cancellationToken).ConfigureAwait(false);
-        }
+            await using (var stream = new FileStream(
+                tempPath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None))
+            {
+                await JsonSerializer.SerializeAsync(stream, ordered, indentedOptions, cancellationToken).ConfigureAwait(false);
+            }
 
-        File.Move(tempPath, paths.SnapshotsPath, overwrite: true);
+            File.Move(tempPath, paths.SnapshotsPath, overwrite: true);
+        }
+        finally
+        {
+            TryDeleteTempFile(tempPath);
+        }
     }
 
     public async Task AppendHistoryAsync(
@@ -119,9 +130,29 @@ public sealed class JsonSnapshotStore(AppDataPaths paths, Func<DateTimeOffset>? 
 
         TrimToMaxBytes(kept, retention.MaxBytes);
 
-        var tempPath = $"{paths.HistoryPath}.tmp";
-        await File.WriteAllLinesAsync(tempPath, kept, cancellationToken).ConfigureAwait(false);
-        File.Move(tempPath, paths.HistoryPath, overwrite: true);
+        var tempPath = CreateUniqueTempPath("history");
+        try
+        {
+            await using (var stream = new FileStream(
+                tempPath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None))
+            await using (var writer = new StreamWriter(stream))
+            {
+                foreach (var line in kept)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await writer.WriteLineAsync(line.AsMemory(), cancellationToken).ConfigureAwait(false);
+                }
+            }
+
+            File.Move(tempPath, paths.HistoryPath, overwrite: true);
+        }
+        finally
+        {
+            TryDeleteTempFile(tempPath);
+        }
     }
 
     private bool TryParseSnapshot(string line, out UsageSnapshot snapshot)
@@ -156,5 +187,27 @@ public sealed class JsonSnapshotStore(AppDataPaths paths, Func<DateTimeOffset>? 
         }
 
         return total;
+    }
+
+    private string CreateUniqueTempPath(string baseName)
+    {
+        return Path.Combine(
+            paths.RootDirectory,
+            $"{baseName}.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp");
+    }
+
+    private static void TryDeleteTempFile(string tempPath)
+    {
+        try
+        {
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+        }
+        catch
+        {
+            // Temp cleanup must not hide the original snapshot persistence result.
+        }
     }
 }

@@ -40,6 +40,37 @@ public sealed class JsonSnapshotStoreTests
     }
 
     [Fact]
+    public async Task SaveAsync_UsesUniqueTempFilesAndLeavesFixedTempFilesUntouched()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        var store = new JsonSnapshotStore(paths);
+        var now = new DateTimeOffset(2026, 7, 8, 12, 0, 0, TimeSpan.Zero);
+
+        try
+        {
+            paths.EnsureCreated();
+            var fixedTempPath = $"{paths.SnapshotsPath}.tmp";
+            await File.WriteAllTextAsync(fixedTempPath, "legacy fixed temp file");
+
+            await store.SaveAsync(
+                [Snapshot(ProviderId.Codex, "Codex", now)],
+                CancellationToken.None);
+
+            Assert.Equal("legacy fixed temp file", await File.ReadAllTextAsync(fixedTempPath));
+            Assert.Empty(Directory.GetFiles(paths.RootDirectory, "snapshots.*.tmp")
+                .Where(path => !string.Equals(path, fixedTempPath, StringComparison.OrdinalIgnoreCase)));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task AppendHistoryAsync_SanitizesSnapshotsBeforeWritingAndRetentionRewrite()
     {
         var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
@@ -67,6 +98,38 @@ public sealed class JsonSnapshotStoreTests
             Assert.Equal(2, lines.Length);
             Assert.DoesNotContain(secretValue, text, StringComparison.Ordinal);
             Assert.Contains("[REDACTED]", text, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task AppendHistoryAsync_UsesUniqueTempFilesAndLeavesFixedTempFilesUntouched()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        var now = new DateTimeOffset(2026, 7, 8, 12, 0, 0, TimeSpan.Zero);
+        var store = new JsonSnapshotStore(paths, () => now);
+
+        try
+        {
+            paths.EnsureCreated();
+            var fixedTempPath = $"{paths.HistoryPath}.tmp";
+            await File.WriteAllTextAsync(fixedTempPath, "legacy fixed temp file");
+
+            await store.AppendHistoryAsync(
+                [Snapshot(ProviderId.Codex, "Codex", now)],
+                new HistoryRetentionSettings { MaxDays = 30, MaxBytes = 1_000_000 },
+                CancellationToken.None);
+
+            Assert.Equal("legacy fixed temp file", await File.ReadAllTextAsync(fixedTempPath));
+            Assert.Empty(Directory.GetFiles(paths.RootDirectory, "history.*.tmp")
+                .Where(path => !string.Equals(path, fixedTempPath, StringComparison.OrdinalIgnoreCase)));
         }
         finally
         {

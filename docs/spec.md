@@ -107,6 +107,8 @@ Files are stored under `%AppData%\WinAiUsageBar`:
 
 Config saves should write through a per-save unique temporary file before replacing `config.json`, so simultaneous CLI commands or app processes do not collide on a fixed `config.json.tmp` path. Best-effort cleanup should remove abandoned per-save temp files after failed saves when possible. Loading an already-normalized current config should not rewrite the file, while missing, corrupt, or migration-normalized configs should still be repaired and saved.
 
+Snapshot cache and history rewrites should also write through per-save unique temporary files before replacing `snapshots.json` or `history.ndjson`, so overlapping refresh, CLI, or maintenance paths do not collide on fixed `.tmp` paths. Best-effort cleanup should remove abandoned snapshot/history temp files after failed writes when possible.
+
 Secrets must go through `ISecretStore`; the DPAPI implementation protects values for the current Windows user.
 
 The Privacy & Data page provides secret management by secret name. Users can save, check, and delete secret values. Secret values are never displayed back to the user, written to config, logged, or included in diagnostics exports.
