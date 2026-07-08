@@ -2,7 +2,7 @@
 
 WinAI Usage Bar is a personal Windows notification-area app for watching AI provider usage. It is inspired by the idea of a compact usage bar, but the implementation is native Windows: C#, WinUI 3, Windows App SDK, MVVM-style view models, and a clean provider architecture.
 
-Current app version: `0.1.2`.
+Current app version: `0.1.3`.
 
 For a strict status check, see [docs/current-state-audit.md](docs/current-state-audit.md).
 For Windows shell dogfooding checks, see [docs/windows-manual-verification.md](docs/windows-manual-verification.md).
@@ -107,7 +107,7 @@ The installer script is `installer\WinAIUsageBar.iss`, and the default setup out
 Dogfood a prepared update install against a disposable install directory:
 
 ```powershell
-.\scripts\test-update-prepare-apply.ps1 -PackagePath .\artifacts\packages\WinAIUsageBar-0.1.2-win-x64.zip -Apply
+.\scripts\test-update-prepare-apply.ps1 -PackagePath .\artifacts\packages\WinAIUsageBar-0.1.3-win-x64.zip -Apply
 ```
 
 The script uses an isolated app-data root under `artifacts\update-dogfood`, prepares `apply-update.ps1`, and only applies it when the install directory stays inside that work directory.

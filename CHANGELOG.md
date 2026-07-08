@@ -2,6 +2,19 @@
 
 All notable changes to WinAI Usage Bar are documented here.
 
+## 0.1.3 - 2026-07-08
+
+### Added
+
+- Isolated CLI dogfooding app-data override through `WINAIUSAGEBAR_APPDATA`.
+- Provider dogfooding notes for Codex WindowsApps startup-denied environments.
+- Disposable prepared-update dogfood script for update apply checks against temporary install directories.
+
+### Fixed
+
+- Wrote generated update apply scripts with a UTF-8 BOM so Windows PowerShell 5.1 preserves Japanese and other non-ASCII paths.
+- Documented and tested Codex WindowsApps/App Execution Alias startup failures with provider CLI override repair guidance.
+
 ## 0.1.2 - 2026-07-08
 
 ### Added
