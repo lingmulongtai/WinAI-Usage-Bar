@@ -55,6 +55,7 @@ public sealed class CommandLineHandlerTests
         Assert.Contains("--provider-catalog", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--check-for-updates", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--download-update", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--prepare-update-install", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--prune-support-artifacts", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--keep-newest <N>", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--validate-config-backup", output.ToString(), StringComparison.Ordinal);
@@ -414,6 +415,100 @@ public sealed class CommandLineHandlerTests
 
         var result = await CommandLineHandler.TryHandleAsync(
             ["--download-update"],
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains("unavailable", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_PreparesUpdateInstall()
+    {
+        using var output = new StringWriter();
+        CommandLinePrepareUpdateInstallOptions? capturedOptions = null;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--prepare-update-install", "--package", @"C:\Temp\update.zip", "--install-dir", @"C:\App", "--restart-after-install"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            prepareUpdateInstall: (options, cancellationToken) =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                capturedOptions = options;
+                return Task.FromResult(new CommandLineActionResult("prepare body", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(@"C:\Temp\update.zip", capturedOptions?.PackagePath);
+        Assert.Equal(@"C:\App", capturedOptions?.InstallDirectory);
+        Assert.True(capturedOptions?.RestartAfterInstall);
+        Assert.Contains("prepare body", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("--prepare-update-install")]
+    [InlineData("--prepare-update-install", "--package")]
+    [InlineData("--prepare-update-install", "--package", "")]
+    [InlineData("--prepare-update-install", "--package", "a.zip", "--package", "b.zip")]
+    [InlineData("--prepare-update-install", "--package", "a.zip", "--install-dir")]
+    [InlineData("--prepare-update-install", "--package", "a.zip", "--install-dir", "C:\\A", "--install-dir", "C:\\B")]
+    [InlineData("--prepare-update-install", "--package", "a.zip", "--restart-after-install", "--restart-after-install")]
+    [InlineData("--prepare-update-install", "--package", "a.zip", "--unknown")]
+    public async Task TryHandleAsync_ReturnsErrorForInvalidPrepareUpdateInstallOptions(params string[] args)
+    {
+        using var error = new StringWriter();
+        var prepareCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            args,
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            prepareUpdateInstall: (_, _) =>
+            {
+                prepareCount++;
+                return Task.FromResult(new CommandLineActionResult("should not run", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Equal(0, prepareCount);
+        Assert.Contains("--prepare-update-install", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ReturnsErrorWhenPrepareUpdateInstallIsUnavailable()
+    {
+        using var error = new StringWriter();
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--prepare-update-install", "--package", @"C:\Temp\update.zip"],
             new StringWriter(),
             error,
             _ => Task.FromResult(1),

@@ -13,7 +13,7 @@ This audit is intentionally strict. The repository has moved past a throwaway sc
 | Security posture | 7/10 | Good defaults around DPAPI, redaction, and no cookie scraping. Needs more adversarial review before wider distribution. |
 | Windows shell integration | 5/10 | Tray, windows, placement, startup registration, and notifications exist, with a manual verification checklist and report scaffold now available. Actual shell behavior still needs hands-on runs. |
 | Product usability | 6/10 | The app now has guided first-run checklist state, provider details, backup export/restore, and recovery checks, but it is still mostly useful with Mock/Manual data today. |
-| Packaging and release | 7/10 | Self-contained publish, zip packaging, checksums, readiness gates, artifacts, draft release workflow, update-check, and verified package download foundation exist. No installer, signing, or package apply step yet. |
+| Packaging and release | 7/10 | Self-contained publish, zip packaging, checksums, readiness gates, artifacts, release workflow, update-check, verified download, and install-script preparation exist. No installer, signing, or one-click apply/restart yet. |
 | Test confidence | 8/10 | Core, infrastructure, view model, CLI, storage, parser, refresh, app-composition smoke, and packaging smoke paths are covered without external CLIs. UI runtime coverage remains limited. |
 | Observability and support | 7/10 | Diagnostics summary, provider repair guidance, recovery guidance, redacted export, health report, and logs are solid for an MVP. No structured crash reports yet. |
 
@@ -33,7 +33,7 @@ Overall:
 - Diagnostics exports redact common secret shapes and exclude `secrets/`.
 - Config, snapshots, history, diagnostics, and maintenance flows are all represented in code and tests.
 - CI now builds, tests, publishes, smoke-tests app service composition, packages, and uploads artifacts on `main`.
-- The CLI surface gives useful non-UI checks: help, version, smoke test with app service composition and refresh pipeline coverage, diagnostics export, health report with storage pressure guidance, recovery guidance, launch targets, and repair hints, provider catalog, support artifact pruning, update checks, verified update downloads, and headless refresh-once.
+- The CLI surface gives useful non-UI checks: help, version, smoke test with app service composition and refresh pipeline coverage, diagnostics export, health report with storage pressure guidance, recovery guidance, launch targets, and repair hints, provider catalog, support artifact pruning, update checks, verified update downloads, staged install script preparation, and headless refresh-once.
 - Release readiness checks now cover version metadata, changelog, audit date, published-app smoke test, package presence, and checksum validity.
 - Guided first-run checklist state, Provider Details, config backup export, backup validation, confirmed CLI restore, latest-backup in-app restore, and confirmed reset-to-default recovery are implemented.
 - Providers now includes non-secret setup guidance for source choices, Manual fallback, API references, Copilot metrics requirements, and CLI/app-server caveats.
@@ -57,7 +57,7 @@ Overall:
 - GitHub Copilot support targets organization or enterprise metrics and is not a complete personal usage experience.
 - The UI is functional but still not visually or ergonomically proven with extended daily use.
 - Tray behavior, taskbar-near placement, topmost widget behavior, and notification delivery need real Windows manual testing.
-- There is no installer, MSIX, code signing, package apply/restart step, or uninstall story.
+- There is no installer, MSIX, code signing, one-click apply/restart step, or uninstall story.
 - First-run setup has a basic checklist with action targets and Providers has setup guidance, but it is not yet a full guided wizard with inline provider-specific decisions.
 - Config backup and reset recovery now exist with basic decision guidance, but they still need repeated dogfooding before they can be treated as comfort features.
 - Local storage growth is visible for history, backups, diagnostics exports, and diagnostics logs, with basic pruning for backups and exports, but the maintenance flow still needs real-use tuning.
@@ -73,7 +73,7 @@ Overall:
 | Tray/window behavior differs across Windows setups | Medium | Placement service, single-instance guard tests, manual checklist, and report scaffold | Run and record the checklist across taskbar edges, DPI, multi-monitor, startup, and theme modes. |
 | CI restore flakiness blocks progress | Medium | Retry script and NuGet audit disabled by default | Keep restore helper simple and inspect future failures quickly. |
 | App feels like a demo because provider data is manual | High | Mock, Manual, broader Codex reset parser tests, provider details, and headless refresh-once are stable | Prioritize one reliable real provider path end to end. |
-| Public binaries are not trusted by Windows | High | Zip, checksum, draft release workflow, update check, and checksum-verified download path exist | Add signing or at least documented install warnings before public release. |
+| Public binaries are not trusted by Windows | High | Zip, checksum, release workflow, update check, checksum-verified download path, and install-script preparation exist | Add signing or at least documented install warnings before public release. |
 | Local data files grow too much | Medium | History retention by days and bytes; Privacy & Data storage pressure guidance includes history, backups, diagnostics exports, and diagnostics logs; backups and diagnostics exports can be pruned from UI or CLI while keeping newest matched files | Dogfood pressure thresholds and add richer compaction or per-folder controls if needed. |
 | Config corruption causes user confusion | Medium | Corrupt config backup, default migration, unique temp files for config and backup saves, collision-resistant backup/export names, config export, validation, confirmed CLI restore, latest-backup in-app restore, reset-to-default recovery, and recovery guidance | Dogfood restore and reset repeatedly, then tighten recovery copy and guidance based on real failures. |
 | CLI availability is ambiguous on Windows | Medium | Safe health report checks command discovery, selected launch targets, repair hints, and short startup; command launch prefers resolved `.exe`/shim paths; Codex provider classifies startup failures; Provider Details gives generic CLI repair guidance | Extend provider-specific repair checks to every future CLI-backed provider. |
@@ -115,8 +115,8 @@ The weak point is value density. A usage bar is only as useful as the data it ca
 7. Add one automated UI launch check if feasible.
    Even a minimal app-start plus window activation check would catch major WinUI regressions.
 
-8. Build the update apply/install path.
-   The app can now check GitHub release metadata and download a checksum-verified package. Next it needs staged extraction plus a safe replace/restart flow.
+8. Build the one-click update apply/install path.
+   The app can now check GitHub release metadata, download a checksum-verified package, and prepare an apply script. Next it needs an app-driven confirmation, script launch, exit, and restart flow.
 
 9. Keep release readiness gates strict as distribution matures.
    Current gates cover metadata, audit date, smoke test, package, checksum, and optional manual verification report evidence.

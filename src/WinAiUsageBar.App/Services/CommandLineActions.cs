@@ -128,6 +128,43 @@ public static class CommandLineActions
             isFailure ? 1 : 0);
     }
 
+    public static async Task<CommandLineActionResult> PrepareUpdateInstallAsync(
+        CommandLinePrepareUpdateInstallOptions options,
+        CancellationToken cancellationToken)
+    {
+        var paths = AppDataPaths.CreateDefault();
+        var service = new UpdateInstallPreparationService(paths);
+        return await PrepareUpdateInstallAsync(
+            options,
+            service,
+            defaultInstallDirectory: AppContext.BaseDirectory,
+            processIdToWait: Environment.ProcessId,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public static async Task<CommandLineActionResult> PrepareUpdateInstallAsync(
+        CommandLinePrepareUpdateInstallOptions options,
+        IUpdateInstallPreparationService service,
+        string defaultInstallDirectory,
+        int processIdToWait,
+        CancellationToken cancellationToken)
+    {
+        var installDirectory = string.IsNullOrWhiteSpace(options.InstallDirectory)
+            ? defaultInstallDirectory
+            : options.InstallDirectory;
+        var result = await service.PrepareAsync(
+            new UpdateInstallPreparationRequest(
+                options.PackagePath,
+                installDirectory,
+                processIdToWait,
+                options.RestartAfterInstall),
+            cancellationToken).ConfigureAwait(false);
+        var isFailure = result.Status is not UpdateInstallPreparationStatus.Prepared;
+        return new CommandLineActionResult(
+            CommandLineUpdateInstallPreparationFormatter.Format(result),
+            isFailure ? 1 : 0);
+    }
+
     public static async Task<CommandLineActionResult> PruneSupportArtifactsAsync(
         CommandLinePruneSupportArtifactsOptions options,
         CancellationToken cancellationToken)

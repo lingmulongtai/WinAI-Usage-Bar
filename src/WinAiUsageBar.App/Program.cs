@@ -25,7 +25,8 @@ public static class Program
             refreshOnce: CommandLineActions.RefreshOnceAsync,
             pruneSupportArtifacts: CommandLineActions.PruneSupportArtifactsAsync,
             checkForUpdates: CommandLineActions.CheckForUpdatesAsync,
-            downloadUpdate: CommandLineActions.DownloadUpdateAsync)
+            downloadUpdate: CommandLineActions.DownloadUpdateAsync,
+            prepareUpdateInstall: CommandLineActions.PrepareUpdateInstallAsync)
             .GetAwaiter()
             .GetResult();
 

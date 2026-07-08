@@ -11,6 +11,11 @@ public sealed record CommandLineRefreshOnceOptions(
 public sealed record CommandLinePruneSupportArtifactsOptions(
     int KeepNewest);
 
+public sealed record CommandLinePrepareUpdateInstallOptions(
+    string PackagePath,
+    string? InstallDirectory,
+    bool RestartAfterInstall);
+
 public static class CommandLineHandler
 {
     private const int DefaultPruneKeepNewest = 5;
@@ -30,7 +35,8 @@ public static class CommandLineHandler
         Func<CommandLineRefreshOnceOptions, CancellationToken, Task<CommandLineActionResult>>? refreshOnce = null,
         Func<CommandLinePruneSupportArtifactsOptions, CancellationToken, Task<CommandLineActionResult>>? pruneSupportArtifacts = null,
         Func<CancellationToken, Task<CommandLineActionResult>>? checkForUpdates = null,
-        Func<CancellationToken, Task<CommandLineActionResult>>? downloadUpdate = null)
+        Func<CancellationToken, Task<CommandLineActionResult>>? downloadUpdate = null,
+        Func<CommandLinePrepareUpdateInstallOptions, CancellationToken, Task<CommandLineActionResult>>? prepareUpdateInstall = null)
     {
         if (args.Count == 0)
         {
@@ -108,6 +114,30 @@ public static class CommandLineHandler
             }
 
             var result = await pruneSupportArtifacts(parseResult.Options, cancellationToken).ConfigureAwait(false);
+            await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, result.ExitCode);
+        }
+
+        if (args.Count >= 1
+            && string.Equals(args[0].Trim(), "--prepare-update-install", StringComparison.OrdinalIgnoreCase))
+        {
+            if (prepareUpdateInstall is null)
+            {
+                await error.WriteLineAsync(
+                    "--prepare-update-install is unavailable in this host.".AsMemory(),
+                    cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var parseResult = ParsePrepareUpdateInstallOptions(args);
+            if (!parseResult.IsValid || parseResult.Options is null)
+            {
+                await error.WriteLineAsync(parseResult.ErrorMessage.AsMemory(), cancellationToken).ConfigureAwait(false);
+                await error.WriteLineAsync(CreateHelpText().AsMemory(), cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var result = await prepareUpdateInstall(parseResult.Options, cancellationToken).ConfigureAwait(false);
             await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
             return new CommandLineHandleResult(Handled: true, result.ExitCode);
         }
@@ -214,6 +244,7 @@ public static class CommandLineHandler
           WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--health-report|--refresh-once|--provider-catalog|--check-for-updates|--download-update]
           WinAiUsageBar.App.exe --refresh-once --provider <ProviderId> [--source <DataSourceKind>]
           WinAiUsageBar.App.exe --prune-support-artifacts [--keep-newest <N>]
+          WinAiUsageBar.App.exe --prepare-update-install --package <path> [--install-dir <path>] [--restart-after-install]
           WinAiUsageBar.App.exe --validate-config-backup <path>
           WinAiUsageBar.App.exe --restore-config-backup <path> --confirm
 
@@ -234,6 +265,12 @@ public static class CommandLineHandler
           --prune-support-artifacts
                                 Prune old config backups and diagnostics exports without launching UI.
           --keep-newest <N>     Keep the newest N matched support artifact files when pruning.
+          --prepare-update-install
+                                Generate a PowerShell script that applies a staged update after the app exits.
+          --package <path>      Staged update zip package to install.
+          --install-dir <path>  Install directory to replace. Defaults to the running app directory.
+          --restart-after-install
+                                Restart WinAI Usage Bar after the generated install script applies the update.
           --validate-config-backup <path>
                                 Validate a config backup without applying it.
           --restore-config-backup <path> --confirm
@@ -335,6 +372,71 @@ public static class CommandLineHandler
             new CommandLinePruneSupportArtifactsOptions(keepNewest ?? DefaultPruneKeepNewest));
     }
 
+    private static CommandLinePrepareUpdateInstallParseResult ParsePrepareUpdateInstallOptions(
+        IReadOnlyList<string> args)
+    {
+        string? packagePath = null;
+        string? installDirectory = null;
+        var restartAfterInstall = false;
+
+        for (var index = 1; index < args.Count; index++)
+        {
+            var option = args[index].Trim();
+            if (string.Equals(option, "--package", StringComparison.OrdinalIgnoreCase))
+            {
+                if (packagePath is not null)
+                {
+                    return CommandLinePrepareUpdateInstallParseResult.Invalid("Duplicate --package option.");
+                }
+
+                if (++index >= args.Count || string.IsNullOrWhiteSpace(args[index]))
+                {
+                    return CommandLinePrepareUpdateInstallParseResult.Invalid("Missing value for --package.");
+                }
+
+                packagePath = args[index].Trim();
+                continue;
+            }
+
+            if (string.Equals(option, "--install-dir", StringComparison.OrdinalIgnoreCase))
+            {
+                if (installDirectory is not null)
+                {
+                    return CommandLinePrepareUpdateInstallParseResult.Invalid("Duplicate --install-dir option.");
+                }
+
+                if (++index >= args.Count || string.IsNullOrWhiteSpace(args[index]))
+                {
+                    return CommandLinePrepareUpdateInstallParseResult.Invalid("Missing value for --install-dir.");
+                }
+
+                installDirectory = args[index].Trim();
+                continue;
+            }
+
+            if (string.Equals(option, "--restart-after-install", StringComparison.OrdinalIgnoreCase))
+            {
+                if (restartAfterInstall)
+                {
+                    return CommandLinePrepareUpdateInstallParseResult.Invalid("Duplicate --restart-after-install option.");
+                }
+
+                restartAfterInstall = true;
+                continue;
+            }
+
+            return CommandLinePrepareUpdateInstallParseResult.Invalid($"Unknown --prepare-update-install option: {option}");
+        }
+
+        if (string.IsNullOrWhiteSpace(packagePath))
+        {
+            return CommandLinePrepareUpdateInstallParseResult.Invalid("--prepare-update-install requires --package <path>.");
+        }
+
+        return CommandLinePrepareUpdateInstallParseResult.Valid(
+            new CommandLinePrepareUpdateInstallOptions(packagePath, installDirectory, restartAfterInstall));
+    }
+
     private static async Task WriteUnknownArgumentsAsync(
         IReadOnlyList<string> args,
         TextWriter error,
@@ -377,5 +479,22 @@ internal sealed record CommandLinePruneSupportArtifactsParseResult(
     public static CommandLinePruneSupportArtifactsParseResult Invalid(string errorMessage)
     {
         return new CommandLinePruneSupportArtifactsParseResult(false, null, errorMessage);
+    }
+}
+
+internal sealed record CommandLinePrepareUpdateInstallParseResult(
+    bool IsValid,
+    CommandLinePrepareUpdateInstallOptions? Options,
+    string ErrorMessage)
+{
+    public static CommandLinePrepareUpdateInstallParseResult Valid(
+        CommandLinePrepareUpdateInstallOptions options)
+    {
+        return new CommandLinePrepareUpdateInstallParseResult(true, options, string.Empty);
+    }
+
+    public static CommandLinePrepareUpdateInstallParseResult Invalid(string errorMessage)
+    {
+        return new CommandLinePrepareUpdateInstallParseResult(false, null, errorMessage);
     }
 }

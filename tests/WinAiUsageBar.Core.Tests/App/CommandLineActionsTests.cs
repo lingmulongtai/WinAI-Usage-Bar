@@ -308,6 +308,67 @@ public sealed class CommandLineActionsTests
         Assert.Contains("Download status: ChecksumMismatch", result.Output, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task PrepareUpdateInstallAsync_UsesDefaultInstallDirectoryWhenNotProvided()
+    {
+        var service = new FakeUpdateInstallPreparationService(new UpdateInstallPreparationResult(
+            UpdateInstallPreparationStatus.Prepared,
+            "prepared",
+            ScriptPath: @"C:\Updates\apply-update.ps1",
+            Command: @"powershell -ExecutionPolicy Bypass -File C:\Updates\apply-update.ps1",
+            PackagePath: @"C:\Updates\update.zip",
+            InstallDirectory: @"C:\App",
+            StagingDirectory: @"C:\Updates\staging",
+            BackupDirectory: @"C:\Updates\backup"));
+
+        var result = await CommandLineActions.PrepareUpdateInstallAsync(
+            new CommandLinePrepareUpdateInstallOptions(
+                @"C:\Updates\update.zip",
+                InstallDirectory: null,
+                RestartAfterInstall: true),
+            service,
+            defaultInstallDirectory: @"C:\App",
+            processIdToWait: 4321,
+            CancellationToken.None);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(1, service.PrepareCount);
+        Assert.Equal(@"C:\Updates\update.zip", service.LastRequest?.PackagePath);
+        Assert.Equal(@"C:\App", service.LastRequest?.InstallDirectory);
+        Assert.Equal(4321, service.LastRequest?.ProcessIdToWait);
+        Assert.True(service.LastRequest?.RestartAfterInstall);
+        Assert.Contains("Status: Prepared", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Script: C:\\Updates\\apply-update.ps1", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task PrepareUpdateInstallAsync_ReturnsNonZeroWhenPreparationFails()
+    {
+        var service = new FakeUpdateInstallPreparationService(new UpdateInstallPreparationResult(
+            UpdateInstallPreparationStatus.InvalidPackage,
+            "bad package",
+            ScriptPath: null,
+            Command: null,
+            PackagePath: null,
+            InstallDirectory: null,
+            StagingDirectory: null,
+            BackupDirectory: null));
+
+        var result = await CommandLineActions.PrepareUpdateInstallAsync(
+            new CommandLinePrepareUpdateInstallOptions(
+                @"C:\Updates\bad.zip",
+                InstallDirectory: @"C:\App",
+                RestartAfterInstall: false),
+            service,
+            defaultInstallDirectory: @"C:\Default",
+            processIdToWait: 0,
+            CancellationToken.None);
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Status: InvalidPackage", result.Output, StringComparison.Ordinal);
+        Assert.Contains("bad package", result.Output, StringComparison.Ordinal);
+    }
+
     private static AppDataPaths TestPaths()
     {
         return new AppDataPaths(Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N")));
@@ -383,5 +444,23 @@ public sealed class CommandLineActionsTests
                 "WinAIUsageBar-0.2.0-win-x64.zip.sha256",
                 new Uri("https://example.test/package.zip.sha256"),
                 128));
+    }
+
+    private sealed class FakeUpdateInstallPreparationService(
+        UpdateInstallPreparationResult result) : IUpdateInstallPreparationService
+    {
+        public int PrepareCount { get; private set; }
+
+        public UpdateInstallPreparationRequest? LastRequest { get; private set; }
+
+        public Task<UpdateInstallPreparationResult> PrepareAsync(
+            UpdateInstallPreparationRequest request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            PrepareCount++;
+            LastRequest = request;
+            return Task.FromResult(result);
+        }
     }
 }
