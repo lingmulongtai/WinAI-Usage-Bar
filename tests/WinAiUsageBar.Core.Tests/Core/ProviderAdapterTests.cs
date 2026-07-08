@@ -242,7 +242,9 @@ public sealed class ProviderAdapterTests
 
     private sealed class ThrowingCodexClient(Exception exception) : ICodexAppServerClient
     {
-        public Task<CodexAppServerData> FetchAccountUsageAsync(CancellationToken cancellationToken)
+        public Task<CodexAppServerData> FetchAccountUsageAsync(
+            CommandProbeResult commandProbe,
+            CancellationToken cancellationToken)
         {
             throw exception;
         }

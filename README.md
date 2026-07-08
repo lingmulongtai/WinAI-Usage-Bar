@@ -35,7 +35,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - Manual mode can track used/remaining percentage, reset datetime/description, credits, currency/unit, month cost, last-31-day tokens, and notes.
 - CLI `--refresh-once` can run one headless provider refresh and print a safe snapshot summary without launching UI.
 - Codex/ChatGPT app-server probing is isolated behind safe abstractions.
-- Codex CLI startup failures are classified separately from auth and JSON-RPC errors, with repair-oriented messages for Windows app alias or permission problems.
+- Codex CLI startup uses resolved Windows command paths, including `.cmd` shims and `.exe` paths, and startup failures are classified separately from auth and JSON-RPC errors with repair-oriented messages for Windows app alias or permission problems.
 - Claude, Claude Code, Gemini, OpenCode Zen, and GitHub Copilot have MVP-safe descriptors and manual mode support.
 - Gemini and OpenCode Zen expose API key secret-name fields without storing API key values in config.
 - JSON config, snapshot cache, and history are stored under `%AppData%\WinAiUsageBar`.
@@ -159,7 +159,7 @@ The release workflow builds, tests, publishes, smoke-tests, packages the app, an
 
 - Mock: implemented for UI development.
 - Manual: implemented for every provider.
-- Codex / ChatGPT: safe best-effort `codex app-server` JSON-RPC client and parser are implemented; optional account/rate-limit/usage method failures can return partial data, reset timestamps support ISO strings, Unix seconds, Unix milliseconds, and relative reset seconds, and missing CLI/startup/auth failures return visible provider errors.
+- Codex / ChatGPT: safe best-effort `codex app-server` JSON-RPC client and parser are implemented; Windows command resolution prefers launchable `.exe`, `.cmd`, or `.bat` paths returned by `where.exe`; optional account/rate-limit/usage method failures can return partial data, reset timestamps support ISO strings, Unix seconds, Unix milliseconds, and relative reset seconds, and missing CLI/startup/auth failures return visible provider errors.
 - Claude / Claude Code: CLI presence probe only; no private file scraping.
 - Gemini: API key secret-name setting; no unofficial usage endpoint.
 - OpenCode Zen: API key secret-name setting, manual balance mode, and documented TODO for future official balance API.

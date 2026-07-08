@@ -14,27 +14,36 @@ public sealed class CodexAppServerClient : ICodexAppServerClient
     private const int RateLimitsRequestId = 3;
     private const int UsageRequestId = 4;
 
-    private readonly Func<ICodexAppServerTransport> transportFactory;
+    private readonly Func<CommandProbeResult, ICodexAppServerTransport> transportFactory;
     private readonly TimeSpan timeout;
 
     public CodexAppServerClient(TimeSpan? requestTimeout = null)
-        : this(() => new CodexProcessAppServerTransport(), requestTimeout)
+        : this(commandProbe => new CodexProcessAppServerTransport(commandProbe), requestTimeout)
     {
     }
 
     public CodexAppServerClient(
         Func<ICodexAppServerTransport> transportFactory,
         TimeSpan? requestTimeout = null)
+        : this(_ => transportFactory(), requestTimeout)
+    {
+    }
+
+    public CodexAppServerClient(
+        Func<CommandProbeResult, ICodexAppServerTransport> transportFactory,
+        TimeSpan? requestTimeout = null)
     {
         this.transportFactory = transportFactory;
         timeout = requestTimeout ?? TimeSpan.FromSeconds(8);
     }
 
-    public async Task<CodexAppServerData> FetchAccountUsageAsync(CancellationToken cancellationToken)
+    public async Task<CodexAppServerData> FetchAccountUsageAsync(
+        CommandProbeResult commandProbe,
+        CancellationToken cancellationToken)
     {
         var diagnostics = new ConcurrentQueue<string>();
         var pendingResponses = new Dictionary<int, string>();
-        await using var transport = transportFactory();
+        await using var transport = transportFactory(commandProbe);
         using var diagnosticsCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var diagnosticsTask = Task.CompletedTask;
         var cleanupCompleted = false;

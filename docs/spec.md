@@ -18,7 +18,7 @@ Initial provider IDs:
 
 Every provider supports Manual mode first. Automatic integrations are best-effort and must return `AuthRequired`, `Unsupported`, or `Error` snapshots instead of crashing.
 
-CLI-based integrations use `ICommandProbe` to separate a missing command from a discovered command. Provider adapters should classify Windows startup failures, such as app execution alias or permission problems, as visible repairable failures instead of generic provider errors.
+CLI-based integrations use `ICommandProbe` to separate a missing command from a discovered command. Infrastructure launch code should use the resolved Windows command path when available, prefer launchable `.exe`, `.cmd`, or `.bat` paths over extensionless aliases, and route `.cmd`/`.bat` shims through the Windows command processor. Provider adapters should classify Windows startup failures, such as app execution alias or permission problems, as visible repairable failures instead of generic provider errors.
 
 Codex/ChatGPT app-server initialization is required, but account, rate-limit, and usage method calls should be treated as optional data sources after initialization. A non-auth JSON-RPC error from one optional method should be recorded as a redacted diagnostic while the client continues to later methods. Auth, login, unauthorized, malformed JSON, closed streams, and process startup failures should still become visible provider failures.
 

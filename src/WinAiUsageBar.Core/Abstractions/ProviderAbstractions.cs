@@ -37,7 +37,9 @@ public sealed record CommandProbeResult(
 
 public interface ICodexAppServerClient
 {
-    Task<CodexAppServerData> FetchAccountUsageAsync(CancellationToken cancellationToken);
+    Task<CodexAppServerData> FetchAccountUsageAsync(
+        CommandProbeResult commandProbe,
+        CancellationToken cancellationToken);
 }
 
 public interface ISecretResolver

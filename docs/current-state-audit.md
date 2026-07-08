@@ -38,6 +38,7 @@ Overall:
 - Guided first-run checklist state, Provider Details, config backup export, backup validation, confirmed CLI restore, latest-backup in-app restore, and confirmed reset-to-default recovery are implemented.
 - Providers now includes non-secret setup guidance for source choices, Manual fallback, API references, Copilot metrics requirements, and CLI/app-server caveats.
 - Provider Details now includes non-secret repair guidance for warning, auth-required, unsupported, error, and unknown provider states.
+- CLI launch now prefers resolved Windows `.exe`, `.cmd`, or `.bat` paths from command discovery and routes command shims through the command processor, so health checks and Codex app-server use the same safer startup path.
 - Codex app-server parsing now handles common absolute and relative reset timestamp shapes in addition to basic usage and rate-limit percentages, and the client can keep partial account/rate-limit/usage data when one optional method is unavailable.
 - Headless `--refresh-once` can exercise the real enabled-provider refresh pipeline and print safe snapshot summaries plus non-secret repair guidance without opening WinUI windows, including one-shot provider/source overrides for dogfooding paths such as Codex LocalAppServer.
 - Privacy & Data now includes non-secret storage pressure guidance and recovery guidance for backup, restore, reset, and diagnostics export choices.
@@ -71,7 +72,7 @@ Overall:
 | Public binaries are not trusted by Windows | High | Zip and checksum exist | Add signing or at least documented install warnings before public release. |
 | Local data files grow too much | Medium | History retention by days and bytes; Privacy & Data storage pressure guidance | Dogfood pressure thresholds and add richer backup pruning or compaction actions if needed. |
 | Config corruption causes user confusion | Medium | Corrupt config backup, default migration, config export, validation, confirmed CLI restore, latest-backup in-app restore, reset-to-default recovery, and recovery guidance | Dogfood restore and reset repeatedly, then tighten recovery copy and guidance based on real failures. |
-| CLI availability is ambiguous on Windows | Medium | Safe health report checks command discovery and short startup; Codex provider classifies startup failures; Provider Details gives generic CLI repair guidance | Extend provider-specific repair checks to every future CLI-backed provider. |
+| CLI availability is ambiguous on Windows | Medium | Safe health report checks command discovery and short startup, command launch prefers resolved `.exe`/shim paths, Codex provider classifies startup failures, and Provider Details gives generic CLI repair guidance | Extend provider-specific repair checks to every future CLI-backed provider. |
 
 ## Current MVP Reality
 

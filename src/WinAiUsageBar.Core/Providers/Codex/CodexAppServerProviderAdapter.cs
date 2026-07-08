@@ -29,7 +29,7 @@ public sealed class CodexAppServerProviderAdapter(
 
         try
         {
-            var data = await client.FetchAccountUsageAsync(cancellationToken).ConfigureAwait(false);
+            var data = await client.FetchAccountUsageAsync(probe, cancellationToken).ConfigureAwait(false);
             var snapshot = CodexJsonRpcParser.CreateSnapshot(Descriptor, data, context.Now);
 
             return new ProviderFetchResult(

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using WinAiUsageBar.Core.Abstractions;
 
 namespace WinAiUsageBar.Infrastructure.Process;
 
@@ -15,7 +16,8 @@ public interface ICodexAppServerTransport : IAsyncDisposable
     Task StopAsync(CancellationToken cancellationToken);
 }
 
-public sealed class CodexProcessAppServerTransport : ICodexAppServerTransport
+public sealed class CodexProcessAppServerTransport(
+    CommandProbeResult commandProbe) : ICodexAppServerTransport
 {
     private System.Diagnostics.Process? process;
 
@@ -23,21 +25,16 @@ public sealed class CodexProcessAppServerTransport : ICodexAppServerTransport
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        var startInfo = CliCommandLaunchPlanner
+            .Create(commandProbe.CommandName, commandProbe.Paths)
+            .CreateStartInfo(["app-server"], redirectStandardInput: true);
+
         process = new System.Diagnostics.Process
         {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = "codex",
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            },
+            StartInfo = startInfo,
             EnableRaisingEvents = true
         };
 
-        process.StartInfo.ArgumentList.Add("app-server");
         process.Start();
 
         return Task.CompletedTask;

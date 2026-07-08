@@ -1,3 +1,4 @@
+using WinAiUsageBar.Core.Abstractions;
 using WinAiUsageBar.Infrastructure.Process;
 
 namespace WinAiUsageBar.Core.Tests.Infrastructure;
@@ -19,7 +20,7 @@ public sealed class CodexAppServerClientTests
             waitForErrorReadBeforeOutput: true);
         var client = new CodexAppServerClient(() => transport, TimeSpan.FromSeconds(1));
 
-        var data = await client.FetchAccountUsageAsync(CancellationToken.None);
+        var data = await client.FetchAccountUsageAsync(CodexProbe(), CancellationToken.None);
 
         Assert.Contains("person@example.com", data.AccountJson);
         Assert.Contains("\"id\":3", data.RateLimitsJson);
@@ -43,13 +44,43 @@ public sealed class CodexAppServerClientTests
             []);
         var client = new CodexAppServerClient(() => transport, TimeSpan.FromSeconds(1));
 
-        var data = await client.FetchAccountUsageAsync(CancellationToken.None);
+        var data = await client.FetchAccountUsageAsync(CodexProbe(), CancellationToken.None);
 
         Assert.Contains("person@example.com", data.AccountJson);
         Assert.Null(data.RateLimitsJson);
         Assert.Contains("\"id\":4", data.UsageJson);
         Assert.Contains(data.Diagnostics, line => line.Contains("account/rateLimits/read failed", StringComparison.Ordinal));
         Assert.DoesNotContain("rate-secret", string.Join('\n', data.Diagnostics), StringComparison.Ordinal);
+        Assert.Equal(4, transport.Requests.Count);
+        Assert.True(transport.Stopped);
+    }
+
+    [Fact]
+    public async Task FetchAccountUsageAsync_PassesCommandProbeToTransportFactory()
+    {
+        var transport = new FakeCodexTransport(
+            [
+                Response(1, """{"ok":true}"""),
+                Response(2, """{"email":"person@example.com"}"""),
+                Response(3, """{"used":10,"limit":100}"""),
+                Response(4, """{"used":20,"limit":100}""")
+            ],
+            []);
+        CommandProbeResult? capturedProbe = null;
+        var client = new CodexAppServerClient(
+            probe =>
+            {
+                capturedProbe = probe;
+                return transport;
+            },
+            TimeSpan.FromSeconds(1));
+        var probe = CommandProbeResult.Found("codex", [@"C:\Users\me\AppData\Roaming\npm\codex.cmd"]);
+
+        await client.FetchAccountUsageAsync(probe, CancellationToken.None);
+
+        Assert.NotNull(capturedProbe);
+        Assert.Equal("codex", capturedProbe.CommandName);
+        Assert.Equal(@"C:\Users\me\AppData\Roaming\npm\codex.cmd", Assert.Single(capturedProbe.Paths));
         Assert.Equal(4, transport.Requests.Count);
         Assert.True(transport.Stopped);
     }
@@ -66,7 +97,7 @@ public sealed class CodexAppServerClientTests
         var client = new CodexAppServerClient(() => transport, TimeSpan.FromSeconds(1));
 
         var exception = await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => client.FetchAccountUsageAsync(CancellationToken.None));
+            () => client.FetchAccountUsageAsync(CodexProbe(), CancellationToken.None));
 
         Assert.Contains("Auth required", exception.Message);
         Assert.DoesNotContain("secret-value", exception.Message);
@@ -85,7 +116,7 @@ public sealed class CodexAppServerClientTests
         var client = new CodexAppServerClient(() => transport, TimeSpan.FromSeconds(1));
 
         await Assert.ThrowsAsync<InvalidDataException>(
-            () => client.FetchAccountUsageAsync(CancellationToken.None));
+            () => client.FetchAccountUsageAsync(CodexProbe(), CancellationToken.None));
 
         Assert.True(transport.Stopped);
     }
@@ -99,7 +130,7 @@ public sealed class CodexAppServerClientTests
         var client = new CodexAppServerClient(() => transport, TimeSpan.FromSeconds(1));
 
         await Assert.ThrowsAsync<EndOfStreamException>(
-            () => client.FetchAccountUsageAsync(CancellationToken.None));
+            () => client.FetchAccountUsageAsync(CodexProbe(), CancellationToken.None));
 
         Assert.True(transport.Stopped);
     }
@@ -111,7 +142,7 @@ public sealed class CodexAppServerClientTests
         var client = new CodexAppServerClient(() => transport, TimeSpan.FromMilliseconds(50));
 
         await Assert.ThrowsAsync<TimeoutException>(
-            () => client.FetchAccountUsageAsync(CancellationToken.None));
+            () => client.FetchAccountUsageAsync(CodexProbe(), CancellationToken.None));
 
         Assert.True(transport.Stopped);
     }
@@ -119,6 +150,11 @@ public sealed class CodexAppServerClientTests
     private static string Response(int id, string result)
     {
         return $"{{\"jsonrpc\":\"2.0\",\"id\":{id},\"result\":{result}}}";
+    }
+
+    private static CommandProbeResult CodexProbe()
+    {
+        return CommandProbeResult.Found("codex", [@"C:\Tools\codex.exe"]);
     }
 
     private static string Error(int id, string message)

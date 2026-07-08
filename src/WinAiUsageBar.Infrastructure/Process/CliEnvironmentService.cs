@@ -40,8 +40,8 @@ public sealed class CliEnvironmentService(
 {
     private readonly Func<string, CancellationToken, Task<IReadOnlyList<string>>> pathResolver =
         pathResolver ?? ResolvePathsAsync;
-    private readonly Func<CliCommandCheck, CancellationToken, Task<CliCommandStartupResult>> startupRunner =
-        startupRunner ?? RunStartupCheckAsync;
+    private readonly Func<CliCommandCheck, CancellationToken, Task<CliCommandStartupResult>>? startupRunnerOverride =
+        startupRunner;
     private readonly TimeSpan startupTimeout = startupTimeout ?? TimeSpan.FromSeconds(3);
 
     public async Task<CliEnvironmentReport> GetReportAsync(
@@ -79,7 +79,9 @@ public sealed class CliEnvironmentService(
 
         try
         {
-            var result = await startupRunner(command, timeout.Token).ConfigureAwait(false);
+            var result = startupRunnerOverride is null
+                ? await RunStartupCheckAsync(command, paths, timeout.Token).ConfigureAwait(false)
+                : await startupRunnerOverride(command, timeout.Token).ConfigureAwait(false);
             return new CliCommandStatus(
                 command.CommandName,
                 IsFound: true,
@@ -155,24 +157,16 @@ public sealed class CliEnvironmentService(
 
     private static async Task<CliCommandStartupResult> RunStartupCheckAsync(
         CliCommandCheck command,
+        IReadOnlyList<string> paths,
         CancellationToken cancellationToken)
     {
-        using var process = new System.Diagnostics.Process
-        {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = command.CommandName,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            }
-        };
-
-        if (!string.IsNullOrWhiteSpace(command.StartupArgument))
-        {
-            process.StartInfo.ArgumentList.Add(command.StartupArgument);
-        }
+        IReadOnlyList<string> arguments = string.IsNullOrWhiteSpace(command.StartupArgument)
+            ? Array.Empty<string>()
+            : [command.StartupArgument];
+        var startInfo = CliCommandLaunchPlanner
+            .Create(command.CommandName, paths)
+            .CreateStartInfo(arguments);
+        using var process = new System.Diagnostics.Process { StartInfo = startInfo };
 
         try
         {
