@@ -68,6 +68,7 @@ public sealed class CommandLineHandlerTests
         Assert.Contains("--export-config-backup", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--validate-config-backup", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--restore-config-backup", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--restore-latest-config-backup", output.ToString(), StringComparison.Ordinal);
         Assert.Equal(string.Empty, error.ToString());
     }
 
@@ -1304,6 +1305,94 @@ public sealed class CommandLineHandlerTests
         Assert.Equal(0, result.ExitCode);
         Assert.Equal(@"C:\Temp\config-backup.json", restoredPath);
         Assert.Contains("restore ok", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_RestoresLatestConfigBackupWhenConfirmed()
+    {
+        using var output = new StringWriter();
+        var restoreCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--restore-latest-config-backup", "--confirm"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            restoreLatestConfigBackup: cancellationToken =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                restoreCount++;
+                return Task.FromResult(new CommandLineActionResult("latest restore ok", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(1, restoreCount);
+        Assert.Contains("latest restore ok", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ReturnsErrorWhenRestoreLatestConfigBackupIsUnavailable()
+    {
+        using var error = new StringWriter();
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--restore-latest-config-backup", "--confirm"],
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains("unavailable", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("--restore-latest-config-backup")]
+    [InlineData("--restore-latest-config-backup", "--force")]
+    [InlineData("--restore-latest-config-backup", "--confirm", "--confirm")]
+    public async Task TryHandleAsync_RequiresConfirmForRestoreLatestConfigBackup(params string[] args)
+    {
+        using var error = new StringWriter();
+        var restoreCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            args,
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            restoreLatestConfigBackup: _ =>
+            {
+                restoreCount++;
+                return Task.FromResult(new CommandLineActionResult("should not run", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Equal(0, restoreCount);
+        Assert.Contains("requires", error.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--confirm", error.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]

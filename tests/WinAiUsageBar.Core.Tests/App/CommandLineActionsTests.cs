@@ -282,6 +282,86 @@ public sealed class CommandLineActionsTests
     }
 
     [Fact]
+    public async Task RestoreLatestConfigBackupAsync_RestoresNewestBackup()
+    {
+        var paths = TestPaths();
+        var configStore = new JsonAppConfigStore(paths);
+        var original = AppConfig.CreateDefault();
+        original.Appearance.Theme = "Dark";
+        var gemini = original.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.Gemini));
+        gemini.ApiKey.SecretName = "gemini-secret-ref";
+
+        try
+        {
+            await configStore.SaveAsync(original, CancellationToken.None);
+            var export = await CommandLineActions.ExportConfigBackupAsync(CancellationToken.None, paths);
+            var backupPath = Directory.GetFiles(paths.ConfigBackupsDirectory, "config-backup-*.json")
+                .Single();
+            var changed = await configStore.LoadAsync(CancellationToken.None);
+            changed.Appearance.Theme = "Light";
+            changed.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.Gemini)).ApiKey.SecretName = "changed-secret-ref";
+            await configStore.SaveAsync(changed, CancellationToken.None);
+
+            var result = await CommandLineActions.RestoreLatestConfigBackupAsync(
+                CancellationToken.None,
+                paths);
+            var restored = await configStore.LoadAsync(CancellationToken.None);
+            var rollbackBackups = Directory.GetFiles(paths.ConfigBackupsDirectory, "config-backup-before-restore-*.json");
+
+            Assert.Equal(0, export.ExitCode);
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("Config backup restore: restored", result.Output, StringComparison.Ordinal);
+            Assert.Contains(backupPath, result.Output, StringComparison.Ordinal);
+            Assert.Equal("Dark", restored.Appearance.Theme);
+            Assert.Equal(
+                "gemini-secret-ref",
+                restored.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.Gemini)).ApiKey.SecretName);
+            Assert.Single(rollbackBackups);
+            Assert.DoesNotContain("changed-secret-ref", result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("gemini-secret-ref", result.Output, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(paths.RootDirectory))
+            {
+                Directory.Delete(paths.RootDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task RestoreLatestConfigBackupAsync_ReturnsFailureWhenNoBackupExists()
+    {
+        var paths = TestPaths();
+        var configStore = new JsonAppConfigStore(paths);
+        var config = AppConfig.CreateDefault();
+        config.Appearance.Theme = "Dark";
+
+        try
+        {
+            await configStore.SaveAsync(config, CancellationToken.None);
+
+            var result = await CommandLineActions.RestoreLatestConfigBackupAsync(
+                CancellationToken.None,
+                paths);
+            var reloaded = await configStore.LoadAsync(CancellationToken.None);
+
+            Assert.Equal(1, result.ExitCode);
+            Assert.Contains("Config backup restore: not restored", result.Output, StringComparison.Ordinal);
+            Assert.Contains("No config backup is available.", result.Output, StringComparison.Ordinal);
+            Assert.Equal("Dark", reloaded.Appearance.Theme);
+            Assert.Empty(Directory.GetFiles(paths.ConfigBackupsDirectory, "config-backup-before-restore-*.json"));
+        }
+        finally
+        {
+            if (Directory.Exists(paths.RootDirectory))
+            {
+                Directory.Delete(paths.RootDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task CreateHealthReportAsync_IncludesStoragePressureGuidance()
     {
         var paths = TestPaths();

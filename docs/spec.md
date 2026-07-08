@@ -146,7 +146,7 @@ The Privacy & Data page can export a timestamped `config.json` backup under `con
 
 The CLI can validate a config backup with `--validate-config-backup <path>`. Validation parses the file, runs current config migrations, and reports non-secret counts and warnings without applying the backup or modifying app data.
 
-The CLI can restore a config backup with `--restore-config-backup <path> --confirm`. Restore must validate and migrate the backup before applying it, create a rollback backup of the current `config.json` under `config-backups/`, save only configuration settings, and never copy, delete, or modify files under `secrets/`. Invalid backups, missing files, and calls without `--confirm` must return a non-zero exit code and leave the current config unchanged.
+The CLI can restore a config backup with `--restore-config-backup <path> --confirm`. It can also restore the newest app-owned backup discovered from diagnostics metadata with `--restore-latest-config-backup --confirm`. Restore must validate and migrate the backup before applying it, create a rollback backup of the current `config.json` under `config-backups/`, save only configuration settings, and never copy, delete, or modify files under `secrets/`. Invalid backups, missing files, missing latest backups, unknown restore options, and calls without `--confirm` must return a non-zero exit code and leave the current config unchanged.
 
 The Privacy & Data page can validate and restore the latest config backup from `config-backups/`. In-app restore must require explicit confirmation, use the same validation and rollback restore services as the CLI, leave `secrets/` untouched, and restart the refresh schedule after a successful restore.
 

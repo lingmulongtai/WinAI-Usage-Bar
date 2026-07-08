@@ -689,12 +689,58 @@ public static class CommandLineActions
         CancellationToken cancellationToken)
     {
         var paths = AppDataPaths.CreateDefault();
+        return await RestoreConfigBackupAsync(path, cancellationToken, paths).ConfigureAwait(false);
+    }
+
+    public static async Task<CommandLineActionResult> RestoreConfigBackupAsync(
+        string path,
+        CancellationToken cancellationToken,
+        AppDataPaths paths)
+    {
         var configStore = new JsonAppConfigStore(paths);
         var service = new ConfigBackupRestoreService(paths, configStore);
         var result = await service.RestoreAsync(path, cancellationToken).ConfigureAwait(false);
         return new CommandLineActionResult(
             CommandLineConfigBackupRestoreFormatter.Format(result),
             result.Restored ? 0 : 1);
+    }
+
+    public static async Task<CommandLineActionResult> RestoreLatestConfigBackupAsync(
+        CancellationToken cancellationToken)
+    {
+        return await RestoreLatestConfigBackupAsync(
+            cancellationToken,
+            AppDataPaths.CreateDefault()).ConfigureAwait(false);
+    }
+
+    public static async Task<CommandLineActionResult> RestoreLatestConfigBackupAsync(
+        CancellationToken cancellationToken,
+        AppDataPaths paths)
+    {
+        var configStore = new JsonAppConfigStore(paths);
+        var snapshotStore = new JsonSnapshotStore(paths);
+        var diagnosticsService = new DiagnosticsSummaryService(paths, configStore, snapshotStore);
+        var summary = await diagnosticsService.GetSummaryAsync(cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(summary.LatestConfigBackupPath))
+        {
+            var missing = new ConfigBackupRestoreResult(
+                string.Empty,
+                Restored: false,
+                RollbackBackupPath: null,
+                ConfigVersion: null,
+                ProviderCount: null,
+                EnabledProviderCount: null,
+                Errors: ["No config backup is available."],
+                Warnings: []);
+            return new CommandLineActionResult(
+                CommandLineConfigBackupRestoreFormatter.Format(missing),
+                1);
+        }
+
+        return await RestoreConfigBackupAsync(
+            summary.LatestConfigBackupPath,
+            cancellationToken,
+            paths).ConfigureAwait(false);
     }
 }
 

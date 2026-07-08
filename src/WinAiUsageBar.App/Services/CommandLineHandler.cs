@@ -59,7 +59,8 @@ public static class CommandLineHandler
         Func<CommandLineLaunchPreparedUpdateOptions, CancellationToken, Task<CommandLineActionResult>>? launchPreparedUpdate = null,
         Func<CommandLineInstallLatestUpdateOptions, CancellationToken, Task<CommandLineActionResult>>? installLatestUpdate = null,
         Func<CancellationToken, Task<CommandLineActionResult>>? exportConfigBackup = null,
-        Func<CancellationToken, Task<CommandLineActionResult>>? runStartupUpdate = null)
+        Func<CancellationToken, Task<CommandLineActionResult>>? runStartupUpdate = null,
+        Func<CancellationToken, Task<CommandLineActionResult>>? restoreLatestConfigBackup = null)
     {
         if (args.Count == 0)
         {
@@ -81,6 +82,33 @@ public static class CommandLineHandler
             var result = await restoreConfigBackup(args[1], cancellationToken).ConfigureAwait(false);
             await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
             return new CommandLineHandleResult(Handled: true, result.ExitCode);
+        }
+
+        if (args.Count == 2
+            && string.Equals(args[0].Trim(), "--restore-latest-config-backup", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(args[1].Trim(), "--confirm", StringComparison.OrdinalIgnoreCase))
+        {
+            if (restoreLatestConfigBackup is null)
+            {
+                await error.WriteLineAsync(
+                    "--restore-latest-config-backup is unavailable in this host.".AsMemory(),
+                    cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var result = await restoreLatestConfigBackup(cancellationToken).ConfigureAwait(false);
+            await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, result.ExitCode);
+        }
+
+        if (args.Count >= 1
+            && string.Equals(args[0].Trim(), "--restore-latest-config-backup", StringComparison.OrdinalIgnoreCase))
+        {
+            await error.WriteLineAsync(
+                "Restoring the latest config backup requires: --restore-latest-config-backup --confirm".AsMemory(),
+                cancellationToken).ConfigureAwait(false);
+            await error.WriteLineAsync(CreateHelpText().AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, ExitCode: 2);
         }
 
         if (args.Count >= 1
@@ -418,7 +446,7 @@ public static class CommandLineHandler
         WinAI Usage Bar
 
         Usage:
-          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--export-config-backup|--health-report|--refresh-once|--set-provider-cli-override|--clear-provider-cli-override|--provider-catalog|--check-for-updates|--download-update|--launch-prepared-update|--install-latest-update|--run-startup-update-check]
+          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--export-config-backup|--health-report|--refresh-once|--set-provider-cli-override|--clear-provider-cli-override|--provider-catalog|--check-for-updates|--download-update|--launch-prepared-update|--install-latest-update|--run-startup-update-check|--restore-latest-config-backup]
           WinAiUsageBar.App.exe --refresh-once --provider <ProviderId> [--source <DataSourceKind>]
           WinAiUsageBar.App.exe --set-provider-cli-override --provider <ProviderId> --command <path-or-command>
           WinAiUsageBar.App.exe --clear-provider-cli-override --provider <ProviderId>
@@ -430,6 +458,7 @@ public static class CommandLineHandler
           WinAiUsageBar.App.exe --install-latest-update [--restart-after-install] [--current-version <version>]
           WinAiUsageBar.App.exe --validate-config-backup <path>
           WinAiUsageBar.App.exe --restore-config-backup <path> --confirm
+          WinAiUsageBar.App.exe --restore-latest-config-backup --confirm
 
         Options:
           --help                Show this help text without launching the app.
@@ -475,6 +504,8 @@ public static class CommandLineHandler
                                 Validate a config backup without applying it.
           --restore-config-backup <path> --confirm
                                 Restore a config backup after creating a rollback backup.
+          --restore-latest-config-backup --confirm
+                                Restore the newest app-owned config backup after creating a rollback backup.
         """;
     }
 
