@@ -68,10 +68,24 @@ public sealed class DiagnosticsSummaryServiceTests
             File.SetLastWriteTime(ignoredCrashReportPath, now.AddMinutes(3).DateTime);
 
             var summary = await service.GetSummaryAsync(CancellationToken.None);
-            var viewModel = new DiagnosticsSummaryViewModel(summary);
+            var recentCrashReports = new[]
+            {
+                new CrashReportFile(
+                    latestCrashReportPath,
+                    now.AddMinutes(2),
+                    "latest crash report".Length,
+                    "startup",
+                    typeof(InvalidOperationException).FullName!,
+                    "0.1.4",
+                    MetadataAvailable: true,
+                    MetadataStatus: "Metadata parsed.")
+            };
+            var viewModel = new DiagnosticsSummaryViewModel(summary, recentCrashReports);
             var visibleText = string.Join(Environment.NewLine, viewModel.OverviewLines)
                 + Environment.NewLine
-                + string.Join(Environment.NewLine, viewModel.Files.Select(file => $"{file.Label} {file.Path} {file.StatusText}"));
+                + string.Join(Environment.NewLine, viewModel.Files.Select(file => $"{file.Label} {file.Path} {file.StatusText}"))
+                + Environment.NewLine
+                + string.Join(Environment.NewLine, viewModel.RecentCrashReports.Select(report => $"{report.FileName} {report.SummaryText} {report.Path}"));
 
             Assert.Equal(paths.RootDirectory, summary.RootDirectory);
             Assert.Equal(AppConfigMigrations.CurrentVersion, summary.ConfigVersion);
@@ -105,6 +119,12 @@ public sealed class DiagnosticsSummaryServiceTests
             Assert.Contains("2 diagnostics export", viewModel.DiagnosticsExportText);
             Assert.Contains("2 crash report", viewModel.CrashReportText);
             Assert.Equal(latestCrashReportPath, viewModel.LatestCrashReportPath);
+            var recentCrashReport = Assert.Single(viewModel.RecentCrashReports);
+            Assert.Equal(Path.GetFileName(latestCrashReportPath), recentCrashReport.FileName);
+            Assert.Contains("startup", recentCrashReport.SummaryText, StringComparison.Ordinal);
+            Assert.Contains(typeof(InvalidOperationException).FullName!, recentCrashReport.SummaryText, StringComparison.Ordinal);
+            Assert.Contains("0.1.4", recentCrashReport.SummaryText, StringComparison.Ordinal);
+            Assert.Contains("Metadata parsed", recentCrashReport.SummaryText, StringComparison.Ordinal);
             Assert.Contains(paths.CrashReportsDirectory, visibleText, StringComparison.Ordinal);
             Assert.DoesNotContain(ignoredCrashReportPath, visibleText, StringComparison.Ordinal);
             Assert.DoesNotContain("gemini-secret-ref", visibleText, StringComparison.Ordinal);

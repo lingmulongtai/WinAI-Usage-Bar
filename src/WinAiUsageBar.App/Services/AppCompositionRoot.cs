@@ -132,7 +132,8 @@ public sealed record AppHostServices(
     IConfigResetService? ConfigResetService = null,
     IStartupUpdateService? StartupUpdateService = null,
     IReleaseUpdateCheckService? UpdateCheckService = null,
-    ILatestUpdateInstallService? LatestUpdateInstallService = null);
+    ILatestUpdateInstallService? LatestUpdateInstallService = null,
+    ICrashReportService? CrashReportService = null);
 
 public interface IAppDispatcher
 {

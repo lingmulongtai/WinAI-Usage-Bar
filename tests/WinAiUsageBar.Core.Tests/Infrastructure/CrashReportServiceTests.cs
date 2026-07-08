@@ -97,7 +97,7 @@ public sealed class CrashReportServiceTests
     }
 
     [Fact]
-    public async Task ListAsync_ReturnsNewestMatchedTopLevelReportsWithoutReadingContents()
+    public async Task ListAsync_ReturnsNewestMatchedTopLevelReportsAndHandlesUnreadableMetadata()
     {
         var root = TestRoot();
         var paths = new AppDataPaths(root);
@@ -133,9 +133,61 @@ public sealed class CrashReportServiceTests
 
             Assert.Single(reports);
             Assert.Equal(newer, reports[0].Path);
+            Assert.False(reports[0].MetadataAvailable);
+            Assert.Equal("Metadata unreadable.", reports[0].MetadataStatus);
             Assert.True(File.Exists(older));
             Assert.True(File.Exists(malformedName));
             Assert.True(File.Exists(unrelated));
+        }
+        finally
+        {
+            DeleteRoot(root);
+        }
+    }
+
+    [Fact]
+    public async Task ListAsync_ReadsOnlySafeMetadataFromValidReports()
+    {
+        var root = TestRoot();
+        var paths = new AppDataPaths(root);
+        paths.EnsureCreated();
+        var validReportPath = await WriteTimestampedFileAsync(
+            paths.CrashReportsDirectory,
+            "crash-report-20260709-120000-33333333333333333333333333333333.json",
+            """
+            {
+              "CreatedAt": "2026-07-09T12:00:00+00:00",
+              "Source": "startup token=raw-secret",
+              "ExceptionType": "System.InvalidOperationException",
+              "Message": "message must stay out of metadata raw-secret",
+              "StackTrace": "stack trace must stay out of metadata raw-secret",
+              "AppVersion": "0.1.4+local"
+            }
+            """,
+            new DateTime(2026, 7, 9, 12, 1, 0, DateTimeKind.Utc));
+        var service = new CrashReportService(paths);
+
+        try
+        {
+            var reports = await service.ListAsync(limit: 5, CancellationToken.None);
+            var report = Assert.Single(reports);
+            var visibleMetadata = string.Join(
+                Environment.NewLine,
+                report.Source,
+                report.ExceptionType,
+                report.AppVersion,
+                report.MetadataStatus);
+
+            Assert.Equal(validReportPath, report.Path);
+            Assert.True(report.MetadataAvailable);
+            Assert.Equal(new DateTimeOffset(2026, 7, 9, 12, 0, 0, TimeSpan.Zero), report.CreatedAt);
+            Assert.Equal("startup [REDACTED]", report.Source);
+            Assert.Equal("System.InvalidOperationException", report.ExceptionType);
+            Assert.Equal("0.1.4+local", report.AppVersion);
+            Assert.Equal("Metadata parsed.", report.MetadataStatus);
+            Assert.DoesNotContain("raw-secret", visibleMetadata, StringComparison.Ordinal);
+            Assert.DoesNotContain("message must stay out", visibleMetadata, StringComparison.Ordinal);
+            Assert.DoesNotContain("stack trace must stay out", visibleMetadata, StringComparison.Ordinal);
         }
         finally
         {

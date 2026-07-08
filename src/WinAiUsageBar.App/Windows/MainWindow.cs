@@ -984,7 +984,8 @@ public sealed class MainWindow : Window
     private async Task<UIElement> BuildPrivacyPageAsync()
     {
         var summary = await host.GetDiagnosticsSummaryAsync(CancellationToken.None);
-        var diagnosticsSummary = new DiagnosticsSummaryViewModel(summary);
+        var crashReports = await host.GetCrashReportsAsync(limit: 5, CancellationToken.None);
+        var diagnosticsSummary = new DiagnosticsSummaryViewModel(summary, crashReports);
         var recoveryGuidance = new RecoveryGuidanceService().CreateGuidance(summary);
         var storagePressure = new StoragePressureGuidanceService().CreateGuidance(summary);
         var panel = PageStack("Privacy & Data");
@@ -1007,6 +1008,21 @@ public sealed class MainWindow : Window
         foreach (var file in diagnosticsSummary.Files)
         {
             panel.Children.Add(UiFactory.Text($"{file.Label}: {file.StatusText}", 12));
+        }
+
+        panel.Children.Add(UiFactory.Text("Recent crash reports", 16, FontWeights.SemiBold));
+        if (diagnosticsSummary.RecentCrashReports.Count == 0)
+        {
+            panel.Children.Add(UiFactory.Text("No recent crash report metadata.", 12));
+        }
+        else
+        {
+            foreach (var report in diagnosticsSummary.RecentCrashReports)
+            {
+                panel.Children.Add(UiFactory.Text(report.FileName, 13, FontWeights.SemiBold));
+                panel.Children.Add(UiFactory.Text(report.SummaryText, 12));
+                panel.Children.Add(UiFactory.Text(report.Path, 12));
+            }
         }
 
         panel.Children.Add(UiFactory.Text("Storage pressure", 16, FontWeights.SemiBold));

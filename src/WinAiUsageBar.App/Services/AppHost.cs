@@ -19,6 +19,7 @@ public sealed class AppHost : IAsyncDisposable
     private readonly IUsageRefreshService refreshService;
     private readonly IDiagnosticsExportService diagnosticsExportService;
     private readonly IDiagnosticsSummaryService diagnosticsSummaryService;
+    private readonly ICrashReportService crashReportService;
     private readonly IHistorySummaryService historySummaryService;
     private readonly IDataMaintenanceService dataMaintenanceService;
     private readonly IConfigBackupValidationService configBackupValidationService;
@@ -42,6 +43,7 @@ public sealed class AppHost : IAsyncDisposable
         DiagnosticsLog = services.DiagnosticsLog;
         diagnosticsExportService = services.DiagnosticsExportService;
         diagnosticsSummaryService = services.DiagnosticsSummaryService;
+        crashReportService = services.CrashReportService ?? new CrashReportService(Paths);
         historySummaryService = services.HistorySummaryService;
         dataMaintenanceService = services.DataMaintenanceService;
         configBackupValidationService = services.ConfigBackupValidationService ?? new ConfigBackupValidationService();
@@ -199,6 +201,13 @@ public sealed class AppHost : IAsyncDisposable
     public async Task<DiagnosticsSummary> GetDiagnosticsSummaryAsync(CancellationToken cancellationToken)
     {
         return await diagnosticsSummaryService.GetSummaryAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<CrashReportFile>> GetCrashReportsAsync(
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        return await crashReportService.ListAsync(limit, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<HistorySummary> GetHistorySummaryAsync(CancellationToken cancellationToken)

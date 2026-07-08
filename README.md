@@ -27,7 +27,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - History page summarizes retained `history.ndjson` entries by provider without showing raw snapshot messages.
 - Refresh settings include interval, notification enablement, history retention limits, a manual update check button, a confirmation-gated latest-update install action, startup update checks, optional verified auto-download/auto-install launch policy, and the last non-secret update status including the observed GitHub Release page, zip package/checksum assets, staged package/checksum/script/result paths, setup installer assets, and reconciled install result plus post-install validation status when present.
 - Appearance settings apply System, Light, or Dark theme to app windows.
-- Privacy & Data shows a diagnostics summary with local file paths, config version, cached snapshot count, latest update time, diagnostics export counts, crash report counts, and tracked file sizes.
+- Privacy & Data shows a diagnostics summary with local file paths, config version, cached snapshot count, latest update time, diagnostics export counts, crash report counts, recent crash report metadata, and tracked file sizes.
 - Privacy & Data shows storage pressure guidance for retained history, config backups, diagnostics exports, crash reports, and diagnostics log growth.
 - Privacy & Data shows recovery guidance for choosing config backup export, latest-backup restore, reset-to-default recovery, or diagnostics export.
 - Unexpected startup and WinUI failures write local redacted JSON crash reports under `%AppData%\WinAiUsageBar\crash-reports`; reports are pruned to a bounded recent set and are never sent anywhere automatically.
@@ -243,7 +243,7 @@ The release workflow builds, tests, publishes, smoke-tests, packages the app, bu
 - Privacy & Data shows non-secret diagnostics metadata only; it does not list secret names or values.
 - Privacy & Data recovery guidance is derived from non-secret diagnostics metadata only.
 - Diagnostics can be exported from Privacy & Data; exports redact common secret shapes, never include files under `secrets/`, and avoid overwriting same-second exports by adding a numeric suffix when needed.
-- Crash reports are local JSON files only. They include timestamp, source, exception type, redacted message, redacted stack trace, app version, and optional redacted context.
+- Crash reports are local JSON files only. They include timestamp, source, exception type, redacted message, redacted stack trace, app version, and optional redacted context. Privacy & Data lists recent crash report metadata only; it does not display message or stack trace contents.
 - Secret values can be saved or deleted by secret name from Privacy & Data; values are never displayed back.
 - Snapshot cache and retained history can be cleared from Privacy & Data; `config.json` and `secrets/` are left untouched.
 - `config.json` can be backed up from Privacy & Data; backup files include non-secret settings only and do not copy `secrets/`.

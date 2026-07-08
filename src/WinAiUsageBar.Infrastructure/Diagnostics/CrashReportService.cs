@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -34,7 +35,12 @@ public sealed record CrashReportWriteResult(
 public sealed record CrashReportFile(
     string Path,
     DateTimeOffset CreatedAt,
-    long SizeBytes);
+    long SizeBytes,
+    string Source = "Unknown",
+    string ExceptionType = "Unknown",
+    string? AppVersion = null,
+    bool MetadataAvailable = false,
+    string MetadataStatus = "Metadata not read");
 
 public sealed record CrashReportPruneResult(
     string DirectoryPath,
@@ -56,6 +62,7 @@ public sealed class CrashReportService(
     private static readonly Regex CrashReportFileNameRegex = new(
         "^crash-report-[0-9]{8}-[0-9]{6}-[0-9a-fA-F]{32}\\.json$",
         RegexOptions.CultureInvariant | RegexOptions.Compiled);
+    private const long MaxMetadataReadBytes = 256_000;
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true
@@ -90,7 +97,7 @@ public sealed class CrashReportService(
         return new CrashReportWriteResult(path, createdAt);
     }
 
-    public Task<IReadOnlyList<CrashReportFile>> ListAsync(
+    public async Task<IReadOnlyList<CrashReportFile>> ListAsync(
         int limit,
         CancellationToken cancellationToken)
     {
@@ -101,16 +108,19 @@ public sealed class CrashReportService(
 
         cancellationToken.ThrowIfCancellationRequested();
         paths.EnsureCreated();
-        IReadOnlyList<CrashReportFile> reports = EnumerateReports()
+        var files = EnumerateReports()
             .OrderByDescending(file => file.LastWriteTimeUtc)
             .Take(limit)
-            .Select(file => new CrashReportFile(
-                file.FullName,
-                new DateTimeOffset(file.LastWriteTime),
-                file.Length))
             .ToList();
 
-        return Task.FromResult(reports);
+        var reports = new List<CrashReportFile>(files.Count);
+        foreach (var file in files)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            reports.Add(await ReadMetadataAsync(file, cancellationToken).ConfigureAwait(false));
+        }
+
+        return reports;
     }
 
     public Task<CrashReportPruneResult> PruneAsync(
@@ -196,6 +206,106 @@ public sealed class CrashReportService(
     public static bool IsGeneratedCrashReportFileName(string fileName)
     {
         return CrashReportFileNameRegex.IsMatch(fileName);
+    }
+
+    private static async Task<CrashReportFile> ReadMetadataAsync(
+        FileInfo file,
+        CancellationToken cancellationToken)
+    {
+        var fallbackCreatedAt = new DateTimeOffset(file.LastWriteTime);
+        if (file.Length > MaxMetadataReadBytes)
+        {
+            return new CrashReportFile(
+                file.FullName,
+                fallbackCreatedAt,
+                file.Length,
+                MetadataStatus: "Metadata skipped because the report is too large.");
+        }
+
+        try
+        {
+            await using var stream = new FileStream(
+                file.FullName,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete,
+                bufferSize: 4096,
+                useAsync: true);
+            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            var root = document.RootElement;
+            var createdAt = ReadDateTimeOffset(root, "CreatedAt") ?? fallbackCreatedAt;
+
+            return new CrashReportFile(
+                file.FullName,
+                createdAt,
+                file.Length,
+                SafeMetadata(ReadString(root, "Source") ?? "Unknown"),
+                SafeMetadata(ReadString(root, "ExceptionType") ?? "Unknown"),
+                SafeNullableMetadata(ReadString(root, "AppVersion")),
+                MetadataAvailable: true,
+                MetadataStatus: "Metadata parsed.");
+        }
+        catch (JsonException)
+        {
+            return new CrashReportFile(
+                file.FullName,
+                fallbackCreatedAt,
+                file.Length,
+                MetadataStatus: "Metadata unreadable.");
+        }
+        catch (IOException)
+        {
+            return new CrashReportFile(
+                file.FullName,
+                fallbackCreatedAt,
+                file.Length,
+                MetadataStatus: "Metadata unavailable.");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return new CrashReportFile(
+                file.FullName,
+                fallbackCreatedAt,
+                file.Length,
+                MetadataStatus: "Metadata unavailable.");
+        }
+    }
+
+    private static string? ReadString(JsonElement root, string propertyName)
+    {
+        return root.ValueKind == JsonValueKind.Object
+            && root.TryGetProperty(propertyName, out var property)
+            && property.ValueKind == JsonValueKind.String
+            ? property.GetString()
+            : null;
+    }
+
+    private static DateTimeOffset? ReadDateTimeOffset(JsonElement root, string propertyName)
+    {
+        var value = ReadString(root, propertyName);
+        return DateTimeOffset.TryParse(
+            value,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.RoundtripKind,
+            out var parsed)
+            ? parsed
+            : null;
+    }
+
+    private static string? SafeNullableMetadata(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? null
+            : SafeMetadata(value);
+    }
+
+    private static string SafeMetadata(string value)
+    {
+        var redacted = DiagnosticRedactor.RedactForDisplay(value).Trim();
+        return redacted.Length <= 240
+            ? redacted
+            : redacted[..240] + "...[truncated]";
     }
 
     private IReadOnlyDictionary<string, string>? SafeContext(IReadOnlyDictionary<string, string?>? context)

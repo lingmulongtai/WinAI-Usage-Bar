@@ -4,7 +4,9 @@ namespace WinAiUsageBar.App.ViewModels;
 
 public sealed class DiagnosticsSummaryViewModel
 {
-    public DiagnosticsSummaryViewModel(DiagnosticsSummary summary)
+    public DiagnosticsSummaryViewModel(
+        DiagnosticsSummary summary,
+        IReadOnlyList<CrashReportFile>? recentCrashReports = null)
     {
         RootDirectory = summary.RootDirectory;
         ConfigPath = summary.ConfigPath;
@@ -40,6 +42,9 @@ public sealed class DiagnosticsSummaryViewModel
             new DiagnosticsFileStatusViewModel("history.ndjson", summary.HistoryFile),
             new DiagnosticsFileStatusViewModel("diagnostics.log", summary.DiagnosticsLogFile)
         ];
+        RecentCrashReports = (recentCrashReports ?? [])
+            .Select(report => new CrashReportMetadataViewModel(report))
+            .ToList();
     }
 
     public string RootDirectory { get; }
@@ -79,6 +84,8 @@ public sealed class DiagnosticsSummaryViewModel
     public string HistoryText { get; }
 
     public IReadOnlyList<DiagnosticsFileStatusViewModel> Files { get; }
+
+    public IReadOnlyList<CrashReportMetadataViewModel> RecentCrashReports { get; }
 
     public IReadOnlyList<string> OverviewLines =>
     [
@@ -140,4 +147,38 @@ public sealed class DiagnosticsFileStatusViewModel
     public string Path { get; }
 
     public string StatusText { get; }
+}
+
+public sealed class CrashReportMetadataViewModel
+{
+    public CrashReportMetadataViewModel(CrashReportFile report)
+    {
+        FileName = System.IO.Path.GetFileName(report.Path) ?? report.Path;
+        Path = report.Path;
+        TimestampText = report.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss zzz");
+        Source = string.IsNullOrWhiteSpace(report.Source) ? "Unknown" : report.Source;
+        ExceptionType = string.IsNullOrWhiteSpace(report.ExceptionType) ? "Unknown" : report.ExceptionType;
+        AppVersionText = string.IsNullOrWhiteSpace(report.AppVersion) ? "n/a" : report.AppVersion;
+        SizeText = DiagnosticsSummaryViewModel.FormatBytes(report.SizeBytes);
+        StatusText = report.MetadataAvailable ? "Metadata parsed" : report.MetadataStatus;
+        SummaryText = $"{TimestampText} / {Source} / {ExceptionType} / app {AppVersionText} / {SizeText} / {StatusText}";
+    }
+
+    public string FileName { get; }
+
+    public string Path { get; }
+
+    public string TimestampText { get; }
+
+    public string Source { get; }
+
+    public string ExceptionType { get; }
+
+    public string AppVersionText { get; }
+
+    public string SizeText { get; }
+
+    public string StatusText { get; }
+
+    public string SummaryText { get; }
 }
