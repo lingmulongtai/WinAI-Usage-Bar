@@ -1,12 +1,15 @@
 param(
-    [string]$FromTag = "v0.1.2",
+    [string]$AppExePath = "",
+    [string]$CurrentVersion = "0.1.2",
     [string]$ExpectedLatestTag = "",
-    [string]$Repository = "lingmulongtai/WinAI-Usage-Bar",
     [string]$WorkDirectory = "",
     [switch]$Apply
 )
 
 $ErrorActionPreference = "Stop"
+
+$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent $scriptRoot
 
 function ConvertTo-VersionFromTag {
     param(
@@ -20,7 +23,7 @@ function ConvertTo-VersionFromTag {
     }
 
     if ($version -notmatch "^[0-9]+\.[0-9]+\.[0-9]+$") {
-        throw "Release tag must look like v0.1.2 or 0.1.2. Value: $TagName"
+        throw "Release tag must look like v0.1.3 or 0.1.3. Value: $TagName"
     }
 
     return $version
@@ -34,6 +37,41 @@ function Resolve-OrCreateDirectory {
 
     New-Item -ItemType Directory -Force -Path $Path | Out-Null
     return (Resolve-Path -LiteralPath $Path).Path
+}
+
+function Resolve-ExistingFile {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$Description
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "$Description was not found: $Path"
+    }
+
+    return (Resolve-Path -LiteralPath $Path).Path
+}
+
+function Resolve-AppExePath {
+    if (-not [string]::IsNullOrWhiteSpace($AppExePath)) {
+        return Resolve-ExistingFile -Path $AppExePath -Description "App executable"
+    }
+
+    $candidates = @(
+        (Join-Path $repoRoot "src\WinAiUsageBar.App\bin\x64\Debug\net8.0-windows10.0.19041.0\win-x64\WinAiUsageBar.App.exe"),
+        (Join-Path $repoRoot "src\WinAiUsageBar.App\bin\x64\Release\net8.0-windows10.0.19041.0\win-x64\WinAiUsageBar.App.exe"),
+        (Join-Path $repoRoot "artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe")
+    )
+
+    foreach ($candidate in $candidates) {
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return (Resolve-Path -LiteralPath $candidate).Path
+        }
+    }
+
+    throw "App executable was not found. Build or publish the app first, or pass -AppExePath."
 }
 
 function Assert-PathInside {
@@ -152,70 +190,56 @@ function Get-OutputValue {
     return $match.Groups[1].Value.Trim()
 }
 
-$fromVersion = ConvertTo-VersionFromTag -TagName $FromTag
+$currentVersionText = ConvertTo-VersionFromTag -TagName $CurrentVersion
 $expectedLatestVersion = if ([string]::IsNullOrWhiteSpace($ExpectedLatestTag)) {
     ""
 }
 else {
     ConvertTo-VersionFromTag -TagName $ExpectedLatestTag
 }
-$supportsIsolatedAppData = [version]$fromVersion -ge [version]"0.1.3"
 
 if ([string]::IsNullOrWhiteSpace($WorkDirectory)) {
     $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-    $WorkDirectory = Join-Path ([System.IO.Path]::GetTempPath()) "WinAIUsageBar\published-update-$fromVersion-$timestamp"
+    $WorkDirectory = Join-Path $repoRoot "artifacts\update-dogfood\current-update-$currentVersionText-$timestamp"
 }
 
+$sourceExe = Resolve-AppExePath
+$sourceRoot = Split-Path -Parent $sourceExe
 $workRoot = Resolve-OrCreateDirectory -Path $WorkDirectory
-$downloadsRoot = Resolve-OrCreateDirectory -Path (Join-Path $workRoot "downloads")
-$installRoot = Resolve-OrCreateDirectory -Path (Join-Path $workRoot "install")
 $logsRoot = Resolve-OrCreateDirectory -Path (Join-Path $workRoot "logs")
 $appDataRoot = Resolve-OrCreateDirectory -Path (Join-Path $workRoot "appdata")
+$installRoot = Join-Path $workRoot "install"
 
-Assert-PathInside -ChildPath $downloadsRoot -ParentPath $workRoot -Description "Downloads directory"
-Assert-PathInside -ChildPath $installRoot -ParentPath $workRoot -Description "Install directory"
 Assert-PathInside -ChildPath $logsRoot -ParentPath $workRoot -Description "Logs directory"
 Assert-PathInside -ChildPath $appDataRoot -ParentPath $workRoot -Description "App data directory"
-
-$assetName = "WinAIUsageBar-$fromVersion-win-x64.zip"
-$assetUri = "https://github.com/$Repository/releases/download/v$fromVersion/$assetName"
-$downloadPath = Join-Path $downloadsRoot $assetName
-
-Write-Host "Downloading $assetUri"
-Invoke-WebRequest -Uri $assetUri -OutFile $downloadPath -UseBasicParsing
+Assert-PathInside -ChildPath $installRoot -ParentPath $workRoot -Description "Install directory"
 
 if (Test-Path -LiteralPath $installRoot) {
-    Get-ChildItem -LiteralPath $installRoot -Force | Remove-Item -Recurse -Force
+    Remove-Item -LiteralPath $installRoot -Recurse -Force
 }
 
-Expand-Archive -LiteralPath $downloadPath -DestinationPath $installRoot -Force
-$appExe = Join-Path $installRoot "WinAiUsageBar.App.exe"
-if (-not (Test-Path -LiteralPath $appExe -PathType Leaf)) {
-    throw "Extracted release does not contain WinAiUsageBar.App.exe: $installRoot"
+New-Item -ItemType Directory -Force -Path $installRoot | Out-Null
+Get-ChildItem -LiteralPath $sourceRoot -Force | ForEach-Object {
+    Copy-Item -LiteralPath $_.FullName -Destination $installRoot -Recurse -Force
+}
+
+$installedExe = Join-Path $installRoot "WinAiUsageBar.App.exe"
+if (-not (Test-Path -LiteralPath $installedExe -PathType Leaf)) {
+    throw "Disposable install does not contain WinAiUsageBar.App.exe: $installRoot"
 }
 
 $oldOverride = [Environment]::GetEnvironmentVariable("WINAIUSAGEBAR_APPDATA", "Process")
 [Environment]::SetEnvironmentVariable("WINAIUSAGEBAR_APPDATA", $appDataRoot, "Process")
 try {
-    $versionOut = Join-Path $logsRoot "version.out.txt"
-    $versionErr = Join-Path $logsRoot "version.err.txt"
-    $versionExit = Invoke-LoggedProcess `
-        -FilePath $appExe `
-        -Arguments @("--version") `
-        -OutputPath $versionOut `
-        -ErrorPath $versionErr
-    $versionText = Read-RequiredText -Path $versionOut
-    if ($versionExit -ne 0) {
-        throw "Version check failed with exit code $versionExit. See $versionOut and $versionErr"
-    }
-
-    Assert-OutputContains -Text $versionText -Expected $fromVersion -Description "Extracted app version output"
-
     $checkOut = Join-Path $logsRoot "check.out.txt"
     $checkErr = Join-Path $logsRoot "check.err.txt"
     $checkExit = Invoke-LoggedProcess `
-        -FilePath $appExe `
-        -Arguments @("--check-for-updates") `
+        -FilePath $installedExe `
+        -Arguments @(
+            "--check-for-updates",
+            "--current-version",
+            $currentVersionText
+        ) `
         -OutputPath $checkOut `
         -ErrorPath $checkErr
     $checkText = Read-RequiredText -Path $checkOut
@@ -224,29 +248,20 @@ try {
     }
 
     Assert-OutputContains -Text $checkText -Expected "Status: UpdateAvailable" -Description "Update check output"
+    Assert-OutputContains -Text $checkText -Expected "Current version: $currentVersionText" -Description "Update check output"
     if (-not [string]::IsNullOrWhiteSpace($expectedLatestVersion)) {
         Assert-OutputContains -Text $checkText -Expected "Latest version: $expectedLatestVersion" -Description "Update check output"
-    }
-
-    if (-not $supportsIsolatedAppData) {
-        $message = "Release v$fromVersion does not support WINAIUSAGEBAR_APPDATA, so download, prepare, and apply are skipped to avoid writing to normal app data."
-        if ($Apply) {
-            throw "$message Re-run without -Apply for a discovery-only check, or use a source release v0.1.3 or newer for isolated full-flow dogfooding."
-        }
-
-        Write-Warning $message
-        Write-Host "Published update discovery passed."
-        Write-Host "Work directory: $workRoot"
-        Write-Host "Version output: $versionOut"
-        Write-Host "Check output: $checkOut"
-        return
     }
 
     $downloadOut = Join-Path $logsRoot "download.out.txt"
     $downloadErr = Join-Path $logsRoot "download.err.txt"
     $downloadExit = Invoke-LoggedProcess `
-        -FilePath $appExe `
-        -Arguments @("--download-update") `
+        -FilePath $installedExe `
+        -Arguments @(
+            "--download-update",
+            "--current-version",
+            $currentVersionText
+        ) `
         -OutputPath $downloadOut `
         -ErrorPath $downloadErr
     $downloadText = Read-RequiredText -Path $downloadOut
@@ -275,7 +290,7 @@ try {
     $prepareOut = Join-Path $logsRoot "prepare.out.txt"
     $prepareErr = Join-Path $logsRoot "prepare.err.txt"
     $prepareExit = Invoke-LoggedProcess `
-        -FilePath $appExe `
+        -FilePath $installedExe `
         -Arguments @(
             "--prepare-update-install",
             "--package",
@@ -304,9 +319,10 @@ try {
 
     Assert-PathInside -ChildPath $scriptPath -ParentPath $appDataRoot -Description "Prepared update script"
 
-    Write-Host "Published update flow prepared successfully."
+    Write-Host "Current updater flow prepared successfully."
     Write-Host "Work directory: $workRoot"
-    Write-Host "Version output: $versionOut"
+    Write-Host "Source executable: $sourceExe"
+    Write-Host "Disposable install: $installRoot"
     Write-Host "Check output: $checkOut"
     Write-Host "Download output: $downloadOut"
     Write-Host "Prepare output: $prepareOut"
@@ -336,13 +352,13 @@ try {
         $updatedVersionOut = Join-Path $logsRoot "updated-version.out.txt"
         $updatedVersionErr = Join-Path $logsRoot "updated-version.err.txt"
         $updatedVersionExit = Invoke-LoggedProcess `
-            -FilePath $appExe `
+            -FilePath $installedExe `
             -Arguments @("--version") `
             -OutputPath $updatedVersionOut `
             -ErrorPath $updatedVersionErr
         $updatedVersionText = Read-RequiredText -Path $updatedVersionOut
         if ($updatedVersionExit -ne 0) {
-            throw "Updated version check failed with exit code $updatedVersionExit. See $updatedVersionOut and $updatedVersionErr"
+            throw "Updated disposable install failed with exit code $updatedVersionExit. See $updatedVersionOut and $updatedVersionErr"
         }
 
         if (-not [string]::IsNullOrWhiteSpace($expectedLatestVersion)) {

@@ -108,6 +108,14 @@ $env:WINAIUSAGEBAR_APPDATA = "$pwd\artifacts\update-dogfood\override-appdata"
 
 This override is for dogfooding only. It is not persisted and does not affect WinUI or startup update checks.
 
+For the full isolated update path, use the helper:
+
+```powershell
+.\scripts\test-current-update-flow.ps1 -CurrentVersion 0.1.2 -ExpectedLatestTag v0.1.3 -Apply
+```
+
+The helper copies the current build to a disposable install directory, uses isolated app data, runs `--check-for-updates --current-version`, runs `--download-update --current-version`, prepares an update script for the disposable install directory, and refuses to apply unless the install directory is under the dogfood work directory.
+
 ## 2026-07-08 - Current Main Simulates v0.1.2 Update Check
 
 Result: passed.
@@ -125,4 +133,28 @@ Status: UpdateAvailable
 Current version: 0.1.2
 Latest version: 0.1.3
 Update available: yes
+```
+
+## 2026-07-08 - Current Main Downloads and Applies v0.1.3 in Disposable Install
+
+Result: passed.
+
+What was checked:
+
+- Ran `scripts/test-current-update-flow.ps1 -CurrentVersion 0.1.2 -ExpectedLatestTag v0.1.3 -Apply`.
+- Used a disposable copy of the current build as the install directory.
+- Used isolated `WINAIUSAGEBAR_APPDATA` under `artifacts/update-dogfood`.
+- Confirmed the current updater sees `v0.1.3` when simulating current version `0.1.2`.
+- Downloaded and SHA256-verified the published `v0.1.3` zip and checksum assets.
+- Prepared `apply-update.ps1` under isolated app data.
+- Applied the prepared script only to the disposable install directory.
+- Confirmed the updated disposable install launches and reports version `0.1.3`.
+
+Observed output summary:
+
+```text
+Current updater flow prepared successfully.
+Applied prepared update script to disposable install directory.
+Updated version: WinAI Usage Bar 0.1.3+b4b9c249abe10dde9442a2236d245d54e7ce6072
+apply.err.txt: empty
 ```

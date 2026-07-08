@@ -120,6 +120,14 @@ Dogfood a published release-to-latest update flow without touching normal app da
 
 This downloads the older published zip, extracts it into an isolated temp workspace, and runs the older executable against the real GitHub latest-release endpoint. Releases before `v0.1.3` do not support `WINAIUSAGEBAR_APPDATA`, so the helper safely stops after discovery for those versions. For source releases `v0.1.3` and newer, pass `-Apply` when you want to download, prepare, and apply the latest update to the disposable extracted install directory.
 
+Dogfood the current updater implementation as if it were an older installed version:
+
+```powershell
+.\scripts\test-current-update-flow.ps1 -CurrentVersion 0.1.2 -ExpectedLatestTag v0.1.3 -Apply
+```
+
+This copies the current build to a disposable install directory, uses isolated app data, runs update check/download with `--current-version`, prepares an update script for the disposable install directory, and only applies it there when `-Apply` is passed.
+
 Run the published-app smoke test without opening UI:
 
 ```powershell

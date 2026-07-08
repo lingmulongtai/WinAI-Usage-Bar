@@ -108,15 +108,42 @@ public sealed class VersionDocumentationTests
         Assert.Contains("--check-for-updates", script, StringComparison.Ordinal);
         Assert.Contains("--download-update", script, StringComparison.Ordinal);
         Assert.Contains("--prepare-update-install", script, StringComparison.Ordinal);
+        Assert.Contains("under isolated app data", script, StringComparison.Ordinal);
         Assert.Contains("test-published-update-flow.ps1", readme, StringComparison.Ordinal);
         Assert.Contains("test-published-update-flow.ps1", dogfooding, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task PublishedUpdateFlowScript_HasValidPowerShellSyntax()
+    public void ReleaseDogfooding_DocumentsCurrentUpdateFlowHelper()
     {
         var root = FindRepositoryRoot();
-        var scriptPath = Path.Combine(root, "scripts", "test-published-update-flow.ps1");
+        var scriptPath = Path.Combine(root, "scripts", "test-current-update-flow.ps1");
+        var script = File.ReadAllText(scriptPath);
+        var readme = File.ReadAllText(Path.Combine(root, "README.md"));
+        var dogfooding = File.ReadAllText(Path.Combine(root, "docs", "release-dogfooding.md"));
+
+        Assert.Contains("WINAIUSAGEBAR_APPDATA", script, StringComparison.Ordinal);
+        Assert.Contains("[switch]$Apply", script, StringComparison.Ordinal);
+        Assert.Contains("--current-version", script, StringComparison.Ordinal);
+        Assert.Contains("Assert-PathInside -ChildPath $installRoot", script, StringComparison.Ordinal);
+        Assert.Contains("--download-update", script, StringComparison.Ordinal);
+        Assert.Contains("--prepare-update-install", script, StringComparison.Ordinal);
+        Assert.Contains("under isolated app data", script, StringComparison.Ordinal);
+        Assert.True(
+            script.IndexOf("bin\\x64\\Debug", StringComparison.Ordinal) <
+            script.IndexOf("artifacts\\publish", StringComparison.Ordinal),
+            "Current updater dogfooding should prefer the current local build over stale published artifacts.");
+        Assert.Contains("test-current-update-flow.ps1", readme, StringComparison.Ordinal);
+        Assert.Contains("test-current-update-flow.ps1", dogfooding, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("test-published-update-flow.ps1")]
+    [InlineData("test-current-update-flow.ps1")]
+    public async Task UpdateDogfoodingScript_HasValidPowerShellSyntax(string scriptName)
+    {
+        var root = FindRepositoryRoot();
+        var scriptPath = Path.Combine(root, "scripts", scriptName);
         var command = """
             $Path = $env:WINAIUSAGEBAR_SCRIPT_PATH
             $tokens = $null
