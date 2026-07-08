@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text;
 using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Core.Models;
+using WinAiUsageBar.Infrastructure.Security;
 
 namespace WinAiUsageBar.Infrastructure.Storage;
 
@@ -37,6 +38,7 @@ public sealed class JsonSnapshotStore(AppDataPaths paths, Func<DateTimeOffset>? 
             ?? [];
 
         return snapshots
+            .Select(UsageSnapshotSanitizer.Sanitize)
             .GroupBy(snapshot => snapshot.ProviderId)
             .ToDictionary(group => group.Key, group => group.OrderByDescending(snapshot => snapshot.UpdatedAt).First());
     }
@@ -44,7 +46,10 @@ public sealed class JsonSnapshotStore(AppDataPaths paths, Func<DateTimeOffset>? 
     public async Task SaveAsync(IEnumerable<UsageSnapshot> snapshots, CancellationToken cancellationToken)
     {
         paths.EnsureCreated();
-        var ordered = snapshots.OrderBy(snapshot => snapshot.ProviderId).ToList();
+        var ordered = snapshots
+            .Select(UsageSnapshotSanitizer.Sanitize)
+            .OrderBy(snapshot => snapshot.ProviderId)
+            .ToList();
         var tempPath = $"{paths.SnapshotsPath}.tmp";
 
         await using (var stream = File.Create(tempPath))
@@ -67,7 +72,9 @@ public sealed class JsonSnapshotStore(AppDataPaths paths, Func<DateTimeOffset>? 
             foreach (var snapshot in snapshots)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var json = JsonSerializer.Serialize(snapshot, ndjsonOptions);
+                var json = JsonSerializer.Serialize(
+                    UsageSnapshotSanitizer.Sanitize(snapshot),
+                    ndjsonOptions);
                 await writer.WriteLineAsync(json.AsMemory(), cancellationToken).ConfigureAwait(false);
             }
         }
@@ -96,9 +103,17 @@ public sealed class JsonSnapshotStore(AppDataPaths paths, Func<DateTimeOffset>? 
                 continue;
             }
 
-            if (!TryParseSnapshot(line, out var snapshot) || snapshot.UpdatedAt >= cutoff)
+            if (!TryParseSnapshot(line, out var snapshot))
             {
                 kept.Add(line);
+                continue;
+            }
+
+            if (snapshot.UpdatedAt >= cutoff)
+            {
+                kept.Add(JsonSerializer.Serialize(
+                    UsageSnapshotSanitizer.Sanitize(snapshot),
+                    ndjsonOptions));
             }
         }
 

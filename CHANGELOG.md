@@ -44,6 +44,7 @@ All notable changes to WinAI Usage Bar are documented here.
 - Provider notifications now redact snapshot-derived titles and body text before display.
 - Codex app-server usage parsing now recognizes safe ratio/fraction aliases and converts 0..1 values into percentages.
 - Provider refresh now sanitizes snapshot free-text fields before caching snapshots or appending history.
+- Snapshot storage now sanitizes direct `snapshots.json` and `history.ndjson` writes as a persistence backstop.
 
 ## 0.1.4 - 2026-07-08
 
