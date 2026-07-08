@@ -10,6 +10,8 @@ Create a timestamped local report from this checklist before a run:
 
 Reports are written under `artifacts\verification` by default so local run notes do not become accidental source changes.
 
+CI covers compact panel placement calculation for taskbar-edge work areas, negative-coordinate monitors, and oversized panels, but it does not prove real shell activation, focus, DPI scaling, or tray behavior. Keep running this checklist on real Windows builds.
+
 ## Test Matrix
 
 Record the environment for each run.
