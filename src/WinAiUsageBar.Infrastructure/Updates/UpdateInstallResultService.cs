@@ -18,7 +18,9 @@ public sealed record UpdateInstallResultRefreshResult(
     string Message,
     string? ResultPath,
     string? InstallStatus,
-    DateTimeOffset? CompletedAt);
+    DateTimeOffset? CompletedAt,
+    string? ValidationStatus = null,
+    int? ValidationExitCode = null);
 
 public enum UpdateInstallResultRefreshStatus
 {
@@ -87,6 +89,8 @@ public sealed class UpdateInstallResultService(AppDataPaths paths) : IUpdateInst
             var root = document.RootElement;
             var installStatus = Sanitize(GetString(root, "status"), maxLength: 64);
             var message = Sanitize(GetString(root, "message"), maxLength: 1000);
+            var validationStatus = Sanitize(GetString(root, "validationStatus"), maxLength: 64);
+            var validationExitCode = GetInt32(root, "validationExitCode");
             var completedAt = ParseCompletedAt(
                 GetString(root, "completedAtUtc")
                 ?? GetString(root, "completedAt"));
@@ -103,13 +107,17 @@ public sealed class UpdateInstallResultService(AppDataPaths paths) : IUpdateInst
 
             var changed = !string.Equals(config.Updates.LastInstallResultStatus, installStatus, StringComparison.Ordinal)
                 || !string.Equals(config.Updates.LastInstallResultMessage, message, StringComparison.Ordinal)
-                || config.Updates.LastInstallResultCompletedAt != completedAt;
+                || config.Updates.LastInstallResultCompletedAt != completedAt
+                || !string.Equals(config.Updates.LastInstallValidationStatus, validationStatus, StringComparison.Ordinal)
+                || config.Updates.LastInstallValidationExitCode != validationExitCode;
 
             if (changed)
             {
                 config.Updates.LastInstallResultStatus = installStatus;
                 config.Updates.LastInstallResultMessage = message;
                 config.Updates.LastInstallResultCompletedAt = completedAt;
+                config.Updates.LastInstallValidationStatus = validationStatus;
+                config.Updates.LastInstallValidationExitCode = validationExitCode;
             }
 
             return new UpdateInstallResultRefreshResult(
@@ -121,7 +129,9 @@ public sealed class UpdateInstallResultService(AppDataPaths paths) : IUpdateInst
                     : "Update install result was already current.",
                 safePath,
                 installStatus,
-                completedAt);
+                completedAt,
+                validationStatus,
+                validationExitCode);
         }
         catch (Exception ex) when (ex is JsonException or NotSupportedException or IOException or UnauthorizedAccessException)
         {
@@ -167,6 +177,26 @@ public sealed class UpdateInstallResultService(AppDataPaths paths) : IUpdateInst
             && property.ValueKind is JsonValueKind.String
             ? property.GetString()
             : null;
+    }
+
+    private static int? GetInt32(JsonElement root, string propertyName)
+    {
+        if (root.ValueKind is not JsonValueKind.Object
+            || !root.TryGetProperty(propertyName, out var property))
+        {
+            return null;
+        }
+
+        return property.ValueKind switch
+        {
+            JsonValueKind.Number when property.TryGetInt32(out var value) => value,
+            JsonValueKind.String when int.TryParse(
+                property.GetString(),
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out var value) => value,
+            _ => null
+        };
     }
 
     private static DateTimeOffset? ParseCompletedAt(string? value)

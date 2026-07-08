@@ -188,6 +188,16 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
             lines.Add($"Install result message: {SafeValue(updates.LastInstallResultMessage)}");
         }
 
+        if (!string.IsNullOrWhiteSpace(updates.LastInstallValidationStatus))
+        {
+            lines.Add($"Install validation: {SafeValue(updates.LastInstallValidationStatus)}");
+        }
+
+        if (updates.LastInstallValidationExitCode is not null)
+        {
+            lines.Add($"Install validation exit code: {updates.LastInstallValidationExitCode.Value}");
+        }
+
         lines.Add($"Message: {message}");
 
         return string.Join(

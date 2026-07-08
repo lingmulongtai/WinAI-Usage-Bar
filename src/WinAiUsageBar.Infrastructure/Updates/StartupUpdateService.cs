@@ -332,6 +332,8 @@ public sealed class StartupUpdateService(
                 config.Updates.LastInstallResultStatus = null;
                 config.Updates.LastInstallResultMessage = null;
                 config.Updates.LastInstallResultCompletedAt = null;
+                config.Updates.LastInstallValidationStatus = null;
+                config.Updates.LastInstallValidationExitCode = null;
             }
         }
 

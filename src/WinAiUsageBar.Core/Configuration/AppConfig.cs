@@ -300,6 +300,10 @@ public sealed class UpdateSettings
 
     public DateTimeOffset? LastInstallResultCompletedAt { get; set; }
 
+    public string? LastInstallValidationStatus { get; set; }
+
+    public int? LastInstallValidationExitCode { get; set; }
+
     public string? LastInstallLaunchedVersion { get; set; }
 
     public DateTimeOffset? LastCheckedAt { get; set; }

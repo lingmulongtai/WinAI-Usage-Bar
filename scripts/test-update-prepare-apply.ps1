@@ -183,6 +183,15 @@ try {
         }
     }
 
+    $resultPath = ""
+    $resultMatch = [regex]::Match($prepareText, "(?m)^Result:\s*(.+)$")
+    if ($resultMatch.Success) {
+        $candidateResultPath = $resultMatch.Groups[1].Value.Trim()
+        if (-not $candidateResultPath.Equals("n/a", [StringComparison]::OrdinalIgnoreCase)) {
+            $resultPath = $candidateResultPath
+        }
+    }
+
     if ([string]::IsNullOrWhiteSpace($script)) {
         $script = Get-ChildItem -LiteralPath (Join-Path $appDataRoot "updates") -Recurse -Filter "apply-update.ps1" -File |
             Sort-Object LastWriteTimeUtc -Descending |
@@ -194,8 +203,14 @@ try {
     }
 
     Assert-PathInside -ChildPath $script -ParentPath $appDataRoot -Description "Prepared update script"
+    if ([string]::IsNullOrWhiteSpace($resultPath)) {
+        $resultPath = Join-Path (Split-Path -Parent $script) "install-result.json"
+    }
+
+    Assert-PathInside -ChildPath $resultPath -ParentPath $appDataRoot -Description "Prepared update result"
 
     Write-Host "Prepared update script: $script"
+    Write-Host "Expected install result: $resultPath"
     Write-Host "Prepare output: $prepareOut"
     Write-Host "Install directory: $installRoot"
 
@@ -224,7 +239,21 @@ try {
             throw "Applied update did not leave WinAiUsageBar.App.exe in the install directory."
         }
 
+        if (-not (Test-Path -LiteralPath $resultPath -PathType Leaf)) {
+            throw "Prepared update script did not write install-result.json: $resultPath"
+        }
+
+        $installResult = Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json
+        if ($installResult.status -ne "Succeeded") {
+            throw "install-result.json did not report success. Status: $($installResult.status)"
+        }
+
+        if ($installResult.validationStatus -ne "Passed") {
+            throw "install-result.json did not report passed post-install validation. Validation status: $($installResult.validationStatus)"
+        }
+
         Write-Host "Applied prepared update script to disposable install directory."
+        Write-Host "Install result: $resultPath"
         Write-Host "Apply output: $applyOut"
     }
 }

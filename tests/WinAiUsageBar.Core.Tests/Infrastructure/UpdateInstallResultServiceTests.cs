@@ -19,6 +19,8 @@ public sealed class UpdateInstallResultServiceTests
           "status": "Succeeded token-secret-123",
           "message": "Installed with access_token=raw-secret token-secret-456",
           "completedAtUtc": "2026-07-08T12:34:56Z",
+          "validationStatus": "Passed token-validation-secret",
+          "validationExitCode": 0,
           "installDirectory": "C:\\Tools\\WinAIUsageBar"
         }
         """);
@@ -33,11 +35,16 @@ public sealed class UpdateInstallResultServiceTests
             Assert.Equal(Path.GetFullPath(resultPath), result.ResultPath);
             Assert.Equal("Succeeded [REDACTED]", config.Updates.LastInstallResultStatus);
             Assert.Equal("Installed with access_token=[REDACTED] [REDACTED]", config.Updates.LastInstallResultMessage);
+            Assert.Equal("Passed [REDACTED]", config.Updates.LastInstallValidationStatus);
+            Assert.Equal(0, config.Updates.LastInstallValidationExitCode);
+            Assert.Equal("Passed [REDACTED]", result.ValidationStatus);
+            Assert.Equal(0, result.ValidationExitCode);
             Assert.Equal(
                 new DateTimeOffset(2026, 7, 8, 12, 34, 56, TimeSpan.Zero),
                 config.Updates.LastInstallResultCompletedAt);
             Assert.DoesNotContain("raw-secret", config.Updates.LastInstallResultMessage, StringComparison.Ordinal);
             Assert.DoesNotContain("token-secret", config.Updates.LastInstallResultMessage, StringComparison.Ordinal);
+            Assert.DoesNotContain("validation-secret", config.Updates.LastInstallValidationStatus, StringComparison.Ordinal);
         }
         finally
         {

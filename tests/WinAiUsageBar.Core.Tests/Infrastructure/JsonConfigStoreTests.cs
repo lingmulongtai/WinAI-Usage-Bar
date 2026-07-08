@@ -27,6 +27,8 @@ public sealed class JsonConfigStoreTests
         config.Updates.LastInstallResultStatus = "Succeeded";
         config.Updates.LastInstallResultMessage = "Update installed successfully.";
         config.Updates.LastInstallResultCompletedAt = new DateTimeOffset(2026, 7, 8, 9, 32, 0, TimeSpan.FromHours(9));
+        config.Updates.LastInstallValidationStatus = "Passed";
+        config.Updates.LastInstallValidationExitCode = 0;
         config.Updates.LastReleasePageUrl = "https://example.test/releases/v0.2.0";
         config.Updates.LastPackageAssetName = "WinAIUsageBar-0.2.0-win-x64.zip";
         config.Updates.LastPackageChecksumAssetName = "WinAIUsageBar-0.2.0-win-x64.zip.sha256";
@@ -49,6 +51,8 @@ public sealed class JsonConfigStoreTests
         Assert.Equal("Succeeded", reloaded.Updates.LastInstallResultStatus);
         Assert.Equal("Update installed successfully.", reloaded.Updates.LastInstallResultMessage);
         Assert.Equal(new DateTimeOffset(2026, 7, 8, 9, 32, 0, TimeSpan.FromHours(9)), reloaded.Updates.LastInstallResultCompletedAt);
+        Assert.Equal("Passed", reloaded.Updates.LastInstallValidationStatus);
+        Assert.Equal(0, reloaded.Updates.LastInstallValidationExitCode);
         Assert.Equal("https://example.test/releases/v0.2.0", reloaded.Updates.LastReleasePageUrl);
         Assert.Equal("WinAIUsageBar-0.2.0-win-x64.zip", reloaded.Updates.LastPackageAssetName);
         Assert.Equal("WinAIUsageBar-0.2.0-win-x64.zip.sha256", reloaded.Updates.LastPackageChecksumAssetName);
@@ -119,7 +123,8 @@ public sealed class JsonConfigStoreTests
             "lastPackageChecksumAssetName": "",
             "lastPackageChecksumPath": "   ",
             "lastInstallerAssetName": "   ",
-            "lastInstallerChecksumAssetName": ""
+            "lastInstallerChecksumAssetName": "",
+            "lastInstallValidationStatus": "   "
           }
         }
         """);
@@ -159,6 +164,7 @@ public sealed class JsonConfigStoreTests
             Assert.Null(config.Updates.LastPackageChecksumPath);
             Assert.Null(config.Updates.LastInstallerAssetName);
             Assert.Null(config.Updates.LastInstallerChecksumAssetName);
+            Assert.Null(config.Updates.LastInstallValidationStatus);
             Assert.Equal(123, config.Widget.Left);
             Assert.Equal(456, config.Widget.Top);
             Assert.Equal(280, config.Widget.Width);

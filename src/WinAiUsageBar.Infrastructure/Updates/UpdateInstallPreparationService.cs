@@ -200,6 +200,8 @@ public sealed class UpdateInstallPreparationService(
         $ResultPath = {{PowerShellLiteral(resultPath)}}
         $ProcessIdToWait = {{processIdToWait}}
         $RestartAfterInstall = ${{restartAfterInstall.ToString().ToLowerInvariant()}}
+        $ValidationStatus = 'NotRun'
+        $ValidationExitCode = $null
 
         function Write-InstallResult {
             param(
@@ -215,6 +217,11 @@ public sealed class UpdateInstallPreparationService(
                 completedAtUtc = (Get-Date).ToUniversalTime().ToString('o')
                 packageFileName = [System.IO.Path]::GetFileName($PackagePath)
                 installDirectory = $InstallDirectory
+                validationStatus = $ValidationStatus
+            }
+
+            if ($null -ne $ValidationExitCode) {
+                $Result.validationExitCode = $ValidationExitCode
             }
 
             $Result | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $ResultPath -Encoding UTF8
@@ -232,6 +239,46 @@ public sealed class UpdateInstallPreparationService(
             Get-ChildItem -LiteralPath $BackupDirectory -Force | ForEach-Object {
                 Copy-Item -LiteralPath $_.FullName -Destination $InstallDirectory -Recurse -Force
             }
+        }
+
+        function Invoke-PostInstallValidation {
+            param(
+                [Parameter(Mandatory = $true)]
+                [string]$InstalledExe
+            )
+
+            $script:ValidationStatus = 'Running'
+            try {
+                $ValidationProcess = Start-Process `
+                    -FilePath $InstalledExe `
+                    -ArgumentList '--smoke-test' `
+                    -WorkingDirectory $InstallDirectory `
+                    -WindowStyle Hidden `
+                    -PassThru
+            }
+            catch {
+                $script:ValidationStatus = 'FailedToStart'
+                throw "Post-install smoke test could not start."
+            }
+
+            if (-not $ValidationProcess.WaitForExit(60000)) {
+                $script:ValidationStatus = 'TimedOut'
+                try {
+                    $ValidationProcess.Kill()
+                }
+                catch {
+                }
+
+                throw "Post-install smoke test timed out."
+            }
+
+            $script:ValidationExitCode = $ValidationProcess.ExitCode
+            if ($ValidationProcess.ExitCode -ne 0) {
+                $script:ValidationStatus = 'Failed'
+                throw "Post-install smoke test failed with exit code $($ValidationProcess.ExitCode)."
+            }
+
+            $script:ValidationStatus = 'Passed'
         }
 
         try {
@@ -280,6 +327,8 @@ public sealed class UpdateInstallPreparationService(
                 if (-not (Test-Path -LiteralPath $InstalledExe -PathType Leaf)) {
                     throw "Installed update does not contain WinAiUsageBar.App.exe."
                 }
+
+                Invoke-PostInstallValidation -InstalledExe $InstalledExe
             }
             catch {
                 try {
@@ -292,7 +341,7 @@ public sealed class UpdateInstallPreparationService(
                 throw
             }
 
-            Write-InstallResult -Status 'Succeeded' -Message 'Update installed successfully.'
+            Write-InstallResult -Status 'Succeeded' -Message 'Update installed successfully. Post-install validation passed.'
 
             $RestartExe = Join-Path $InstallDirectory 'WinAiUsageBar.App.exe'
             if ($RestartAfterInstall -and (Test-Path -LiteralPath $RestartExe -PathType Leaf)) {

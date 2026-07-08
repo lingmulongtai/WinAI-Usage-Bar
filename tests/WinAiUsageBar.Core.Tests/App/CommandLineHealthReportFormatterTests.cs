@@ -118,6 +118,8 @@ public sealed class CommandLineHealthReportFormatterTests
             LastInstallResultStatus = "Succeeded",
             LastInstallResultMessage = "Update installed successfully with token=install-secret-value",
             LastInstallResultCompletedAt = generatedAt.AddMinutes(-1),
+            LastInstallValidationStatus = "Passed",
+            LastInstallValidationExitCode = 0,
             LastMessage = "Downloaded with token=sample-secret-value"
         };
 
@@ -165,6 +167,8 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.Contains("Install result status: Succeeded", report, StringComparison.Ordinal);
         Assert.Contains("Install result completed: 2026-07-08 06:44:00 +09:00", report, StringComparison.Ordinal);
         Assert.Contains("Install result message: Update installed successfully with [REDACTED]", report, StringComparison.Ordinal);
+        Assert.Contains("Install validation: Passed", report, StringComparison.Ordinal);
+        Assert.Contains("Install validation exit code: 0", report, StringComparison.Ordinal);
         Assert.Contains("Message: Downloaded with [REDACTED]", report, StringComparison.Ordinal);
         Assert.Contains("Storage pressure", report, StringComparison.Ordinal);
         Assert.Contains("Retained history: High", report, StringComparison.Ordinal);
@@ -228,6 +232,8 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.Contains("Install result status: n/a", report, StringComparison.Ordinal);
         Assert.Contains("Install result completed: n/a", report, StringComparison.Ordinal);
         Assert.Contains("Install result message: n/a", report, StringComparison.Ordinal);
+        Assert.Contains("Install validation: n/a", report, StringComparison.Ordinal);
+        Assert.Contains("Install validation exit code: n/a", report, StringComparison.Ordinal);
         Assert.Contains("Message: n/a", report, StringComparison.Ordinal);
     }
 

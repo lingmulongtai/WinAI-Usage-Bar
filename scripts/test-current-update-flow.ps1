@@ -307,6 +307,7 @@ try {
 
     Assert-OutputContains -Text $prepareText -Expected "Status: Prepared" -Description "Prepare update output"
     $scriptPath = Get-OutputValue -Text $prepareText -Label "Script"
+    $resultPath = Get-OutputValue -Text $prepareText -Label "Result"
     if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) {
         $scriptPath = Get-ChildItem -LiteralPath (Join-Path $appDataRoot "updates") -Recurse -Filter "apply-update.ps1" -File |
             Sort-Object LastWriteTimeUtc -Descending |
@@ -318,6 +319,11 @@ try {
     }
 
     Assert-PathInside -ChildPath $scriptPath -ParentPath $appDataRoot -Description "Prepared update script"
+    if ([string]::IsNullOrWhiteSpace($resultPath) -or $resultPath.Equals("n/a", [StringComparison]::OrdinalIgnoreCase)) {
+        $resultPath = Join-Path (Split-Path -Parent $scriptPath) "install-result.json"
+    }
+
+    Assert-PathInside -ChildPath $resultPath -ParentPath $appDataRoot -Description "Prepared update result"
 
     Write-Host "Current updater flow prepared successfully."
     Write-Host "Work directory: $workRoot"
@@ -327,6 +333,7 @@ try {
     Write-Host "Download output: $downloadOut"
     Write-Host "Prepare output: $prepareOut"
     Write-Host "Prepared update script: $scriptPath"
+    Write-Host "Expected install result: $resultPath"
 
     if ($Apply) {
         Assert-PathInside -ChildPath $installRoot -ParentPath $workRoot -Description "Apply install directory"
@@ -365,7 +372,21 @@ try {
             Assert-OutputContains -Text $updatedVersionText -Expected $expectedLatestVersion -Description "Updated app version output"
         }
 
+        if (-not (Test-Path -LiteralPath $resultPath -PathType Leaf)) {
+            throw "Prepared update script did not write install-result.json: $resultPath"
+        }
+
+        $installResult = Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json
+        if ($installResult.status -ne "Succeeded") {
+            throw "install-result.json did not report success. Status: $($installResult.status)"
+        }
+
+        if ($installResult.validationStatus -ne "Passed") {
+            throw "install-result.json did not report passed post-install validation. Validation status: $($installResult.validationStatus)"
+        }
+
         Write-Host "Applied prepared update script to disposable install directory."
+        Write-Host "Install result: $resultPath"
         Write-Host "Apply output: $applyOut"
         Write-Host "Updated version output: $updatedVersionOut"
     }

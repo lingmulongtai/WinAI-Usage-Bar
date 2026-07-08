@@ -50,11 +50,16 @@ public sealed class UpdateInstallPreparationServiceTests
             Assert.Contains("completedAtUtc = (Get-Date).ToUniversalTime().ToString('o')", script, StringComparison.Ordinal);
             Assert.Contains("packageFileName = [System.IO.Path]::GetFileName($PackagePath)", script, StringComparison.Ordinal);
             Assert.Contains("installDirectory = $InstallDirectory", script, StringComparison.Ordinal);
+            Assert.Contains("validationStatus = $ValidationStatus", script, StringComparison.Ordinal);
+            Assert.Contains("validationExitCode", script, StringComparison.Ordinal);
             Assert.Contains("Wait-Process -Id $ProcessIdToWait", script, StringComparison.Ordinal);
             Assert.Contains("$ProcessIdToWait = 1234", script, StringComparison.Ordinal);
             Assert.Contains("$RestartAfterInstall = $true", script, StringComparison.Ordinal);
             Assert.Contains("Expand-Archive -LiteralPath $PackagePath", script, StringComparison.Ordinal);
             Assert.Contains("function Restore-Backup", script, StringComparison.Ordinal);
+            Assert.Contains("function Invoke-PostInstallValidation", script, StringComparison.Ordinal);
+            Assert.Contains("-ArgumentList '--smoke-test'", script, StringComparison.Ordinal);
+            Assert.Contains("Post-install smoke test failed", script, StringComparison.Ordinal);
             Assert.Contains("Copy-Item -LiteralPath $_.FullName -Destination $BackupDirectory -Recurse -Force", script, StringComparison.Ordinal);
             Assert.Contains("Remove-Item -LiteralPath $_.FullName -Recurse -Force", script, StringComparison.Ordinal);
             Assert.Contains("Copy-Item -LiteralPath $_.FullName", script, StringComparison.Ordinal);
@@ -81,7 +86,7 @@ public sealed class UpdateInstallPreparationServiceTests
         Directory.CreateDirectory(installDirectory);
         await File.WriteAllTextAsync(Path.Combine(installDirectory, "WinAiUsageBar.App.exe"), "old exe");
         var packagePath = Path.Combine(root, "WinAIUsageBar-0.2.0-win-x64.zip");
-        CreatePackage(packagePath, includeAppExe: true);
+        CreatePackageFromBuiltAppOutput(packagePath);
         var service = new UpdateInstallPreparationService(paths);
 
         try
@@ -101,11 +106,57 @@ public sealed class UpdateInstallPreparationServiceTests
             using var resultDocument = JsonDocument.Parse(await File.ReadAllTextAsync(result.ResultPath!));
             var rootElement = resultDocument.RootElement;
             Assert.Equal("Succeeded", rootElement.GetProperty("status").GetString());
-            Assert.Equal("Update installed successfully.", rootElement.GetProperty("message").GetString());
+            Assert.Equal("Update installed successfully. Post-install validation passed.", rootElement.GetProperty("message").GetString());
             Assert.Equal(Path.GetFileName(packagePath), rootElement.GetProperty("packageFileName").GetString());
             Assert.Equal(Path.GetFullPath(installDirectory), rootElement.GetProperty("installDirectory").GetString());
+            Assert.Equal("Passed", rootElement.GetProperty("validationStatus").GetString());
+            Assert.Equal(0, rootElement.GetProperty("validationExitCode").GetInt32());
             Assert.False(string.IsNullOrWhiteSpace(rootElement.GetProperty("completedAtUtc").GetString()));
-            Assert.Equal("new exe", await File.ReadAllTextAsync(Path.Combine(installDirectory, "WinAiUsageBar.App.exe")));
+            Assert.True(File.Exists(Path.Combine(installDirectory, "WinAiUsageBar.App.exe")));
+            Assert.True(File.Exists(Path.Combine(installDirectory, "WinAiUsageBar.App.dll")));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task PreparedScript_RestoresBackupWhenPostInstallValidationFails()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(Path.Combine(root, "appdata"));
+        var installDirectory = Path.Combine(root, "install");
+        Directory.CreateDirectory(installDirectory);
+        await File.WriteAllTextAsync(Path.Combine(installDirectory, "WinAiUsageBar.App.exe"), "old exe");
+        var packagePath = Path.Combine(root, "WinAIUsageBar-0.2.0-win-x64.zip");
+        CreatePackage(packagePath, includeAppExe: true);
+        var service = new UpdateInstallPreparationService(paths);
+
+        try
+        {
+            var result = await service.PrepareAsync(
+                new UpdateInstallPreparationRequest(
+                    packagePath,
+                    installDirectory,
+                    ProcessIdToWait: 0,
+                    RestartAfterInstall: false),
+                CancellationToken.None);
+
+            var scriptExitCode = await RunPowerShellScriptAsync(result.ScriptPath!);
+
+            Assert.NotEqual(0, scriptExitCode);
+            Assert.True(File.Exists(result.ResultPath));
+            using var resultDocument = JsonDocument.Parse(await File.ReadAllTextAsync(result.ResultPath!));
+            var rootElement = resultDocument.RootElement;
+            Assert.Equal("Failed", rootElement.GetProperty("status").GetString());
+            Assert.Contains("Post-install smoke test", rootElement.GetProperty("message").GetString(), StringComparison.Ordinal);
+            Assert.Equal("FailedToStart", rootElement.GetProperty("validationStatus").GetString());
+            Assert.False(rootElement.TryGetProperty("validationExitCode", out _));
+            Assert.Equal("old exe", await File.ReadAllTextAsync(Path.Combine(installDirectory, "WinAiUsageBar.App.exe")));
         }
         finally
         {
@@ -149,6 +200,7 @@ public sealed class UpdateInstallPreparationServiceTests
             Assert.Contains("Update package was not found", rootElement.GetProperty("message").GetString(), StringComparison.Ordinal);
             Assert.Equal(Path.GetFileName(packagePath), rootElement.GetProperty("packageFileName").GetString());
             Assert.Equal(Path.GetFullPath(installDirectory), rootElement.GetProperty("installDirectory").GetString());
+            Assert.Equal("NotRun", rootElement.GetProperty("validationStatus").GetString());
             Assert.Equal("old exe", await File.ReadAllTextAsync(Path.Combine(installDirectory, "WinAiUsageBar.App.exe")));
         }
         finally
@@ -306,6 +358,25 @@ public sealed class UpdateInstallPreparationServiceTests
             {
                 Directory.Delete(root, recursive: true);
             }
+        }
+    }
+
+    private static void CreatePackageFromBuiltAppOutput(string packagePath)
+    {
+        var sourceDirectory = AppContext.BaseDirectory;
+        var appExe = Path.Combine(sourceDirectory, "WinAiUsageBar.App.exe");
+        if (!File.Exists(appExe))
+        {
+            throw new InvalidOperationException($"Built app executable was not found for update script tests: {appExe}");
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(packagePath)!);
+        using var stream = File.Open(packagePath, FileMode.CreateNew);
+        using var archive = new ZipArchive(stream, ZipArchiveMode.Create);
+        foreach (var file in Directory.GetFiles(sourceDirectory, "*", SearchOption.AllDirectories))
+        {
+            var relativePath = Path.GetRelativePath(sourceDirectory, file).Replace('\\', '/');
+            archive.CreateEntryFromFile(file, relativePath);
         }
     }
 

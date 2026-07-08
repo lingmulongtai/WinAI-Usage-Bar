@@ -106,6 +106,8 @@ public sealed class RefreshSettingsPageViewModelTests
         config.Updates.LastInstallResultStatus = "Succeeded";
         config.Updates.LastInstallResultMessage = "Update installed successfully.";
         config.Updates.LastInstallResultCompletedAt = new DateTimeOffset(2026, 7, 8, 9, 35, 0, TimeSpan.FromHours(9));
+        config.Updates.LastInstallValidationStatus = "Passed";
+        config.Updates.LastInstallValidationExitCode = 0;
         config.Updates.LastCheckedAt = new DateTimeOffset(2026, 7, 8, 9, 30, 0, TimeSpan.FromHours(9));
 
         var viewModel = new RefreshSettingsPageViewModel(config);
@@ -130,6 +132,8 @@ public sealed class RefreshSettingsPageViewModelTests
         Assert.Contains("Install result status: Succeeded", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("Install result completed: 2026-07-08 09:35:00 +09:00", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("Install result message: Update installed successfully.", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.Contains("Install validation: Passed", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.Contains("Install validation exit code: 0", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("Update package downloaded", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("2026-07-08", viewModel.UpdateStatusText, StringComparison.Ordinal);
     }
@@ -154,6 +158,8 @@ public sealed class RefreshSettingsPageViewModelTests
         config.Updates.LastInstallResultPath = @"C:\Updates\secret=result-secret\install-result.json";
         config.Updates.LastInstallResultStatus = "Failed token=result-status-secret";
         config.Updates.LastInstallResultMessage = "Failed with cookie=result-message-secret";
+        config.Updates.LastInstallValidationStatus = "Failed token=validation-secret";
+        config.Updates.LastInstallValidationExitCode = 1;
 
         var viewModel = new RefreshSettingsPageViewModel(config);
 
@@ -174,6 +180,7 @@ public sealed class RefreshSettingsPageViewModelTests
         Assert.DoesNotContain("result-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("result-status-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("result-message-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("validation-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("token", viewModel.UpdateStatusText, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("secret", viewModel.UpdateStatusText, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("cookie", viewModel.UpdateStatusText, StringComparison.OrdinalIgnoreCase);
@@ -200,6 +207,7 @@ public sealed class RefreshSettingsPageViewModelTests
         Assert.DoesNotContain("Installer asset:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("Installer checksum asset:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("Install script:", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("Install validation:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("Message: The current app version is up to date.", viewModel.UpdateStatusText, StringComparison.Ordinal);
     }
 }

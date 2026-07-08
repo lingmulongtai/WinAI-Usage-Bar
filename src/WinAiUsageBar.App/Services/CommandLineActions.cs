@@ -597,6 +597,8 @@ public static class CommandLineActions
                     config.Updates.LastInstallResultStatus = null;
                     config.Updates.LastInstallResultMessage = null;
                     config.Updates.LastInstallResultCompletedAt = null;
+                    config.Updates.LastInstallValidationStatus = null;
+                    config.Updates.LastInstallValidationExitCode = null;
                 }
             }
             else
@@ -606,6 +608,8 @@ public static class CommandLineActions
                 config.Updates.LastInstallResultStatus = null;
                 config.Updates.LastInstallResultMessage = null;
                 config.Updates.LastInstallResultCompletedAt = null;
+                config.Updates.LastInstallValidationStatus = null;
+                config.Updates.LastInstallValidationExitCode = null;
             }
 
             if (result.Status is LatestUpdateInstallStatus.Launched

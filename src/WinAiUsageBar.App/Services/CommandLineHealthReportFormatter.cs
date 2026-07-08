@@ -143,6 +143,8 @@ public static class CommandLineHealthReportFormatter
         builder.AppendLine($"  Install result status: {SafeValue(updates.LastInstallResultStatus)}");
         builder.AppendLine($"  Install result completed: {FormatDate(updates.LastInstallResultCompletedAt)}");
         builder.AppendLine($"  Install result message: {SafeValue(updates.LastInstallResultMessage)}");
+        builder.AppendLine($"  Install validation: {SafeValue(updates.LastInstallValidationStatus)}");
+        builder.AppendLine($"  Install validation exit code: {updates.LastInstallValidationExitCode?.ToString(CultureInfo.InvariantCulture) ?? "n/a"}");
         builder.AppendLine($"  Message: {SafeValue(updates.LastMessage)}");
     }
 

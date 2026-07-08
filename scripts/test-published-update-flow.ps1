@@ -533,6 +533,17 @@ try {
                     throw "Startup policy install-result.json did not report success. Path: $resultPath Status: $($result.status)"
                 }
 
+                if ($null -ne $result.validationStatus) {
+                    if ($result.validationStatus -ne "Passed") {
+                        throw "Startup policy install-result.json did not report passed post-install validation. Path: $resultPath Validation status: $($result.validationStatus)"
+                    }
+
+                    Write-Host "Startup policy install-result.json shows passed post-install validation."
+                }
+                else {
+                    Write-Warning "Startup policy install-result.json did not include validationStatus. The source published release may predate post-install validation."
+                }
+
                 if ($healthAfterText.IndexOf("Install result status: Succeeded", [StringComparison]::OrdinalIgnoreCase) -ge 0) {
                     Write-Host "Post-apply health report shows reconciled install result status."
                 }
@@ -605,6 +616,7 @@ try {
 
     Assert-OutputContains -Text $prepareText -Expected "Status: Prepared" -Description "Prepare update output"
     $scriptPath = Get-OutputValue -Text $prepareText -Label "Script"
+    $resultPath = Get-OptionalOutputValue -Text $prepareText -Label "Result"
     if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) {
         $scriptPath = Get-ChildItem -LiteralPath (Join-Path $appDataRoot "updates") -Recurse -Filter "apply-update.ps1" -File |
             Sort-Object LastWriteTimeUtc -Descending |
@@ -616,6 +628,11 @@ try {
     }
 
     Assert-PathInside -ChildPath $scriptPath -ParentPath $appDataRoot -Description "Prepared update script"
+    if ([string]::IsNullOrWhiteSpace($resultPath)) {
+        $resultPath = Join-Path (Split-Path -Parent $scriptPath) "install-result.json"
+    }
+
+    Assert-PathInside -ChildPath $resultPath -ParentPath $appDataRoot -Description "Prepared update result"
 
     Write-Host "Published update flow prepared successfully."
     Write-Host "Work directory: $workRoot"
@@ -624,6 +641,7 @@ try {
     Write-Host "Download output: $downloadOut"
     Write-Host "Prepare output: $prepareOut"
     Write-Host "Prepared update script: $scriptPath"
+    Write-Host "Expected install result: $resultPath"
 
     if ($Apply) {
         Assert-PathInside -ChildPath $installRoot -ParentPath $workRoot -Description "Apply install directory"
@@ -662,7 +680,29 @@ try {
             Assert-OutputContains -Text $updatedVersionText -Expected $expectedLatestVersion -Description "Updated app version output"
         }
 
+        if (Test-Path -LiteralPath $resultPath -PathType Leaf) {
+            $installResult = Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json
+            if ($installResult.status -ne "Succeeded") {
+                throw "install-result.json did not report success. Path: $resultPath Status: $($installResult.status)"
+            }
+
+            if ($null -ne $installResult.validationStatus) {
+                if ($installResult.validationStatus -ne "Passed") {
+                    throw "install-result.json did not report passed post-install validation. Path: $resultPath Validation status: $($installResult.validationStatus)"
+                }
+
+                Write-Host "install-result.json shows passed post-install validation."
+            }
+            else {
+                Write-Warning "install-result.json did not include validationStatus. The source published release may predate post-install validation."
+            }
+        }
+        else {
+            Write-Warning "install-result.json was not found. The source published release may predate install-result reporting. Path: $resultPath"
+        }
+
         Write-Host "Applied prepared update script to disposable install directory."
+        Write-Host "Install result: $resultPath"
         Write-Host "Apply output: $applyOut"
         Write-Host "Updated version output: $updatedVersionOut"
     }
