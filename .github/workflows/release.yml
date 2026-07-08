@@ -54,6 +54,9 @@ jobs:
       - name: Verify release readiness
         run: .\scripts\verify-release-readiness.ps1 -TagName $env:GITHUB_REF_NAME -PublishedAppPath .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe -PackageDirectory .\artifacts\packages -InstallerDirectory .\artifacts\installer -RequireInstaller
 
+      - name: Generate release notes
+        run: .\scripts\new-release-notes.ps1 -TagName $env:GITHUB_REF_NAME -OutputPath .\artifacts\release-notes.md
+
       - name: Create draft release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -72,4 +75,4 @@ jobs:
             --repo $env:GITHUB_REPOSITORY `
             --draft `
             --title "WinAI Usage Bar $env:GITHUB_REF_NAME" `
-            --generate-notes
+            --notes-file .\artifacts\release-notes.md

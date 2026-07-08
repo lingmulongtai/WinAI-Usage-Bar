@@ -4,7 +4,7 @@ Date: 2026-07-08
 
 This audit is intentionally strict. The repository has moved past a throwaway scaffold, but it is still an MVP. The design foundation is much stronger than the product completeness.
 
-Release candidate: `v0.1.3`. The previous published release was `v0.1.2`; this release candidate adds isolated app-data dogfooding, Codex WindowsApps startup-denied diagnostics, disposable prepared-update dogfooding, and a Unicode-path fix for generated update apply scripts.
+Latest published release: `v0.1.3`. It adds isolated app-data dogfooding, Codex WindowsApps startup-denied diagnostics, disposable prepared-update dogfooding, and a Unicode-path fix for generated update apply scripts.
 
 ## Scorecard
 
@@ -15,7 +15,7 @@ Release candidate: `v0.1.3`. The previous published release was `v0.1.2`; this r
 | Security posture | 8/10 | Good defaults around DPAPI, redaction, no cookie scraping, checksum verification, guarded update launch, rollback, unsafe update zip rejection, and disposable update-apply dogfooding. Needs more adversarial review before wider distribution. |
 | Windows shell integration | 6/10 | Tray, windows, placement, startup registration, and notifications exist, with duplicate notification suppression plus a manual verification checklist and report scaffold. Actual shell behavior still needs hands-on runs. |
 | Product usability | 6/10 | The app now has guided first-run checklist state, provider details, backup export/restore, and recovery checks, but it is still mostly useful with Mock/Manual data today. |
-| Packaging and release | 9/10 | Self-contained publish, zip packaging, checksums, readiness gates, artifacts, release workflow, published setup assets, update-check, verified download, install-script preparation, rollback-capable guarded script launch, explicit latest-update install orchestration, setup installer artifact/release paths, throttled startup update policy, and disposable prepared-apply dogfooding exist. No signing yet. |
+| Packaging and release | 9/10 | Self-contained publish, zip packaging, checksums, readiness gates, artifacts, release workflow, English release notes, published setup assets, update-check, verified download, install-script preparation, rollback-capable guarded script launch, explicit latest-update install orchestration, setup installer artifact/release paths, throttled startup update policy, and disposable prepared-apply dogfooding exist. No signing yet. |
 | Test confidence | 8/10 | Core, infrastructure, view model, CLI, storage, parser, refresh, app-composition smoke, and packaging smoke paths are covered without external CLIs. UI runtime coverage remains limited. |
 | Observability and support | 8/10 | Diagnostics summary, provider repair guidance, recovery guidance, redacted export, health report, isolated app-data dogfooding, provider dogfooding notes, release dogfooding notes, and logs are solid for an MVP. No structured crash reports yet. |
 
@@ -38,7 +38,7 @@ Overall:
 - The CLI surface gives useful non-UI checks: help, version, smoke test with app service composition and refresh pipeline coverage, diagnostics export, config backup export, health report with storage pressure guidance, recovery guidance, launch targets, and repair hints, provider catalog, provider CLI override setting, support artifact pruning, update checks, verified update downloads, staged install script preparation, guarded prepared-script launch, explicit latest-update install orchestration, and headless refresh-once.
 - Release readiness checks now cover version metadata, changelog, audit date, published-app smoke test, package presence, installer presence, and checksum validity.
 - The repo now has an Inno Setup build path, checksum generation, CI artifact upload, and release asset wiring for setup executables.
-- `v0.1.2` is published with zip, zip checksum, setup executable, and setup checksum assets, and the latest-release endpoint resolves it correctly. `v0.1.3` is being prepared to carry the post-v0.1.2 dogfooding and update reliability fixes.
+- `v0.1.3` is published with English release notes plus zip, zip checksum, setup executable, and setup checksum assets, and the latest-release endpoint resolves it correctly.
 - Refresh settings can run a manual latest-release check or explicitly launch the confirmation-gated safe latest-update install flow, while startup update policy checks releases on a conservative interval, can download verified packages, can launch guarded install scripts, and avoids repeatedly launching the same release version.
 - Generated update apply scripts now back up by copying, restore from backup if the install copy phase fails, reject unsafe archive entries before an install script is prepared, and are written with a UTF-8 BOM so Windows PowerShell 5.1 can read non-ASCII package, staging, backup, and install paths.
 - `WINAIUSAGEBAR_APPDATA` lets CLI dogfooding run against isolated app data instead of the user's normal `%AppData%\WinAiUsageBar` tree.

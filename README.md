@@ -155,7 +155,7 @@ Use `--smoke-test` to check config storage, DPAPI secret storage, provider descr
 
 ## Release
 
-Release notes are tracked in [CHANGELOG.md](CHANGELOG.md).
+Release notes are tracked in [CHANGELOG.md](CHANGELOG.md). Release notes must be written in English and generated with `.\scripts\new-release-notes.ps1`.
 
 To create a draft GitHub Release:
 
@@ -173,6 +173,7 @@ To create a draft GitHub Release:
 .\scripts\publish.ps1
 .\scripts\package.ps1
 .\scripts\build-installer.ps1 -SkipPublish
+.\scripts\new-release-notes.ps1 -TagName v0.1.0 -OutputPath .\artifacts\release-notes.md
 $report = Get-ChildItem .\artifacts\verification\windows-verification-*.md |
   Sort-Object LastWriteTime -Descending |
   Select-Object -First 1
@@ -186,7 +187,7 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-The release workflow builds, tests, publishes, smoke-tests, packages the app, builds the setup installer, and creates a draft release with the versioned zip, zip checksum, setup exe, and setup checksum attached. Review the draft in GitHub before publishing it.
+The release workflow builds, tests, publishes, smoke-tests, packages the app, builds the setup installer, generates English release notes from `CHANGELOG.md`, and creates a draft release with the versioned zip, zip checksum, setup exe, and setup checksum attached. Review the draft in GitHub before publishing it.
 
 ## Privacy
 
