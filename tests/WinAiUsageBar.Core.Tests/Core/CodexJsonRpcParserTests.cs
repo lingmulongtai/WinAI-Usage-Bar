@@ -110,6 +110,41 @@ public sealed class CodexJsonRpcParserTests
     }
 
     [Fact]
+    public void CreateSnapshot_UsesProviderSpecificLabelsForChatGpt()
+    {
+        const string usage = """
+        {
+          "result": {
+            "usedPercent": 25,
+            "remainingPercent": 75
+          }
+        }
+        """;
+        const string rateLimits = """
+        {
+          "result": {
+            "used": 80,
+            "limit": 100
+          }
+        }
+        """;
+
+        var data = new CodexAppServerData(
+            AccountJson: null,
+            RateLimitsJson: rateLimits,
+            UsageJson: usage,
+            Diagnostics: []);
+
+        var snapshot = CodexJsonRpcParser.CreateSnapshot(
+            ProviderDescriptors.Get(ProviderId.ChatGPT),
+            data,
+            new DateTimeOffset(2026, 7, 8, 0, 0, 0, TimeSpan.Zero));
+
+        Assert.Equal("ChatGPT usage", snapshot.PrimaryWindow?.Label);
+        Assert.Equal("ChatGPT rate limit", snapshot.SecondaryWindow?.Label);
+    }
+
+    [Fact]
     public void CreateSnapshot_UsesRateLimitsAsPrimaryFallback()
     {
         const string rateLimits = """
@@ -138,6 +173,34 @@ public sealed class CodexJsonRpcParserTests
         Assert.Equal(10, snapshot.PrimaryWindow?.RemainingPercent);
         Assert.Null(snapshot.SecondaryWindow);
         Assert.Equal(ProviderHealth.Warning, snapshot.Health);
+    }
+
+    [Fact]
+    public void CreateSnapshot_UsesProviderSpecificRateLimitFallbackLabelForChatGpt()
+    {
+        const string rateLimits = """
+        {
+          "result": {
+            "used": 90,
+            "limit": 100
+          }
+        }
+        """;
+
+        var data = new CodexAppServerData(
+            AccountJson: null,
+            RateLimitsJson: rateLimits,
+            UsageJson: null,
+            Diagnostics: []);
+
+        var snapshot = CodexJsonRpcParser.CreateSnapshot(
+            ProviderDescriptors.Get(ProviderId.ChatGPT),
+            data,
+            new DateTimeOffset(2026, 7, 8, 0, 0, 0, TimeSpan.Zero));
+
+        Assert.Equal("ChatGPT rate limit", snapshot.PrimaryWindow?.Label);
+        Assert.Equal(10, snapshot.PrimaryWindow?.RemainingPercent);
+        Assert.Null(snapshot.SecondaryWindow);
     }
 
     [Fact]

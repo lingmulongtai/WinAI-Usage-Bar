@@ -28,6 +28,8 @@ Codex/ChatGPT app-server initialization is required, but account, rate-limit, an
 
 Codex app-server adapters may be created for either `Cli` or `LocalAppServer` source selections. Successful snapshots and failure snapshots must preserve the configured source kind so provider cards, refresh output, diagnostics, and repair guidance describe the user's selected source accurately. ChatGPT app-server usage remains `LocalAppServer`.
 
+Shared Codex/ChatGPT app-server snapshots must use provider-specific usage window labels, such as `Codex usage`, `Codex rate limit`, `ChatGPT usage`, and `ChatGPT rate limit`, so Provider Details and compact cards do not display Codex labels for ChatGPT snapshots.
+
 Codex/ChatGPT app-server parsing should tolerate common usage and reset timestamp shapes, including ISO reset strings, Unix seconds, Unix milliseconds, and relative reset seconds, while ignoring sensitive-looking token/auth/secret/cookie/key fields. Usage parsing should also recognize top-level usage window arrays and nested usage/rate-limit window objects or arrays under common names such as `usage`, `quota`, `limit`, `limits`, `rateLimit`, `rate_limit`, `rateLimits`, `rate_limits`, `window`, `windows`, `usageWindow`, `usage_window`, `usageWindows`, `usage_windows`, `current`, and `data`; top-level fields win first, and nested candidates must be parsed as coherent windows in deterministic document order instead of mixing values from unrelated objects.
 
 GitHub Copilot supports personal Manual mode without organization metrics. Organization or Enterprise metrics preparation stores only organization/enterprise identifiers and a PAT secret name in config; the PAT value itself must be stored through `ISecretStore`.

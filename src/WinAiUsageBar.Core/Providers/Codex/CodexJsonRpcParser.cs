@@ -182,8 +182,8 @@ public static class CodexJsonRpcParser
         DataSourceKind sourceKind = DataSourceKind.LocalAppServer)
     {
         var account = ParseAccount(data.AccountJson);
-        var usageWindow = ParseUsageWindow(data.UsageJson, "Codex usage", now);
-        var rateLimitWindow = ParseUsageWindow(data.RateLimitsJson, "Codex rate limit", now);
+        var usageWindow = ParseUsageWindow(data.UsageJson, $"{descriptor.DisplayName} usage", now);
+        var rateLimitWindow = ParseUsageWindow(data.RateLimitsJson, $"{descriptor.DisplayName} rate limit", now);
         var primaryWindow = usageWindow ?? rateLimitWindow;
         var secondaryWindow = usageWindow is not null && rateLimitWindow is not null
             ? rateLimitWindow
