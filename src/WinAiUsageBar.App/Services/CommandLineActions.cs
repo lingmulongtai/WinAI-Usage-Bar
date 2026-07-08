@@ -42,11 +42,13 @@ public static class CommandLineActions
         var diagnosticsService = new DiagnosticsSummaryService(paths, configStore, snapshotStore);
         var historyService = new HistorySummaryService(paths);
         var storagePressureService = new StoragePressureGuidanceService();
+        var recoveryGuidanceService = new RecoveryGuidanceService();
         cliEnvironmentService ??= new CliEnvironmentService();
 
         var diagnostics = await diagnosticsService.GetSummaryAsync(cancellationToken).ConfigureAwait(false);
         var history = await historyService.GetSummaryAsync(cancellationToken).ConfigureAwait(false);
         var storagePressure = storagePressureService.CreateGuidance(diagnostics);
+        var recoveryGuidance = recoveryGuidanceService.CreateGuidance(diagnostics);
         var cliEnvironment = await cliEnvironmentService.GetReportAsync(HealthReportCliChecks, cancellationToken)
             .ConfigureAwait(false);
 
@@ -56,7 +58,8 @@ public static class CommandLineActions
             history,
             DateTimeOffset.Now,
             cliEnvironment,
-            storagePressure);
+            storagePressure,
+            recoveryGuidance);
     }
 
     public static string CreateProviderCatalog()

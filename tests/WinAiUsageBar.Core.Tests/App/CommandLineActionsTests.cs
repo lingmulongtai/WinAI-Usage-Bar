@@ -158,6 +158,9 @@ public sealed class CommandLineActionsTests
             Assert.Contains("Storage pressure", report, StringComparison.Ordinal);
             Assert.Contains("Retained history: High", report, StringComparison.Ordinal);
             Assert.Contains("Use Clear History soon", report, StringComparison.Ordinal);
+            Assert.Contains("Recovery guidance", report, StringComparison.Ordinal);
+            Assert.Contains("Export a config backup: Available", report, StringComparison.Ordinal);
+            Assert.Contains("Restore the latest backup: Not ready", report, StringComparison.Ordinal);
             Assert.DoesNotContain("secret", report, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("token", report, StringComparison.OrdinalIgnoreCase);
         }

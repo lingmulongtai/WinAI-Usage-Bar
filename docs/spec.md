@@ -170,6 +170,8 @@ Diagnostics summary is separate from diagnostics export: the summary is for quic
 
 The CLI health report includes a storage pressure section derived from the same non-secret guidance used by Privacy & Data. It should list retained history, config backups, diagnostics exports, and diagnostics log pressure with level, detail, and recommendation text.
 
+The CLI health report includes a recovery guidance section derived from the same non-secret recovery guidance used by Privacy & Data. It should list config backup export, latest-backup restore, reset-to-defaults, and diagnostics export actions with availability and recommendation text. The CLI report should not add raw safety notes that mention secret-store paths; it must not include secret names, secret values, tokens, cookies, or raw auth details.
+
 The CLI health report also includes a safe CLI environment section for `codex`, `claude`, `gh`, and `git`. It may resolve PATH entries, show the launch target selected by the shared CLI launch planner, and run short startup checks such as `--version`, but it must not read provider auth files, cookies, or secret store values. Startup failures should include short non-secret repair hints for common local issues such as WindowsApps access denial, command shims, stale PATH entries, timeouts, or interactive login prompts.
 
 ## Startup

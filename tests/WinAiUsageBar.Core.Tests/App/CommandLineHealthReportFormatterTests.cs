@@ -89,6 +89,7 @@ public sealed class CommandLineHealthReportFormatterTests
                 StatusMessage: "Not found on PATH.")
         ]);
         var storagePressure = new StoragePressureGuidanceService().CreateGuidance(diagnostics);
+        var recoveryGuidance = new RecoveryGuidanceService().CreateGuidance(diagnostics);
 
         var report = CommandLineHealthReportFormatter.Format(
             new AppInfo("WinAI Usage Bar", "1.2.3.0", "1.2.3"),
@@ -96,7 +97,8 @@ public sealed class CommandLineHealthReportFormatterTests
             history,
             generatedAt,
             cliEnvironment,
-            storagePressure);
+            storagePressure,
+            recoveryGuidance);
 
         Assert.Contains("WinAI Usage Bar 1.2.3", report, StringComparison.Ordinal);
         Assert.Contains("Generated: 2026-07-08 06:45:00 +09:00", report, StringComparison.Ordinal);
@@ -112,6 +114,12 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.Contains("Config backups: Ok", report, StringComparison.Ordinal);
         Assert.Contains("Diagnostics exports: Ok", report, StringComparison.Ordinal);
         Assert.Contains("Diagnostics log: Ok", report, StringComparison.Ordinal);
+        Assert.Contains("Recovery guidance", report, StringComparison.Ordinal);
+        Assert.Contains("Export a config backup: Available", report, StringComparison.Ordinal);
+        Assert.Contains("Restore the latest backup: Available", report, StringComparison.Ordinal);
+        Assert.Contains("Reset config to defaults: Available", report, StringComparison.Ordinal);
+        Assert.Contains("Export diagnostics: Available", report, StringComparison.Ordinal);
+        Assert.Contains("Use this when the current settings were changed by mistake", report, StringComparison.Ordinal);
         Assert.Contains("Cached snapshots: 2", report, StringComparison.Ordinal);
         Assert.Contains("Entries: 3", report, StringComparison.Ordinal);
         Assert.Contains("Codex: 3 entries, latest Warning, remaining 42.5%, source LocalAppServer", report, StringComparison.Ordinal);

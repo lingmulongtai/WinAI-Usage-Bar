@@ -14,7 +14,8 @@ public static class CommandLineHealthReportFormatter
         HistorySummary history,
         DateTimeOffset generatedAt,
         CliEnvironmentReport? cliEnvironment = null,
-        IReadOnlyList<StoragePressureGuidanceItem>? storagePressure = null)
+        IReadOnlyList<StoragePressureGuidanceItem>? storagePressure = null,
+        IReadOnlyList<RecoveryGuidanceItem>? recoveryGuidance = null)
     {
         var builder = new StringBuilder();
         builder.AppendLine($"{appInfo.ProductName} {appInfo.InformationalVersion}");
@@ -50,6 +51,17 @@ public static class CommandLineHealthReportFormatter
             {
                 builder.AppendLine($"  {item.Title}: {item.Level}");
                 builder.AppendLine($"    {item.Detail}");
+                builder.AppendLine($"    {item.Recommendation}");
+            }
+        }
+
+        if (recoveryGuidance is { Count: > 0 })
+        {
+            builder.AppendLine();
+            builder.AppendLine("Recovery guidance");
+            foreach (var item in recoveryGuidance)
+            {
+                builder.AppendLine($"  {item.Title}: {(item.IsAvailable ? "Available" : "Not ready")}");
                 builder.AppendLine($"    {item.Recommendation}");
             }
         }
