@@ -156,6 +156,15 @@ public sealed class MainWindow : Window
         var stack = new StackPanel { Spacing = 8 };
         stack.Children.Add(UiFactory.Text("First-run setup", 16, FontWeights.SemiBold));
         stack.Children.Add(UiFactory.Text(viewModel.SummaryText, 13));
+        stack.Children.Add(UiFactory.Text("Setup checklist", 13, FontWeights.SemiBold));
+
+        foreach (var item in viewModel.ChecklistItems)
+        {
+            var state = item.IsComplete ? "Done" : "Needs attention";
+            stack.Children.Add(UiFactory.Text($"{state}: {item.Title}", 12, FontWeights.SemiBold));
+            stack.Children.Add(UiFactory.Text(item.StateText, 12));
+            stack.Children.Add(UiFactory.Text(item.ActionText, 12));
+        }
 
         foreach (var line in viewModel.ProviderLines)
         {

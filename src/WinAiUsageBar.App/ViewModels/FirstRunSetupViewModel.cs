@@ -42,9 +42,83 @@ public sealed class FirstRunSetupViewModel(
         }
     }
 
+    public IReadOnlyList<FirstRunSetupChecklistItem> ChecklistItems
+    {
+        get
+        {
+            var enabled = GetEnabledProviders().ToList();
+            var unsupportedSources = enabled.Count(provider =>
+            {
+                var descriptor = descriptors.FirstOrDefault(descriptor => descriptor.Id == provider.ProviderId);
+                return descriptor is null || !descriptor.SupportedSources.Contains(provider.SourceKind);
+            });
+            var apiProviders = enabled.Count(provider => provider.SourceKind == DataSourceKind.OfficialApi);
+            var missingApiReferences = enabled.Count(NeedsApiReferences);
+
+            return
+            [
+                new FirstRunSetupChecklistItem(
+                    "Choose providers",
+                    enabled.Count > 0,
+                    enabled.Count > 0
+                        ? $"{enabled.Count} provider(s) enabled."
+                        : "No providers are enabled yet.",
+                    "Open Providers and enable the AI services you want to track."),
+                new FirstRunSetupChecklistItem(
+                    "Choose supported source modes",
+                    enabled.Count > 0 && unsupportedSources == 0,
+                    unsupportedSources == 0
+                        ? "Enabled providers use supported source modes."
+                        : $"{unsupportedSources} enabled provider(s) need a supported source mode.",
+                    "Use Manual mode when an automatic source is not ready."),
+                new FirstRunSetupChecklistItem(
+                    "Prepare API references",
+                    missingApiReferences == 0,
+                    apiProviders == 0
+                        ? "No API-backed providers are enabled."
+                        : missingApiReferences == 0
+                            ? "API-backed providers have the required non-secret references."
+                            : $"{missingApiReferences} API-backed provider(s) need credential or scope references.",
+                    "Save secret values from Privacy & Data, then store only secret names in provider settings.")
+            ];
+        }
+    }
+
     public void MarkComplete()
     {
         config.Onboarding.HasCompletedFirstRun = true;
         config.Onboarding.CompletedAt = nowProvider();
     }
+
+    private IEnumerable<ProviderConfig> GetEnabledProviders()
+    {
+        return descriptors
+            .Select(descriptor =>
+                config.Providers.FirstOrDefault(provider => provider.ProviderId == descriptor.Id)
+                ?? ProviderConfig.CreateDefault(descriptor))
+            .Where(provider => provider.IsEnabled);
+    }
+
+    private static bool NeedsApiReferences(ProviderConfig provider)
+    {
+        if (provider.SourceKind != DataSourceKind.OfficialApi)
+        {
+            return false;
+        }
+
+        if (provider.ProviderId == ProviderId.GitHubCopilot)
+        {
+            var hasScope = !string.IsNullOrWhiteSpace(provider.GitHubCopilot.Organization)
+                || !string.IsNullOrWhiteSpace(provider.GitHubCopilot.EnterpriseSlug);
+            return !hasScope || string.IsNullOrWhiteSpace(provider.GitHubCopilot.PatSecretName);
+        }
+
+        return string.IsNullOrWhiteSpace(provider.ApiKey.SecretName);
+    }
 }
+
+public sealed record FirstRunSetupChecklistItem(
+    string Title,
+    bool IsComplete,
+    string StateText,
+    string ActionText);

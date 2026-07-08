@@ -33,7 +33,7 @@ Gemini and OpenCode Zen support provider-specific API settings for future integr
 - Tray left-click opens a compact panel.
 - Tray right-click menu includes Show, Show Widget, Refresh Now, Settings, Exit.
 - Main settings window contains Overview, Providers, Provider Details, Appearance, Widget, History, Refresh, Privacy & Data, and About pages.
-- Overview shows a first-run setup section until the user marks setup complete.
+- Overview shows a first-run setup checklist until the user marks setup complete.
 - Compact panel shows enabled provider cards.
 - Widget window shows one to three provider cards and remembers size and position.
 - Widget settings validate that one to three providers are selected and expose show-on-startup and always-on-top toggles.
@@ -65,6 +65,8 @@ Provider Details shows current provider snapshots in a fuller non-secret format:
 - Redacted status and error text
 
 The History page summarizes retained `history.ndjson` data without displaying raw snapshot content. It shows total valid entries, invalid line count, earliest/latest update timestamps, and per-provider entry count, latest health, latest remaining percent, and latest source kind. It must not display raw status messages, error messages, account identities, or other unredacted snapshot payload text from history.
+
+The first-run setup checklist guides users through enabling providers, choosing supported source modes, and preparing API credential or scope references when an API-backed source needs them. Checklist text may describe provider setup state, but it must not display secret names, secret values, or account scope values.
 
 ## Storage
 

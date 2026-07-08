@@ -12,7 +12,7 @@ This audit is intentionally strict. The repository has moved past a throwaway sc
 | Provider extensibility | 7/10 | Descriptors, adapters, manual mode, and safe failure states are in place. Real provider depth is still thin. |
 | Security posture | 7/10 | Good defaults around DPAPI, redaction, and no cookie scraping. Needs more adversarial review before wider distribution. |
 | Windows shell integration | 5/10 | Tray, windows, placement, startup registration, and notifications exist, with a manual verification checklist and report scaffold now available. Actual shell behavior still needs hands-on runs. |
-| Product usability | 6/10 | The app now has first-run setup state, provider details, backup export/restore, and recovery checks, but it is still mostly useful with Mock/Manual data today. |
+| Product usability | 6/10 | The app now has guided first-run checklist state, provider details, backup export/restore, and recovery checks, but it is still mostly useful with Mock/Manual data today. |
 | Packaging and release | 7/10 | Self-contained publish, zip packaging, checksums, readiness gates, artifacts, and draft release workflow exist. No installer, signing, or update path yet. |
 | Test confidence | 8/10 | Core, infrastructure, view model, CLI, storage, parser, refresh, and packaging smoke paths are covered without external CLIs. UI runtime coverage remains limited. |
 | Observability and support | 7/10 | Diagnostics summary, recovery guidance, redacted export, health report, and logs are solid for an MVP. No structured crash reports yet. |
@@ -35,7 +35,7 @@ Overall:
 - CI now builds, tests, publishes, smoke-tests, packages, and uploads artifacts on `main`.
 - The CLI surface gives useful non-UI checks: help, version, smoke test, diagnostics export, and health report.
 - Release readiness checks now cover version metadata, changelog, audit date, published-app smoke test, package presence, and checksum validity.
-- First-run setup state, Provider Details, config backup export, backup validation, confirmed CLI restore, latest-backup in-app restore, and confirmed reset-to-default recovery are implemented.
+- Guided first-run checklist state, Provider Details, config backup export, backup validation, confirmed CLI restore, latest-backup in-app restore, and confirmed reset-to-default recovery are implemented.
 - Privacy & Data now includes non-secret recovery guidance for backup, restore, reset, and diagnostics export choices.
 - Windows shell dogfooding now has a concrete manual verification checklist and a timestamped local report script.
 - The issue and commit history is becoming meaningful rather than fake contribution noise.
@@ -49,7 +49,7 @@ Overall:
 - The UI is functional but still not visually or ergonomically proven with extended daily use.
 - Tray behavior, taskbar-near placement, topmost widget behavior, and notification delivery need real Windows manual testing.
 - There is no installer, MSIX, code signing, auto-update, or uninstall story.
-- First-run setup is a useful state surface, not yet a full guided wizard with provider-specific decisions.
+- First-run setup has a basic checklist, but it is not yet a full guided wizard with provider-specific decisions and safe setup actions.
 - Config backup and reset recovery now exist with basic decision guidance, but they still need repeated dogfooding before they can be treated as comfort features.
 - Local CLI discovery can still be messy on Windows. Codex startup failures are now classified, but similar repair guidance should be extended to every future CLI-backed provider.
 - There is no visual regression or automated UI smoke test for WinUI windows.
@@ -93,8 +93,8 @@ The weak point is value density. A usage bar is only as useful as the data it ca
 3. Run the Provider Details page through dogfooding.
    The page exists now, but it needs real snapshot data and daily-use feedback.
 
-4. Turn first-run setup into a guided provider setup flow.
-   A new user should choose enabled providers, source mode, and manual fallback without digging through settings.
+4. Dogfood the guided first-run setup checklist and decide whether it should become a deeper wizard.
+   A new user can see provider, source mode, and API-reference setup state now, but still has to jump into settings to act.
 
 5. Dogfood config backup, restore, and reset.
    CLI restore, latest-backup in-app restore, and reset-to-default recovery exist now, but they need repeated real-use recovery checks before they become comfort features.
