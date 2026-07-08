@@ -56,6 +56,22 @@ public sealed class CodexAppServerClientTests
     }
 
     [Fact]
+    public async Task FetchAccountUsageAsync_ContinuesWhenOptionalMethodTimesOut()
+    {
+        var transport = new TimeoutAccountReadCodexTransport();
+        var client = new CodexAppServerClient(() => transport, TimeSpan.FromMilliseconds(50));
+
+        var data = await client.FetchAccountUsageAsync(CodexProbe(), CancellationToken.None);
+
+        Assert.Null(data.AccountJson);
+        Assert.Contains("\"id\":3", data.RateLimitsJson);
+        Assert.Contains("\"id\":4", data.UsageJson);
+        Assert.Contains(data.Diagnostics, line => line.Contains("account/read timed out", StringComparison.Ordinal));
+        Assert.Equal(4, transport.Requests.Count);
+        Assert.True(transport.Stopped);
+    }
+
+    [Fact]
     public async Task FetchAccountUsageAsync_PassesCommandProbeToTransportFactory()
     {
         var transport = new FakeCodexTransport(
@@ -239,6 +255,65 @@ public sealed class CodexAppServerClientTests
         public ValueTask DisposeAsync()
         {
             return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class TimeoutAccountReadCodexTransport : ICodexAppServerTransport
+    {
+        private int outputReadCount;
+
+        public List<string> Requests { get; } = [];
+
+        public bool Stopped { get; private set; }
+
+        public Task StartAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
+
+        public Task WriteLineAsync(string line, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Requests.Add(line);
+            return Task.CompletedTask;
+        }
+
+        public async Task<string?> ReadOutputLineAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            outputReadCount++;
+            return outputReadCount switch
+            {
+                1 => Response(1, """{"ok":true}"""),
+                2 => await WaitForTimeoutAsync(cancellationToken).ConfigureAwait(false),
+                3 => Response(3, """{"used":10,"limit":100}"""),
+                4 => Response(4, """{"used":20,"limit":100}"""),
+                _ => null
+            };
+        }
+
+        public async Task<string?> ReadErrorLineAsync(CancellationToken cancellationToken)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
+            return null;
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            Stopped = true;
+            return Task.CompletedTask;
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        private static async Task<string?> WaitForTimeoutAsync(CancellationToken cancellationToken)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
+            return null;
         }
     }
 }

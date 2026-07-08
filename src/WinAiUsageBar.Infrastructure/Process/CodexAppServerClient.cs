@@ -131,6 +131,12 @@ public sealed class CodexAppServerClient : ICodexAppServerClient
                 $"Codex app-server method {methodName} failed: {ex.Message}"));
             return null;
         }
+        catch (TimeoutException ex)
+        {
+            diagnostics.Enqueue(DiagnosticRedactor.Redact(
+                $"Codex app-server method {methodName} timed out: {ex.Message}"));
+            return null;
+        }
     }
 
     private async Task<string?> SendAndReadAsync(
