@@ -22,6 +22,10 @@ public sealed class DiagnosticsSummaryViewModel
             ? $"{summary.ConfigBackupCount} config backup(s)"
             : $"{summary.ConfigBackupCount} config backup(s), {FormatBytes(summary.ConfigBackupTotalBytes)} total / latest {summary.LatestConfigBackupCreatedAt:yyyy-MM-dd HH:mm:ss zzz}";
         LatestConfigBackupPath = summary.LatestConfigBackupPath;
+        DiagnosticsExportText = summary.LatestDiagnosticsExportCreatedAt is null
+            ? $"{summary.DiagnosticsExportCount} diagnostics export(s)"
+            : $"{summary.DiagnosticsExportCount} diagnostics export(s), {FormatBytes(summary.DiagnosticsExportTotalBytes)} total / latest {summary.LatestDiagnosticsExportCreatedAt:yyyy-MM-dd HH:mm:ss zzz}";
+        LatestDiagnosticsExportPath = summary.LatestDiagnosticsExportPath;
         HistoryText = $"History retention: {summary.HistoryRetentionMaxDays} day(s), {FormatBytes(summary.HistoryRetentionMaxBytes)} max";
         Files =
         [
@@ -56,6 +60,10 @@ public sealed class DiagnosticsSummaryViewModel
 
     public string? LatestConfigBackupPath { get; }
 
+    public string DiagnosticsExportText { get; }
+
+    public string? LatestDiagnosticsExportPath { get; }
+
     public string HistoryText { get; }
 
     public IReadOnlyList<DiagnosticsFileStatusViewModel> Files { get; }
@@ -66,6 +74,7 @@ public sealed class DiagnosticsSummaryViewModel
         RefreshText,
         SnapshotText,
         ConfigBackupText,
+        DiagnosticsExportText,
         HistoryText,
         $"Config: {ConfigPath}",
         $"Snapshots: {SnapshotsPath}",
@@ -73,7 +82,8 @@ public sealed class DiagnosticsSummaryViewModel
         $"Diagnostics log: {DiagnosticsLogPath}",
         $"Exports: {DiagnosticsExportsDirectory}",
         $"Config backups: {ConfigBackupsDirectory}",
-        LatestConfigBackupPath is null ? "Latest config backup: n/a" : $"Latest config backup: {LatestConfigBackupPath}"
+        LatestConfigBackupPath is null ? "Latest config backup: n/a" : $"Latest config backup: {LatestConfigBackupPath}",
+        LatestDiagnosticsExportPath is null ? "Latest diagnostics export: n/a" : $"Latest diagnostics export: {LatestDiagnosticsExportPath}"
     ];
 
     public static string FormatBytes(long bytes)

@@ -33,6 +33,10 @@ public sealed class CommandLineHealthReportFormatterTests
             LatestConfigBackupPath: @"C:\Users\test\AppData\Roaming\WinAiUsageBar\config-backups\config-backup-20260708-064000.json",
             LatestConfigBackupCreatedAt: latestSnapshot,
             ConfigBackupTotalBytes: 4096,
+            DiagnosticsExportCount: 3,
+            LatestDiagnosticsExportPath: @"C:\Users\test\AppData\Roaming\WinAiUsageBar\diagnostics-exports\diagnostics-export-20260708-064000.txt",
+            LatestDiagnosticsExportCreatedAt: latestSnapshot,
+            DiagnosticsExportTotalBytes: 8192,
             HistoryRetentionMaxDays: 30,
             HistoryRetentionMaxBytes: 1_048_576,
             ConfigFile: FileSummary("config.json", true, 2048, latestSnapshot),
@@ -98,6 +102,8 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.Contains(@"Config backups: C:\Users\test\AppData\Roaming\WinAiUsageBar\config-backups", report, StringComparison.Ordinal);
         Assert.Contains("Config backups: 2 backup(s), 4 KB total", report, StringComparison.Ordinal);
         Assert.Contains("Latest config backup time: 2026-07-08 06:40:00 +09:00", report, StringComparison.Ordinal);
+        Assert.Contains("Diagnostics exports: 3 export(s), 8 KB total", report, StringComparison.Ordinal);
+        Assert.Contains("Latest diagnostics export time: 2026-07-08 06:40:00 +09:00", report, StringComparison.Ordinal);
         Assert.Contains("Cached snapshots: 2", report, StringComparison.Ordinal);
         Assert.Contains("Entries: 3", report, StringComparison.Ordinal);
         Assert.Contains("Codex: 3 entries, latest Warning, remaining 42.5%, source LocalAppServer", report, StringComparison.Ordinal);

@@ -37,6 +37,9 @@ public static class CommandLineHealthReportFormatter
         builder.AppendLine($"  Config backups: {diagnostics.ConfigBackupCount} backup(s), {FormatBytes(diagnostics.ConfigBackupTotalBytes)} total");
         builder.AppendLine($"  Latest config backup: {diagnostics.LatestConfigBackupPath ?? "n/a"}");
         builder.AppendLine($"  Latest config backup time: {FormatDate(diagnostics.LatestConfigBackupCreatedAt)}");
+        builder.AppendLine($"  Diagnostics exports: {diagnostics.DiagnosticsExportCount} export(s), {FormatBytes(diagnostics.DiagnosticsExportTotalBytes)} total");
+        builder.AppendLine($"  Latest diagnostics export: {diagnostics.LatestDiagnosticsExportPath ?? "n/a"}");
+        builder.AppendLine($"  Latest diagnostics export time: {FormatDate(diagnostics.LatestDiagnosticsExportCreatedAt)}");
         builder.AppendLine();
         builder.AppendLine("Snapshots");
         builder.AppendLine($"  Cached snapshots: {diagnostics.CachedSnapshotCount}");

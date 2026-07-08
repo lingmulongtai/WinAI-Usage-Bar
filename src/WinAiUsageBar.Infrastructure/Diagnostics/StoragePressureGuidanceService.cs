@@ -26,6 +26,10 @@ public sealed class StoragePressureGuidanceService : IStoragePressureGuidanceSer
     private const long HighBackupBytes = 100_000_000;
     private const int WatchBackupCount = 25;
     private const int HighBackupCount = 50;
+    private const long WatchExportBytes = 50_000_000;
+    private const long HighExportBytes = 200_000_000;
+    private const int WatchExportCount = 20;
+    private const int HighExportCount = 50;
 
     public IReadOnlyList<StoragePressureGuidanceItem> CreateGuidance(DiagnosticsSummary summary)
     {
@@ -33,6 +37,7 @@ public sealed class StoragePressureGuidanceService : IStoragePressureGuidanceSer
         [
             HistoryGuidance(summary),
             BackupGuidance(summary),
+            DiagnosticsExportGuidance(summary),
             DiagnosticsLogGuidance(summary)
         ];
     }
@@ -104,6 +109,28 @@ public sealed class StoragePressureGuidanceService : IStoragePressureGuidanceSer
             "Diagnostics log",
             level,
             $"diagnostics.log uses {FormatBytes(size)}.",
+            recommendation);
+    }
+
+    private static StoragePressureGuidanceItem DiagnosticsExportGuidance(DiagnosticsSummary summary)
+    {
+        var level = summary.DiagnosticsExportTotalBytes >= HighExportBytes || summary.DiagnosticsExportCount >= HighExportCount
+            ? StoragePressureLevel.High
+            : summary.DiagnosticsExportTotalBytes >= WatchExportBytes || summary.DiagnosticsExportCount >= WatchExportCount
+                ? StoragePressureLevel.Watch
+                : StoragePressureLevel.Ok;
+
+        var recommendation = level switch
+        {
+            StoragePressureLevel.High => "Archive needed support bundles, then delete older diagnostics exports from the data folder.",
+            StoragePressureLevel.Watch => "Review diagnostics-exports/ during maintenance and keep only bundles tied to active investigations.",
+            _ => "No action needed. Diagnostics exports are within the normal MVP range."
+        };
+
+        return new StoragePressureGuidanceItem(
+            "Diagnostics exports",
+            level,
+            $"{summary.DiagnosticsExportCount} export file(s) use {FormatBytes(summary.DiagnosticsExportTotalBytes)}.",
             recommendation);
     }
 

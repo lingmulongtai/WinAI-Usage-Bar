@@ -82,6 +82,10 @@ public sealed class RecoveryGuidanceServiceTests
             LatestConfigBackupPath: latestBackupPath,
             LatestConfigBackupCreatedAt: latestBackupPath is null ? null : now,
             ConfigBackupTotalBytes: latestBackupPath is null ? 0 : 1024,
+            DiagnosticsExportCount: 0,
+            LatestDiagnosticsExportPath: null,
+            LatestDiagnosticsExportCreatedAt: null,
+            DiagnosticsExportTotalBytes: 0,
             HistoryRetentionMaxDays: 30,
             HistoryRetentionMaxBytes: 5_000_000,
             ConfigFile: new DiagnosticsFileSummary(

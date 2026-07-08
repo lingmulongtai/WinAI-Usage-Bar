@@ -28,6 +28,10 @@ public sealed record DiagnosticsSummary(
     string? LatestConfigBackupPath,
     DateTimeOffset? LatestConfigBackupCreatedAt,
     long ConfigBackupTotalBytes,
+    int DiagnosticsExportCount,
+    string? LatestDiagnosticsExportPath,
+    DateTimeOffset? LatestDiagnosticsExportCreatedAt,
+    long DiagnosticsExportTotalBytes,
     int HistoryRetentionMaxDays,
     long HistoryRetentionMaxBytes,
     DiagnosticsFileSummary ConfigFile,
@@ -55,6 +59,7 @@ public sealed class DiagnosticsSummaryService(
             ? null
             : snapshots.Values.Max(snapshot => snapshot.UpdatedAt);
         var backupSummary = ReadConfigBackups(paths.ConfigBackupsDirectory);
+        var exportSummary = ReadDiagnosticsExports(paths.DiagnosticsExportsDirectory);
 
         return new DiagnosticsSummary(
             paths.RootDirectory,
@@ -75,6 +80,10 @@ public sealed class DiagnosticsSummaryService(
             backupSummary.LatestPath,
             backupSummary.LatestCreatedAt,
             backupSummary.TotalBytes,
+            exportSummary.Count,
+            exportSummary.LatestPath,
+            exportSummary.LatestCreatedAt,
+            exportSummary.TotalBytes,
             config.HistoryRetention.MaxDays,
             config.HistoryRetention.MaxBytes,
             ReadFile(paths.ConfigPath),
@@ -100,27 +109,47 @@ public sealed class DiagnosticsSummaryService(
 
     private static ConfigBackupSummary ReadConfigBackups(string directory)
     {
+        var summary = ReadDirectorySummary(directory, "config-backup-*.json");
+        return new ConfigBackupSummary(
+            summary.Count,
+            summary.LatestPath,
+            summary.LatestCreatedAt,
+            summary.TotalBytes);
+    }
+
+    private static DiagnosticsExportSummary ReadDiagnosticsExports(string directory)
+    {
+        var summary = ReadDirectorySummary(directory, "diagnostics-export-*.txt");
+        return new DiagnosticsExportSummary(
+            summary.Count,
+            summary.LatestPath,
+            summary.LatestCreatedAt,
+            summary.TotalBytes);
+    }
+
+    private static FileSetSummary ReadDirectorySummary(string directory, string searchPattern)
+    {
         if (!Directory.Exists(directory))
         {
-            return new ConfigBackupSummary(0, null, null, 0);
+            return new FileSetSummary(0, null, null, 0);
         }
 
         var files = Directory
-            .EnumerateFiles(directory, "config-backup-*.json", SearchOption.TopDirectoryOnly)
+            .EnumerateFiles(directory, searchPattern, SearchOption.TopDirectoryOnly)
             .Select(path => new FileInfo(path))
             .Where(file => file.Exists)
             .ToList();
 
         if (files.Count == 0)
         {
-            return new ConfigBackupSummary(0, null, null, 0);
+            return new FileSetSummary(0, null, null, 0);
         }
 
         var latest = files
             .OrderByDescending(file => file.LastWriteTimeUtc)
             .First();
 
-        return new ConfigBackupSummary(
+        return new FileSetSummary(
             files.Count,
             latest.FullName,
             new DateTimeOffset(latest.LastWriteTime),
@@ -128,6 +157,18 @@ public sealed class DiagnosticsSummaryService(
     }
 
     private sealed record ConfigBackupSummary(
+        int Count,
+        string? LatestPath,
+        DateTimeOffset? LatestCreatedAt,
+        long TotalBytes);
+
+    private sealed record DiagnosticsExportSummary(
+        int Count,
+        string? LatestPath,
+        DateTimeOffset? LatestCreatedAt,
+        long TotalBytes);
+
+    private sealed record FileSetSummary(
         int Count,
         string? LatestPath,
         DateTimeOffset? LatestCreatedAt,

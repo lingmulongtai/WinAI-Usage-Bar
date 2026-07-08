@@ -14,6 +14,8 @@ public sealed class StoragePressureGuidanceServiceTests
             historyMaxBytes: 5_000_000,
             backupCount: 1,
             backupBytes: 2_048,
+            exportCount: 1,
+            exportBytes: 4_096,
             logBytes: 4_096);
 
         var guidance = service.CreateGuidance(summary);
@@ -32,6 +34,8 @@ public sealed class StoragePressureGuidanceServiceTests
             historyMaxBytes: 10_000_000,
             backupCount: 1,
             backupBytes: 2_048,
+            exportCount: 1,
+            exportBytes: 4_096,
             logBytes: 4_096);
 
         var history = service.CreateGuidance(summary).Single(item => item.Title == "Retained history");
@@ -50,6 +54,8 @@ public sealed class StoragePressureGuidanceServiceTests
             historyMaxBytes: 10_000_000,
             backupCount: 1,
             backupBytes: 2_048,
+            exportCount: 1,
+            exportBytes: 4_096,
             logBytes: 4_096);
 
         var history = service.CreateGuidance(summary).Single(item => item.Title == "Retained history");
@@ -67,18 +73,23 @@ public sealed class StoragePressureGuidanceServiceTests
             historyMaxBytes: 10_000_000,
             backupCount: 51,
             backupBytes: 120_000_000,
+            exportCount: 51,
+            exportBytes: 240_000_000,
             logBytes: 30_000_000);
 
         var guidance = service.CreateGuidance(summary);
         var backups = guidance.Single(item => item.Title == "Config backups");
+        var exports = guidance.Single(item => item.Title == "Diagnostics exports");
         var log = guidance.Single(item => item.Title == "Diagnostics log");
         var visibleText = string.Join(
             Environment.NewLine,
             guidance.SelectMany(item => new[] { item.Title, item.Detail, item.Recommendation }));
 
         Assert.Equal(StoragePressureLevel.High, backups.Level);
+        Assert.Equal(StoragePressureLevel.High, exports.Level);
         Assert.Equal(StoragePressureLevel.High, log.Level);
         Assert.Contains("archive or delete older config backups", backups.Recommendation, StringComparison.Ordinal);
+        Assert.Contains("delete older diagnostics exports", exports.Recommendation, StringComparison.Ordinal);
         Assert.Contains("prune the old diagnostics log", log.Recommendation, StringComparison.Ordinal);
         Assert.DoesNotContain("secrets", visibleText, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("token", visibleText, StringComparison.OrdinalIgnoreCase);
@@ -89,6 +100,8 @@ public sealed class StoragePressureGuidanceServiceTests
         long historyMaxBytes,
         int backupCount,
         long backupBytes,
+        int exportCount,
+        long exportBytes,
         long logBytes)
     {
         var root = @"C:\Users\test\AppData\Roaming\WinAiUsageBar";
@@ -112,6 +125,10 @@ public sealed class StoragePressureGuidanceServiceTests
             LatestConfigBackupPath: backupCount == 0 ? null : Path.Combine(root, "config-backups", "config-backup.json"),
             LatestConfigBackupCreatedAt: backupCount == 0 ? null : now,
             ConfigBackupTotalBytes: backupBytes,
+            DiagnosticsExportCount: exportCount,
+            LatestDiagnosticsExportPath: exportCount == 0 ? null : Path.Combine(root, "diagnostics-exports", "diagnostics-export.txt"),
+            LatestDiagnosticsExportCreatedAt: exportCount == 0 ? null : now,
+            DiagnosticsExportTotalBytes: exportBytes,
             HistoryRetentionMaxDays: 30,
             HistoryRetentionMaxBytes: historyMaxBytes,
             ConfigFile: new DiagnosticsFileSummary(

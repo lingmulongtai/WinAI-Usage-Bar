@@ -45,6 +45,12 @@ public sealed class DiagnosticsSummaryServiceTests
             await File.WriteAllTextAsync(latestBackupPath, "latest backup");
             File.SetLastWriteTime(latestBackupPath, now.DateTime);
             File.SetLastWriteTime(olderBackupPath, now.AddMinutes(-30).DateTime);
+            var olderExportPath = Path.Combine(paths.DiagnosticsExportsDirectory, "diagnostics-export-20260708-150000.txt");
+            var latestExportPath = Path.Combine(paths.DiagnosticsExportsDirectory, "diagnostics-export-20260708-160000.txt");
+            await File.WriteAllTextAsync(olderExportPath, "old export");
+            await File.WriteAllTextAsync(latestExportPath, "latest export");
+            File.SetLastWriteTime(latestExportPath, now.AddMinutes(1).DateTime);
+            File.SetLastWriteTime(olderExportPath, now.AddMinutes(-29).DateTime);
 
             var summary = await service.GetSummaryAsync(CancellationToken.None);
             var viewModel = new DiagnosticsSummaryViewModel(summary);
@@ -65,6 +71,10 @@ public sealed class DiagnosticsSummaryServiceTests
             Assert.Equal(latestBackupPath, summary.LatestConfigBackupPath);
             Assert.NotNull(summary.LatestConfigBackupCreatedAt);
             Assert.Equal("old backup".Length + "latest backup".Length, summary.ConfigBackupTotalBytes);
+            Assert.Equal(2, summary.DiagnosticsExportCount);
+            Assert.Equal(latestExportPath, summary.LatestDiagnosticsExportPath);
+            Assert.NotNull(summary.LatestDiagnosticsExportCreatedAt);
+            Assert.Equal("old export".Length + "latest export".Length, summary.DiagnosticsExportTotalBytes);
             Assert.True(summary.ConfigFile.Exists);
             Assert.True(summary.SnapshotsFile.Exists);
             Assert.True(summary.HistoryFile.Exists);
@@ -72,6 +82,7 @@ public sealed class DiagnosticsSummaryServiceTests
             Assert.Contains($"Config v{AppConfigMigrations.CurrentVersion}", viewModel.ConfigText);
             Assert.Contains("2 cached snapshot", viewModel.SnapshotText);
             Assert.Contains("2 config backup", viewModel.ConfigBackupText);
+            Assert.Contains("2 diagnostics export", viewModel.DiagnosticsExportText);
             Assert.DoesNotContain("gemini-secret-ref", visibleText, StringComparison.Ordinal);
             Assert.DoesNotContain("copilot-pat-secret", visibleText, StringComparison.Ordinal);
         }
