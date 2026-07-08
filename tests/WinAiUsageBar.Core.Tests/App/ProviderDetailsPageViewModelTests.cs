@@ -107,8 +107,8 @@ public sealed class ProviderDetailsPageViewModelTests
         var now = new DateTimeOffset(2026, 7, 8, 12, 30, 0, TimeSpan.Zero);
         var snapshot = Snapshot(
             now,
-            statusMessage: "claude command missing",
-            errorMessage: "unsupported source",
+            statusMessage: @"claude command missing at C:\Tools\claude.cmd for my-org",
+            errorMessage: "unsupported source token=sample-token-value",
             providerId: ProviderId.ClaudeCode,
             displayName: "Claude Code",
             health: ProviderHealth.Unsupported,
@@ -121,6 +121,12 @@ public sealed class ProviderDetailsPageViewModelTests
         Assert.Contains("Switch to Manual mode", repairText, StringComparison.Ordinal);
         Assert.Contains("command is installed", repairText, StringComparison.Ordinal);
         Assert.Contains("health report", repairText, StringComparison.Ordinal);
+        Assert.Contains("launchable claude command", repairText, StringComparison.Ordinal);
+        Assert.Contains("provider CLI sign-in flow", repairText, StringComparison.Ordinal);
+        Assert.Contains("CLI command override", repairText, StringComparison.Ordinal);
+        Assert.DoesNotContain(@"C:\Tools\claude.cmd", repairText, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("my-org", repairText, StringComparison.Ordinal);
+        Assert.DoesNotContain("sample-token-value", repairText, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -34,6 +34,11 @@ public static class ProviderRepairGuidanceService
             lines.Add("For Codex WindowsApps or App Execution Alias startup failures, install a launchable Codex CLI outside WindowsApps, set a provider CLI command override to that path, or repair package permissions, then rerun the health report.");
         }
 
+        if (IsClaudeCliIssue(snapshot))
+        {
+            lines.Add("For Claude CLI sources, confirm the launchable claude command starts from a normal terminal, complete the provider CLI sign-in flow if needed, switch to Manual mode as a fallback, or set a provider CLI command override when PATH discovery is unreliable.");
+        }
+
         if (snapshot.ProviderId == ProviderId.GitHubCopilot
             && snapshot.SourceKind == DataSourceKind.OfficialApi
             && snapshot.Health == ProviderHealth.AuthRequired)
@@ -76,5 +81,12 @@ public static class ProviderRepairGuidanceService
             || text.Contains("app execution alias", StringComparison.OrdinalIgnoreCase)
             || text.Contains("Access is denied", StringComparison.OrdinalIgnoreCase)
             || text.Contains("could not start", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsClaudeCliIssue(UsageSnapshot snapshot)
+    {
+        return snapshot.ProviderId is ProviderId.Claude or ProviderId.ClaudeCode
+            && snapshot.SourceKind == DataSourceKind.Cli
+            && snapshot.Health is not ProviderHealth.Ok;
     }
 }
