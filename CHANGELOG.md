@@ -2,6 +2,14 @@
 
 All notable changes to WinAI Usage Bar are documented here.
 
+## 0.1.1 - 2026-07-08
+
+### Added
+
+- GitHub Release update flow commands for checking, downloading, verifying, preparing, launching, and explicitly installing the latest update.
+- Inno Setup installer scaffold, setup executable build script, installer checksum generation, and installer verification script.
+- Main CI installer artifact upload and draft release setup executable assets.
+
 ## 0.1.0 - 2026-07-08
 
 ### Added
