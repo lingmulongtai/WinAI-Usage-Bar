@@ -55,7 +55,7 @@ Record the environment for each run.
 | --- | --- | --- | --- |
 | Open Overview | Provider cards, actions, and first-run setup checklist render |  |  |
 | Open Providers | Provider editors render and save validation works |  |  |
-| Open Provider Details | Detailed snapshot rows render without secret values |  |  |
+| Open Provider Details | Detailed snapshot rows and repair guidance render without secret values |  |  |
 | Open Appearance | Theme and start-at-login controls render |  |  |
 | Open Widget | Widget settings render and enforce one to three providers |  |  |
 | Open History | History summary renders without raw snapshot messages |  |  |

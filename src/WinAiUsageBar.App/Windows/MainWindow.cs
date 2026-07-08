@@ -245,6 +245,10 @@ public sealed class MainWindow : Window
         AddDetailSection(stack, "Identity", provider.IdentityLines);
         AddDetailSection(stack, "Usage", provider.UsageLines);
         AddDetailSection(stack, "Credits", provider.CreditLines);
+        if (provider.HasRepairLines)
+        {
+            AddDetailSection(stack, "Repair guidance", provider.RepairLines);
+        }
 
         if (provider.HasStatusText)
         {

@@ -36,6 +36,8 @@ public sealed class ProviderDetailsPageViewModelTests
         Assert.Contains("Secondary remaining: 90%", provider.UsageLines);
         Assert.Contains("Balance: 12.34 USD", provider.CreditLines);
         Assert.Contains("Tokens last 31 days: 42,000", provider.CreditLines);
+        Assert.True(provider.HasRepairLines);
+        Assert.Contains(provider.RepairLines, line => line.Contains("Review the status message", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -56,6 +58,105 @@ public sealed class ProviderDetailsPageViewModelTests
         Assert.DoesNotContain("ghp_123456789abcdef", provider.ErrorText, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Constructor_HidesRepairGuidanceForOkProviders()
+    {
+        var now = new DateTimeOffset(2026, 7, 8, 12, 30, 0, TimeSpan.Zero);
+        var snapshot = Snapshot(
+            now,
+            statusMessage: "Provider is healthy.",
+            errorMessage: null,
+            health: ProviderHealth.Ok,
+            sourceKind: DataSourceKind.Manual);
+
+        var viewModel = new ProviderDetailsPageViewModel([snapshot], nowProvider: () => now);
+        var provider = Assert.Single(viewModel.Providers);
+
+        Assert.False(provider.HasRepairLines);
+        Assert.Empty(provider.RepairLines);
+    }
+
+    [Fact]
+    public void Constructor_AddsAuthRepairGuidanceWithoutLeakingSecretReferences()
+    {
+        var now = new DateTimeOffset(2026, 7, 8, 12, 30, 0, TimeSpan.Zero);
+        var snapshot = Snapshot(
+            now,
+            statusMessage: "missing github-copilot-pat for my-org",
+            errorMessage: "token=ghp_123456789abcdef",
+            providerId: ProviderId.GitHubCopilot,
+            displayName: "GitHub Copilot",
+            health: ProviderHealth.AuthRequired,
+            sourceKind: DataSourceKind.OfficialApi);
+
+        var viewModel = new ProviderDetailsPageViewModel([snapshot], nowProvider: () => now);
+        var provider = Assert.Single(viewModel.Providers);
+        var repairText = string.Join(Environment.NewLine, provider.RepairLines);
+
+        Assert.True(provider.HasRepairLines);
+        Assert.Contains("Reconnect credentials", repairText, StringComparison.Ordinal);
+        Assert.Contains("PAT secret reference", repairText, StringComparison.Ordinal);
+        Assert.DoesNotContain("github-copilot-pat", repairText, StringComparison.Ordinal);
+        Assert.DoesNotContain("my-org", repairText, StringComparison.Ordinal);
+        Assert.DoesNotContain("ghp_123456789abcdef", repairText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Constructor_AddsUnsupportedCliRepairGuidance()
+    {
+        var now = new DateTimeOffset(2026, 7, 8, 12, 30, 0, TimeSpan.Zero);
+        var snapshot = Snapshot(
+            now,
+            statusMessage: "claude command missing",
+            errorMessage: "unsupported source",
+            providerId: ProviderId.ClaudeCode,
+            displayName: "Claude Code",
+            health: ProviderHealth.Unsupported,
+            sourceKind: DataSourceKind.Cli);
+
+        var viewModel = new ProviderDetailsPageViewModel([snapshot], nowProvider: () => now);
+        var provider = Assert.Single(viewModel.Providers);
+        var repairText = string.Join(Environment.NewLine, provider.RepairLines);
+
+        Assert.Contains("Switch to Manual mode", repairText, StringComparison.Ordinal);
+        Assert.Contains("command is installed", repairText, StringComparison.Ordinal);
+        Assert.Contains("health report", repairText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Constructor_AddsErrorAndUnknownRepairGuidance()
+    {
+        var now = new DateTimeOffset(2026, 7, 8, 12, 30, 0, TimeSpan.Zero);
+        var errorSnapshot = Snapshot(
+            now,
+            statusMessage: "api failed",
+            errorMessage: "request failed",
+            providerId: ProviderId.Gemini,
+            displayName: "Gemini",
+            health: ProviderHealth.Error,
+            sourceKind: DataSourceKind.OfficialApi);
+        var unknownSnapshot = Snapshot(
+            now,
+            statusMessage: null,
+            errorMessage: null,
+            providerId: ProviderId.OpenCodeZen,
+            displayName: "OpenCode Zen",
+            health: ProviderHealth.Unknown,
+            sourceKind: DataSourceKind.Manual);
+
+        var viewModel = new ProviderDetailsPageViewModel(
+            [errorSnapshot, unknownSnapshot],
+            nowProvider: () => now);
+
+        var errorProvider = viewModel.Providers.Single(provider => provider.DisplayName == "Gemini");
+        var unknownProvider = viewModel.Providers.Single(provider => provider.DisplayName == "OpenCode Zen");
+
+        Assert.Contains(errorProvider.RepairLines, line => line.Contains("export diagnostics", StringComparison.Ordinal));
+        Assert.Contains(errorProvider.RepairLines, line => line.Contains("secret references", StringComparison.Ordinal));
+        Assert.Contains(unknownProvider.RepairLines, line => line.Contains("Refresh now", StringComparison.Ordinal));
+        Assert.Contains(unknownProvider.RepairLines, line => line.Contains("Manual mode", StringComparison.Ordinal));
+    }
+
     private static UsageSnapshot Snapshot(DateTimeOffset updatedAt)
     {
         return Snapshot(
@@ -67,12 +168,16 @@ public sealed class ProviderDetailsPageViewModelTests
     private static UsageSnapshot Snapshot(
         DateTimeOffset updatedAt,
         string? statusMessage,
-        string? errorMessage)
+        string? errorMessage,
+        ProviderId providerId = ProviderId.Codex,
+        string displayName = "Codex",
+        ProviderHealth health = ProviderHealth.Warning,
+        DataSourceKind sourceKind = DataSourceKind.LocalAppServer)
     {
         return new UsageSnapshot(
-            ProviderId.Codex,
-            "Codex",
-            ProviderHealth.Warning,
+            providerId,
+            displayName,
+            health,
             new ProviderIdentity(
                 "user@example.com",
                 "Primary account",
@@ -101,7 +206,7 @@ public sealed class ProviderDetailsPageViewModelTests
                 Currency: "USD",
                 MonthToDateCost: 5.67m,
                 TokensLast31Days: 42000),
-            DataSourceKind.LocalAppServer,
+            sourceKind,
             updatedAt,
             statusMessage,
             errorMessage);

@@ -63,8 +63,11 @@ Provider Details shows current provider snapshots in a fuller non-secret format:
 - Primary and secondary usage windows
 - Credits, cost, and token totals
 - Redacted status and error text
+- Non-secret repair guidance for warning, auth-required, unsupported, error, and unknown states
 
 The History page summarizes retained `history.ndjson` data without displaying raw snapshot content. It shows total valid entries, invalid line count, earliest/latest update timestamps, and per-provider entry count, latest health, latest remaining percent, and latest source kind. It must not display raw status messages, error messages, account identities, or other unredacted snapshot payload text from history.
+
+Provider repair guidance is derived from provider ID, health, and source kind. It should suggest safe next steps such as reconnecting credentials through Privacy & Data, checking CLI availability, switching to Manual mode, exporting diagnostics, or refreshing again. It must not display secret names, secret values, tokens, raw diagnostics, or configured account scope values.
 
 The first-run setup checklist guides users through enabling providers, choosing supported source modes, and preparing API credential or scope references when an API-backed source needs them. Checklist text may describe provider setup state, but it must not display secret names, secret values, or account scope values.
 
