@@ -86,6 +86,26 @@ public sealed class SecurityTests
     }
 
     [Fact]
+    public void RedactForSupportExport_RemovesLocalUserProfilePaths()
+    {
+        var text = """
+            diagnostics failed at C:\Users\person\OneDrive - School Name\WinAI\diagnostics.log
+            {"path":"C:\\Users\\person\\AppData\\Roaming\\WinAiUsageBar\\config.json","visible":"keep"}
+            """;
+
+        var redacted = DiagnosticRedactor.RedactForSupportExport(text);
+        var display = DiagnosticRedactor.RedactForDisplay(text);
+
+        Assert.Contains("keep", redacted, StringComparison.Ordinal);
+        Assert.Contains("[LOCAL_PATH]", redacted, StringComparison.Ordinal);
+        Assert.DoesNotContain("C:\\Users", redacted, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("person", redacted, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("School Name", redacted, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("AppData", redacted, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("C:\\Users\\person", display, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task FileAppDiagnosticsLog_RedactsMessagesAndExceptions()
     {
         var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));

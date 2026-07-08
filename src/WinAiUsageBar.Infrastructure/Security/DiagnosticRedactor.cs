@@ -50,6 +50,8 @@ public static partial class DiagnosticRedactor
 
         redacted = SupportExportQuotedKeyValueRegex().Replace(redacted, "$1[REDACTED]$3");
         redacted = SupportExportBareKeyValueRegex().Replace(redacted, "$1[REDACTED]");
+        redacted = EscapedWindowsUserProfilePathRegex().Replace(redacted, "[LOCAL_PATH]");
+        redacted = WindowsUserProfilePathRegex().Replace(redacted, "[LOCAL_PATH]");
         redacted = EmailRegex().Replace(redacted, "[REDACTED]");
         return redacted;
     }
@@ -86,6 +88,12 @@ public static partial class DiagnosticRedactor
 
     [GeneratedRegex(@"(?i)((?:""?(?:email|userEmail|accountName|account|organization|org|workspace|enterpriseSlug|enterprise|secretName|patSecretName|commandPathOverride)""?)\s*[:=]\s*)[^\s,;}]+")]
     private static partial Regex SupportExportBareKeyValueRegex();
+
+    [GeneratedRegex(@"(?i)\b[A-Z]:\\\\Users\\\\[^\r\n""'`]+")]
+    private static partial Regex EscapedWindowsUserProfilePathRegex();
+
+    [GeneratedRegex(@"(?i)\b[A-Z]:\\Users\\[^\r\n""'`]+")]
+    private static partial Regex WindowsUserProfilePathRegex();
 
     [GeneratedRegex(@"(?i)\b[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}\b")]
     private static partial Regex EmailRegex();
