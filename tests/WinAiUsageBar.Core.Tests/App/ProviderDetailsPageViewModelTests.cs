@@ -124,6 +124,29 @@ public sealed class ProviderDetailsPageViewModelTests
     }
 
     [Fact]
+    public void Constructor_AddsCodexWindowsAppsRepairGuidance()
+    {
+        var now = new DateTimeOffset(2026, 7, 8, 12, 30, 0, TimeSpan.Zero);
+        var snapshot = Snapshot(
+            now,
+            statusMessage: "Codex CLI was found but Windows could not start it.",
+            errorMessage: @"Access is denied for C:\Program Files\WindowsApps\OpenAI.Codex\codex.exe",
+            providerId: ProviderId.Codex,
+            displayName: "Codex",
+            health: ProviderHealth.Unsupported,
+            sourceKind: DataSourceKind.LocalAppServer);
+
+        var viewModel = new ProviderDetailsPageViewModel([snapshot], nowProvider: () => now);
+        var provider = Assert.Single(viewModel.Providers);
+        var repairText = string.Join(Environment.NewLine, provider.RepairLines);
+
+        Assert.Contains("WindowsApps", repairText, StringComparison.Ordinal);
+        Assert.Contains("App Execution Alias", repairText, StringComparison.Ordinal);
+        Assert.Contains("health report", repairText, StringComparison.Ordinal);
+        Assert.DoesNotContain(@"C:\Program Files\WindowsApps", repairText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Constructor_AddsErrorAndUnknownRepairGuidance()
     {
         var now = new DateTimeOffset(2026, 7, 8, 12, 30, 0, TimeSpan.Zero);

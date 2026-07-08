@@ -62,7 +62,7 @@ public sealed class CommandLineRefreshReportFormatterTests
             "Codex",
             ProviderHealth.Unsupported,
             DataSourceKind.LocalAppServer,
-            "Codex CLI could not start with token=start-secret",
+            "Codex CLI could not start from WindowsApps with token=start-secret",
             "cookie=error-secret",
             generatedAt);
 
@@ -74,6 +74,7 @@ public sealed class CommandLineRefreshReportFormatterTests
         Assert.Contains("Repair:", report, StringComparison.Ordinal);
         Assert.Contains("Switch to Manual mode", report, StringComparison.Ordinal);
         Assert.Contains("local provider command can start", report, StringComparison.Ordinal);
+        Assert.Contains("App Execution Alias", report, StringComparison.Ordinal);
         Assert.Contains("[REDACTED]", report, StringComparison.Ordinal);
         Assert.DoesNotContain("start-secret", report, StringComparison.Ordinal);
         Assert.DoesNotContain("error-secret", report, StringComparison.Ordinal);
