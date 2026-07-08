@@ -3,6 +3,7 @@ using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Core.Models;
 using WinAiUsageBar.Infrastructure.Process;
 using WinAiUsageBar.Infrastructure.Storage;
+using WinAiUsageBar.Infrastructure.Updates;
 
 namespace WinAiUsageBar.Core.Tests.App;
 
@@ -173,6 +174,58 @@ public sealed class CommandLineActionsTests
         }
     }
 
+    [Fact]
+    public async Task CheckForUpdatesAsync_FormatsUpdateCheckResult()
+    {
+        var result = await CommandLineActions.CheckForUpdatesAsync(
+            new AppInfo("WinAI Usage Bar", "0.1.0.0", "0.1.0+local"),
+            new FakeUpdateCheckService(new ReleaseUpdateCheckResult(
+                UpdateCheckStatus.UpdateAvailable,
+                CurrentVersion: "0.1.0",
+                LatestVersion: "0.2.0",
+                "A newer GitHub release is available.",
+                IsUpdateAvailable: true,
+                new Uri("https://example.test/releases/v0.2.0"),
+                new UpdatePackageAsset(
+                    "WinAIUsageBar-0.2.0-win-x64.zip",
+                    new Uri("https://example.test/package.zip"),
+                    2048),
+                new UpdatePackageAsset(
+                    "WinAIUsageBar-0.2.0-win-x64.zip.sha256",
+                    new Uri("https://example.test/package.zip.sha256"),
+                    128))),
+            CancellationToken.None);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("Update check", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Status: UpdateAvailable", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Current version: 0.1.0", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Latest version: 0.2.0", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Update available: yes", result.Output, StringComparison.Ordinal);
+        Assert.Contains("WinAIUsageBar-0.2.0-win-x64.zip", result.Output, StringComparison.Ordinal);
+        Assert.Contains("package.zip.sha256", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CheckForUpdatesAsync_ReturnsNonZeroForUpdateCheckErrors()
+    {
+        var result = await CommandLineActions.CheckForUpdatesAsync(
+            new AppInfo("WinAI Usage Bar", "0.1.0.0", "0.1.0"),
+            new FakeUpdateCheckService(new ReleaseUpdateCheckResult(
+                UpdateCheckStatus.Error,
+                CurrentVersion: "0.1.0",
+                LatestVersion: null,
+                "network failed",
+                IsUpdateAvailable: false,
+                ReleasePageUrl: null,
+                Package: null,
+                Checksum: null)),
+            CancellationToken.None);
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("network failed", result.Output, StringComparison.Ordinal);
+    }
+
     private static AppDataPaths TestPaths()
     {
         return new AppDataPaths(Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N")));
@@ -198,6 +251,17 @@ public sealed class CommandLineActionsTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult(new CliEnvironmentReport([]));
+        }
+    }
+
+    private sealed class FakeUpdateCheckService(ReleaseUpdateCheckResult result) : IReleaseUpdateCheckService
+    {
+        public Task<ReleaseUpdateCheckResult> CheckAsync(
+            string currentVersion,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(result);
         }
     }
 }

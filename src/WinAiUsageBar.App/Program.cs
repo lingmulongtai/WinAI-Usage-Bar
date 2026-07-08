@@ -23,7 +23,8 @@ public static class Program
             AppInfoProvider.Get,
             CancellationToken.None,
             refreshOnce: CommandLineActions.RefreshOnceAsync,
-            pruneSupportArtifacts: CommandLineActions.PruneSupportArtifactsAsync)
+            pruneSupportArtifacts: CommandLineActions.PruneSupportArtifactsAsync,
+            checkForUpdates: CommandLineActions.CheckForUpdatesAsync)
             .GetAwaiter()
             .GetResult();
 

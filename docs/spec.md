@@ -106,6 +106,8 @@ The Privacy & Data page can prune old retained support artifacts for config back
 
 The CLI can run the same support artifact pruning with `--prune-support-artifacts [--keep-newest <N>]`. The default keep count is 5. Invalid, missing, duplicate, or unknown prune options must exit with code 2 and print help. Successful output must include non-secret matched, kept, deleted, and freed-byte counts for config backups and diagnostics exports.
 
+The CLI can check for GitHub Release updates with `--check-for-updates`. The check should use the public latest-release endpoint for `lingmulongtai/WinAI-Usage-Bar`, require no authentication, parse release tags such as `v0.1.1`, compare them with the current app informational version after stripping build metadata, and locate `WinAIUsageBar-<version>-win-x64.zip` plus its `.sha256` asset. Missing releases, missing assets, invalid versions, and network errors must be reported as non-crashing status output. This is the foundation for the later download/install updater flow.
+
 The Privacy & Data page can export a timestamped `config.json` backup under `config-backups/`. Backups contain configuration settings only. They must not copy secret store files or secret values; configured secret names may remain as non-secret references so users can reconnect existing local secrets after restore. Backup export and rollback writes should use per-write unique temp files and add a numeric filename suffix when the timestamp-based backup name already exists.
 
 The CLI can validate a config backup with `--validate-config-backup <path>`. Validation parses the file, runs current config migrations, and reports non-secret counts and warnings without applying the backup or modifying app data.

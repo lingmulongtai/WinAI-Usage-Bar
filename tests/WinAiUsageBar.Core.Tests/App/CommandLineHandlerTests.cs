@@ -53,6 +53,7 @@ public sealed class CommandLineHandlerTests
         Assert.Contains("--provider <ProviderId>", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--source <DataSourceKind>", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--provider-catalog", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--check-for-updates", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--prune-support-artifacts", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--keep-newest <N>", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--validate-config-backup", output.ToString(), StringComparison.Ordinal);
@@ -318,6 +319,60 @@ public sealed class CommandLineHandlerTests
         Assert.Equal(0, result.ExitCode);
         Assert.Equal(1, providerCatalogCount);
         Assert.Contains("provider catalog body", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ChecksForUpdates()
+    {
+        using var output = new StringWriter();
+        var updateCheckCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--check-for-updates"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            checkForUpdates: cancellationToken =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                updateCheckCount++;
+                return Task.FromResult(new CommandLineActionResult("update check body", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(1, updateCheckCount);
+        Assert.Contains("update check body", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ReturnsErrorWhenCheckForUpdatesIsUnavailable()
+    {
+        using var error = new StringWriter();
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--check-for-updates"],
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains("unavailable", error.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]

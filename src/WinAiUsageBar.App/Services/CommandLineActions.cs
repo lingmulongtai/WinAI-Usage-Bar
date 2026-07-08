@@ -5,6 +5,7 @@ using WinAiUsageBar.Infrastructure.Diagnostics;
 using WinAiUsageBar.Infrastructure.Notifications;
 using WinAiUsageBar.Infrastructure.Process;
 using WinAiUsageBar.Infrastructure.Storage;
+using WinAiUsageBar.Infrastructure.Updates;
 
 namespace WinAiUsageBar.App.Services;
 
@@ -65,6 +66,23 @@ public static class CommandLineActions
     public static string CreateProviderCatalog()
     {
         return CommandLineProviderCatalogFormatter.Format(ProviderDescriptors.All);
+    }
+
+    public static async Task<CommandLineActionResult> CheckForUpdatesAsync(CancellationToken cancellationToken)
+    {
+        var service = new ReleaseUpdateCheckService(new GitHubLatestReleaseClient());
+        return await CheckForUpdatesAsync(AppInfoProvider.Get(), service, cancellationToken).ConfigureAwait(false);
+    }
+
+    public static async Task<CommandLineActionResult> CheckForUpdatesAsync(
+        AppInfo appInfo,
+        IReleaseUpdateCheckService service,
+        CancellationToken cancellationToken)
+    {
+        var result = await service.CheckAsync(appInfo.InformationalVersion, cancellationToken).ConfigureAwait(false);
+        return new CommandLineActionResult(
+            CommandLineUpdateCheckFormatter.Format(result),
+            result.Status == UpdateCheckStatus.Error ? 1 : 0);
     }
 
     public static async Task<CommandLineActionResult> PruneSupportArtifactsAsync(
