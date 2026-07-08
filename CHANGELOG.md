@@ -6,6 +6,7 @@ All notable changes to WinAI Usage Bar are documented here.
 
 ### Added
 
+- Published release dogfooding can now exercise the startup update policy path with isolated app data.
 - Reconcile app-owned update `install-result.json` files into saved update status during startup checks and health reports.
 
 ## 0.1.4 - 2026-07-08

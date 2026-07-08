@@ -123,6 +123,14 @@ Dogfood a published release-to-latest update flow without touching normal app da
 This downloads the older published zip, extracts it into an isolated temp workspace, and runs the older executable against the real GitHub latest-release endpoint. Releases before `v0.1.3` do not support `WINAIUSAGEBAR_APPDATA`, so the helper safely stops after discovery for those versions. For source releases `v0.1.3` and newer, pass `-Apply` when you want to download, prepare, and apply the latest update to the disposable extracted install directory.
 Add `-AssertNormalAppDataUnchanged` when you want the helper to snapshot the normal `%AppData%\WinAiUsageBar\updates` directory before and after the isolated run and fail if it changed.
 
+Dogfood the published startup update policy path with isolated app data:
+
+```powershell
+.\scripts\test-published-update-flow.ps1 -FromTag v0.1.4 -ExpectedLatestTag v0.1.5 -StartupPolicy -Apply -AssertNormalAppDataUnchanged
+```
+
+`-StartupPolicy` requires a source release that exposes `--run-startup-update-check` (`v0.1.4` or newer). It configures the extracted older release to enable startup update checks, verified automatic download, and guarded automatic install launch, then runs the startup policy command. With `-Apply`, the helper waits for the startup policy-launched script to update only the disposable extracted install directory, checks the updated version, checks `install-result.json` when the source release reports a result path, and checks `--health-report` reconciliation when the target release supports it.
+
 Dogfood the current updater implementation as if it were an older installed version:
 
 ```powershell

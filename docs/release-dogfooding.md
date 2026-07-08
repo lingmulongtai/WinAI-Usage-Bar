@@ -50,6 +50,30 @@ The helper downloads the older release zip from GitHub, extracts it into an isol
 
 Add `-AssertNormalAppDataUnchanged` to snapshot the normal `%AppData%\WinAiUsageBar\updates` directory before and after the isolated run. The helper fails if files are added, removed, or changed there.
 
+Add `-StartupPolicy` to exercise the normal startup update policy entrypoint instead of the explicit update commands:
+
+```powershell
+.\scripts\test-published-update-flow.ps1 -FromTag v0.1.4 -ExpectedLatestTag v0.1.5 -StartupPolicy -Apply -AssertNormalAppDataUnchanged
+```
+
+The startup-policy mode requires a source release that exposes `--run-startup-update-check` (`v0.1.4` or newer). It creates isolated app data, enables startup update checks, automatic download, and guarded automatic install launch in the extracted release's `config.json`, then runs the startup policy command. With `-Apply`, it waits for the startup policy-launched script to update only the disposable extracted install directory, verifies the updated version, checks `install-result.json` when the source release reports a result path, runs `--health-report`, and verifies the reconciled install result status when the target release supports that newer reconciliation behavior.
+
+## 2026-07-09 - Published v0.1.3 Startup Policy Guard
+
+Result: guard passed.
+
+What was checked:
+
+- Tried the startup-policy dogfood path against published `v0.1.3`.
+- Confirmed `v0.1.3` does not expose `--run-startup-update-check`.
+- Updated the helper to reject `-StartupPolicy` for source releases older than `v0.1.4` before downloading any artifact.
+
+Observed output summary:
+
+```text
+Startup policy dogfooding requires a source release v0.1.4 or newer because earlier releases do not expose --run-startup-update-check.
+```
+
 ## 2026-07-08 - Prepared Apply Script Handles Unicode Workspace Path
 
 Result: passed on current `main` after fixing generated script encoding.

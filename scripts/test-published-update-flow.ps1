@@ -4,6 +4,7 @@ param(
     [string]$Repository = "lingmulongtai/WinAI-Usage-Bar",
     [string]$WorkDirectory = "",
     [switch]$Apply,
+    [switch]$StartupPolicy,
     [switch]$AssertNormalAppDataUnchanged
 )
 
@@ -153,6 +154,102 @@ function Get-OutputValue {
     return $match.Groups[1].Value.Trim()
 }
 
+function Get-OptionalOutputValue {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Text,
+        [Parameter(Mandatory = $true)]
+        [string]$Label
+    )
+
+    $match = [regex]::Match($Text, "(?m)^$([regex]::Escape($Label)):\s*(.+)$")
+    if (-not $match.Success) {
+        return ""
+    }
+
+    $value = $match.Groups[1].Value.Trim()
+    if ($value.Equals("n/a", [StringComparison]::OrdinalIgnoreCase)) {
+        return ""
+    }
+
+    return $value
+}
+
+function Enable-StartupUpdatePolicy {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ConfigPath
+    )
+
+    if (-not (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) {
+        throw "Config was not created: $ConfigPath"
+    }
+
+    $config = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
+    if ($null -eq $config.updates) {
+        throw "Config does not contain an updates section: $ConfigPath"
+    }
+
+    $config.updates.checkOnStartup = $true
+    $config.updates.minimumCheckIntervalHours = 0
+    $config.updates.downloadAutomatically = $true
+    $config.updates.installAutomatically = $true
+    $config.updates.lastCheckedAt = $null
+    $config.updates.lastInstallLaunchedVersion = $null
+    $config | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $ConfigPath -Encoding UTF8
+}
+
+function Wait-ForFile {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [int]$TimeoutSeconds = 120
+    )
+
+    $deadline = [DateTimeOffset]::Now.AddSeconds($TimeoutSeconds)
+    while ([DateTimeOffset]::Now -lt $deadline) {
+        if (Test-Path -LiteralPath $Path -PathType Leaf) {
+            return
+        }
+
+        Start-Sleep -Milliseconds 500
+    }
+
+    throw "Timed out waiting for file: $Path"
+}
+
+function Wait-ForVersionOutput {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath,
+        [Parameter(Mandatory = $true)]
+        [string]$OutputPath,
+        [Parameter(Mandatory = $true)]
+        [string]$ErrorPath,
+        [string]$ExpectedVersion = "",
+        [int]$TimeoutSeconds = 120
+    )
+
+    $deadline = [DateTimeOffset]::Now.AddSeconds($TimeoutSeconds)
+    do {
+        $exitCode = Invoke-LoggedProcess `
+            -FilePath $FilePath `
+            -Arguments @("--version") `
+            -OutputPath $OutputPath `
+            -ErrorPath $ErrorPath
+        $text = Read-RequiredText -Path $OutputPath
+        if ($exitCode -eq 0 -and (
+            [string]::IsNullOrWhiteSpace($ExpectedVersion) -or
+            $text.IndexOf($ExpectedVersion, [StringComparison]::OrdinalIgnoreCase) -ge 0)) {
+            return $text
+        }
+
+        Start-Sleep -Milliseconds 500
+    } while ([DateTimeOffset]::Now -lt $deadline)
+
+    throw "Timed out waiting for version output to contain '$ExpectedVersion'. See $OutputPath and $ErrorPath"
+}
+
 function Get-NormalUpdatesDirectory {
     $appData = [Environment]::GetFolderPath([Environment+SpecialFolder]::ApplicationData)
     if ([string]::IsNullOrWhiteSpace($appData)) {
@@ -248,6 +345,10 @@ else {
 }
 $supportsIsolatedAppData = [version]$fromVersion -ge [version]"0.1.3"
 
+if ($StartupPolicy -and [version]$fromVersion -lt [version]"0.1.4") {
+    throw "Startup policy dogfooding requires a source release v0.1.4 or newer because earlier releases do not expose --run-startup-update-check. Value: v$fromVersion"
+}
+
 if ([string]::IsNullOrWhiteSpace($WorkDirectory)) {
     $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
     $WorkDirectory = Join-Path ([System.IO.Path]::GetTempPath()) "WinAIUsageBar\published-update-$fromVersion-$timestamp"
@@ -334,6 +435,123 @@ try {
         Write-Host "Work directory: $workRoot"
         Write-Host "Version output: $versionOut"
         Write-Host "Check output: $checkOut"
+        return
+    }
+
+    if ($StartupPolicy) {
+        $healthBeforeOut = Join-Path $logsRoot "startup-policy-health-before.out.txt"
+        $healthBeforeErr = Join-Path $logsRoot "startup-policy-health-before.err.txt"
+        $healthBeforeExit = Invoke-LoggedProcess `
+            -FilePath $appExe `
+            -Arguments @("--health-report") `
+            -OutputPath $healthBeforeOut `
+            -ErrorPath $healthBeforeErr
+        if ($healthBeforeExit -ne 0) {
+            throw "Startup policy preflight health report failed with exit code $healthBeforeExit. See $healthBeforeOut and $healthBeforeErr"
+        }
+
+        $configPath = Join-Path $appDataRoot "config.json"
+        Enable-StartupUpdatePolicy -ConfigPath $configPath
+
+        $startupOut = Join-Path $logsRoot "startup-policy.out.txt"
+        $startupErr = Join-Path $logsRoot "startup-policy.err.txt"
+        $startupExit = Invoke-LoggedProcess `
+            -FilePath $appExe `
+            -Arguments @("--run-startup-update-check") `
+            -OutputPath $startupOut `
+            -ErrorPath $startupErr
+        $startupText = Read-RequiredText -Path $startupOut
+        if ($startupExit -ne 0) {
+            throw "Startup update policy failed with exit code $startupExit. See $startupOut and $startupErr"
+        }
+
+        Assert-OutputContains -Text $startupText -Expected "Status: InstallLaunched" -Description "Startup policy output"
+        if (-not [string]::IsNullOrWhiteSpace($expectedLatestVersion)) {
+            Assert-OutputContains -Text $startupText -Expected "Latest version: $expectedLatestVersion" -Description "Startup policy output"
+        }
+
+        $packagePath = Get-OutputValue -Text $startupText -Label "Package path"
+        $scriptPath = Get-OutputValue -Text $startupText -Label "Install script"
+        $resultPath = Get-OptionalOutputValue -Text $startupText -Label "Install result"
+        if (-not (Test-Path -LiteralPath $packagePath -PathType Leaf)) {
+            throw "Startup policy package path was not found: $packagePath"
+        }
+
+        if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) {
+            throw "Startup policy install script was not found: $scriptPath"
+        }
+
+        Assert-PathInside -ChildPath $packagePath -ParentPath $appDataRoot -Description "Startup policy package path"
+        Assert-PathInside -ChildPath $scriptPath -ParentPath $appDataRoot -Description "Startup policy install script"
+        if (-not [string]::IsNullOrWhiteSpace($resultPath)) {
+            Assert-PathInside -ChildPath $resultPath -ParentPath $appDataRoot -Description "Startup policy install result path"
+        }
+
+        Write-Host "Published startup update policy launched successfully."
+        Write-Host "Work directory: $workRoot"
+        Write-Host "Version output: $versionOut"
+        Write-Host "Check output: $checkOut"
+        Write-Host "Preflight health output: $healthBeforeOut"
+        Write-Host "Startup policy output: $startupOut"
+        Write-Host "Prepared update script: $scriptPath"
+        if (-not [string]::IsNullOrWhiteSpace($resultPath)) {
+            Write-Host "Expected install result: $resultPath"
+        }
+        else {
+            Write-Warning "Startup policy output did not include an install result path. The source published release may predate install-result path reporting."
+        }
+
+        if ($Apply) {
+            Assert-PathInside -ChildPath $installRoot -ParentPath $workRoot -Description "Apply install directory"
+            if (-not [string]::IsNullOrWhiteSpace($resultPath)) {
+                Wait-ForFile -Path $resultPath
+            }
+
+            $updatedVersionOut = Join-Path $logsRoot "startup-policy-updated-version.out.txt"
+            $updatedVersionErr = Join-Path $logsRoot "startup-policy-updated-version.err.txt"
+            $updatedVersionText = Wait-ForVersionOutput `
+                -FilePath $appExe `
+                -OutputPath $updatedVersionOut `
+                -ErrorPath $updatedVersionErr `
+                -ExpectedVersion $expectedLatestVersion
+
+            $healthAfterOut = Join-Path $logsRoot "startup-policy-health-after.out.txt"
+            $healthAfterErr = Join-Path $logsRoot "startup-policy-health-after.err.txt"
+            $healthAfterExit = Invoke-LoggedProcess `
+                -FilePath $appExe `
+                -Arguments @("--health-report") `
+                -OutputPath $healthAfterOut `
+                -ErrorPath $healthAfterErr
+            $healthAfterText = Read-RequiredText -Path $healthAfterOut
+            if ($healthAfterExit -ne 0) {
+                throw "Startup policy post-apply health report failed with exit code $healthAfterExit. See $healthAfterOut and $healthAfterErr"
+            }
+
+            if (-not [string]::IsNullOrWhiteSpace($resultPath)) {
+                $result = Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json
+                if ($result.status -ne "Succeeded") {
+                    throw "Startup policy install-result.json did not report success. Path: $resultPath Status: $($result.status)"
+                }
+
+                if ($healthAfterText.IndexOf("Install result status: Succeeded", [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+                    Write-Host "Post-apply health report shows reconciled install result status."
+                }
+                else {
+                    Write-Warning "Post-apply health report did not show reconciled install result status. The target published release may predate install-result reconciliation."
+                }
+            }
+
+            Write-Host "Startup policy launched script applied to disposable install directory."
+            Write-Host "Updated version output: $updatedVersionOut"
+            Write-Host "Post-apply health output: $healthAfterOut"
+        }
+
+        if ($AssertNormalAppDataUnchanged) {
+            $normalUpdatesAfter = Get-DirectorySnapshot -Path $normalUpdatesPath
+            Assert-DirectorySnapshotUnchanged -Before $normalUpdatesBefore -After $normalUpdatesAfter -Path $normalUpdatesPath
+            Write-Host "Normal app data updates directory unchanged: $normalUpdatesPath"
+        }
+
         return
     }
 

@@ -1,6 +1,6 @@
 # Current State Audit
 
-Date: 2026-07-08
+Date: 2026-07-09
 
 This audit is intentionally strict. The repository has moved past a throwaway scaffold, but it is still an MVP. The design foundation is much stronger than the product completeness.
 
@@ -45,7 +45,7 @@ Overall:
 - Update CLI commands now support `--current-version <version>` for headless dogfooding of older-version update paths without changing assembly metadata or normal startup/UI behavior.
 - Update CLI formatter output now redacts user-controlled messages, paths, URLs, commands, and dogfood version strings before printing.
 - Release notes for future releases are generated explicitly from `CHANGELOG.md`, checked for English text, and passed to `gh release create` as a notes file instead of relying on generated GitHub notes.
-- Release dogfooding now includes a disposable prepared-update apply script that refuses to apply outside its work directory, a published-release discovery helper with legacy app-data guards, a current-updater full-flow helper that can simulate an older current version, and a real published `v0.1.3 -> v0.1.4` disposable update run that detected latest, downloaded, SHA256-verified, prepared, applied the update, and asserted the normal `%AppData%\WinAiUsageBar\updates` directory stayed unchanged.
+- Release dogfooding now includes a disposable prepared-update apply script that refuses to apply outside its work directory, a published-release discovery helper with legacy app-data guards, a published startup-policy helper guarded to source releases `v0.1.4` or newer, a current-updater full-flow helper that can simulate an older current version, and a real published `v0.1.3 -> v0.1.4` disposable update run that detected latest, downloaded, SHA256-verified, prepared, applied the update, and asserted the normal `%AppData%\WinAiUsageBar\updates` directory stayed unchanged.
 - Provider notifications now suppress repeated alerts for the same provider/reason during periodic refresh while still notifying when severity changes or after recovery.
 - Guided first-run checklist state, Provider Details, config backup export, backup validation, confirmed CLI restore, latest-backup in-app restore, and confirmed reset-to-default recovery are implemented.
 - Providers now includes non-secret setup guidance for source choices, Manual fallback, API references, Copilot metrics requirements, and CLI/app-server caveats.
@@ -109,7 +109,7 @@ The weak point is value density. A usage bar is only as useful as the data it ca
 ## Next Work, In Priority Order
 
 1. Dogfood release-to-release update flows.
-   `v0.1.1` seeing `v0.1.2`, `v0.1.2` seeing `v0.1.3` with a legacy app-data guard, current-updater simulated `0.1.2 -> v0.1.3`, current-updater simulated `0.1.3 -> v0.1.4`, and published `v0.1.3 -> v0.1.4` download/prepare/apply against a disposable install have passed. Next, repeat real same-install release-to-release update checks and startup update policy checks before trusting automatic install by default.
+   `v0.1.1` seeing `v0.1.2`, `v0.1.2` seeing `v0.1.3` with a legacy app-data guard, current-updater simulated `0.1.2 -> v0.1.3`, current-updater simulated `0.1.3 -> v0.1.4`, and published `v0.1.3 -> v0.1.4` download/prepare/apply against a disposable install have passed. The helper can now exercise the published startup update policy path too. Next, repeat real same-install release-to-release update checks before trusting automatic install by default.
 
 2. Run the manual Windows verification checklist.
    Cover tray click, context menu, widget placement, topmost behavior, notifications, startup registration, DPI, taskbar position, and multi-monitor.
@@ -133,7 +133,7 @@ The weak point is value density. A usage bar is only as useful as the data it ca
    Even a minimal app-start plus window activation check would catch major WinUI regressions.
 
 9. Dogfood the startup update policy.
-   The app can now check GitHub release metadata on startup with a cooldown and optionally download or launch a prepared install script without repeating the same release launch. A headless isolated no-update/cooldown run has passed. Next it needs real release-to-release startup-policy testing and a more explicit in-app confirmation story before wider use.
+   The app can now check GitHub release metadata on startup with a cooldown and optionally download or launch a prepared install script without repeating the same release launch. A headless isolated no-update/cooldown run has passed, and a published-release startup-policy dogfood helper exists. Next it needs repeated same-install release-to-release startup-policy testing and a more explicit in-app confirmation story before wider use.
 
 10. Keep release readiness gates strict as distribution matures.
    Current gates cover metadata, audit date, smoke test, package, installer, checksum, and optional manual verification report evidence.

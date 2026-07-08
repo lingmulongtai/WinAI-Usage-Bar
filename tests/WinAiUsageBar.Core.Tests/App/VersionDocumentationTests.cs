@@ -120,14 +120,23 @@ public sealed class VersionDocumentationTests
 
         Assert.Contains("WINAIUSAGEBAR_APPDATA", script, StringComparison.Ordinal);
         Assert.Contains("[switch]$Apply", script, StringComparison.Ordinal);
+        Assert.Contains("[switch]$StartupPolicy", script, StringComparison.Ordinal);
         Assert.Contains("[switch]$AssertNormalAppDataUnchanged", script, StringComparison.Ordinal);
         Assert.Contains("Assert-DirectorySnapshotUnchanged", script, StringComparison.Ordinal);
         Assert.Contains("Assert-PathInside -ChildPath $installRoot", script, StringComparison.Ordinal);
         Assert.Contains("--check-for-updates", script, StringComparison.Ordinal);
+        Assert.Contains("--run-startup-update-check", script, StringComparison.Ordinal);
+        Assert.Contains("source release v0.1.4 or newer", script, StringComparison.Ordinal);
         Assert.Contains("--download-update", script, StringComparison.Ordinal);
         Assert.Contains("--prepare-update-install", script, StringComparison.Ordinal);
+        Assert.Contains("Enable-StartupUpdatePolicy", script, StringComparison.Ordinal);
+        Assert.Contains("Get-OptionalOutputValue -Text $startupText -Label \"Install result\"", script, StringComparison.Ordinal);
+        Assert.Contains("Wait-ForFile -Path $resultPath", script, StringComparison.Ordinal);
+        Assert.Contains("Wait-ForVersionOutput", script, StringComparison.Ordinal);
         Assert.Contains("under isolated app data", script, StringComparison.Ordinal);
+        Assert.Contains("-StartupPolicy", readme, StringComparison.Ordinal);
         Assert.Contains("-AssertNormalAppDataUnchanged", readme, StringComparison.Ordinal);
+        Assert.Contains("-StartupPolicy", dogfooding, StringComparison.Ordinal);
         Assert.Contains("-AssertNormalAppDataUnchanged", dogfooding, StringComparison.Ordinal);
         Assert.Contains("test-published-update-flow.ps1", readme, StringComparison.Ordinal);
         Assert.Contains("test-published-update-flow.ps1", dogfooding, StringComparison.Ordinal);
