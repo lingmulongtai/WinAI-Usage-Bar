@@ -129,6 +129,127 @@ public sealed class FirstRunSetupViewModelTests
     }
 
     [Fact]
+    public void ProviderSetupDecisions_ExplainProviderSourceChoices()
+    {
+        var config = AppConfig.CreateDefault();
+        var codex = config.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.Codex));
+        codex.IsEnabled = true;
+        codex.SourceKind = DataSourceKind.LocalAppServer;
+        var claude = config.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.Claude));
+        claude.IsEnabled = true;
+        claude.SourceKind = DataSourceKind.Cli;
+        var gemini = config.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.Gemini));
+        gemini.IsEnabled = true;
+        gemini.SourceKind = DataSourceKind.Manual;
+
+        var viewModel = new FirstRunSetupViewModel(
+            config,
+            [
+                ProviderDescriptors.Get(ProviderId.Codex),
+                ProviderDescriptors.Get(ProviderId.Claude),
+                ProviderDescriptors.Get(ProviderId.Gemini),
+                ProviderDescriptors.Get(ProviderId.OpenCodeZen)
+            ]);
+
+        AssertDecision(
+            viewModel,
+            "Codex",
+            "Local app-server setup",
+            "signed-in local provider command",
+            "Providers");
+        AssertDecision(
+            viewModel,
+            "Claude",
+            "CLI setup",
+            "launchable provider command",
+            "Providers");
+        AssertDecision(
+            viewModel,
+            "Gemini",
+            "Manual ready",
+            "Manual fallback is ready",
+            "Providers");
+        AssertDecision(
+            viewModel,
+            "OpenCode Zen",
+            "Disabled",
+            "Leave this disabled",
+            "Providers");
+    }
+
+    [Fact]
+    public void ProviderSetupDecisions_FlagUnsupportedAndMockSources()
+    {
+        var config = AppConfig.CreateDefault();
+        var gemini = config.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.Gemini));
+        gemini.IsEnabled = true;
+        gemini.SourceKind = DataSourceKind.LocalAppServer;
+        var codex = config.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.Codex));
+        codex.IsEnabled = true;
+        codex.SourceKind = DataSourceKind.Mock;
+
+        var viewModel = new FirstRunSetupViewModel(
+            config,
+            [ProviderDescriptors.Get(ProviderId.Gemini), ProviderDescriptors.Get(ProviderId.Codex)]);
+
+        AssertDecision(
+            viewModel,
+            "Gemini",
+            "Needs attention",
+            "Choose a supported source mode",
+            "Providers");
+        AssertDecision(
+            viewModel,
+            "Codex",
+            "Mock only",
+            "UI checks only",
+            "Providers");
+    }
+
+    [Fact]
+    public void ProviderSetupDecisions_RouteMissingApiReferencesToPrivacyWithoutLeakingNames()
+    {
+        var config = AppConfig.CreateDefault();
+        var gemini = config.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.Gemini));
+        gemini.IsEnabled = true;
+        gemini.SourceKind = DataSourceKind.OfficialApi;
+        gemini.ApiKey.SecretName = "gemini-api-key";
+        var copilot = config.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.GitHubCopilot));
+        copilot.IsEnabled = true;
+        copilot.SourceKind = DataSourceKind.OfficialApi;
+        copilot.GitHubCopilot.Organization = "my-org";
+
+        var viewModel = new FirstRunSetupViewModel(
+            config,
+            [ProviderDescriptors.Get(ProviderId.Gemini), ProviderDescriptors.Get(ProviderId.GitHubCopilot)]);
+        var text = string.Join(
+            Environment.NewLine,
+            viewModel.ProviderSetupDecisions.SelectMany(decision => new[]
+            {
+                decision.ProviderName,
+                decision.StateText,
+                decision.RecommendationText,
+                decision.ActionButtonText
+            }));
+
+        AssertDecision(
+            viewModel,
+            "Gemini",
+            "API references ready",
+            "non-secret references configured",
+            "Providers");
+        AssertDecision(
+            viewModel,
+            "GitHub Copilot",
+            "Needs API references",
+            "Save the secret value",
+            "Privacy & Data");
+        Assert.DoesNotContain("gemini-api-key", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("my-org", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("secret name", text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void MarkComplete_RecordsCompletionState()
     {
         var now = new DateTimeOffset(2026, 7, 8, 13, 0, 0, TimeSpan.Zero);
@@ -142,5 +263,18 @@ public sealed class FirstRunSetupViewModelTests
 
         Assert.True(config.Onboarding.HasCompletedFirstRun);
         Assert.Equal(now, config.Onboarding.CompletedAt);
+    }
+
+    private static void AssertDecision(
+        FirstRunSetupViewModel viewModel,
+        string providerName,
+        string stateText,
+        string recommendationText,
+        string actionNavigationTag)
+    {
+        var decision = viewModel.ProviderSetupDecisions.Single(decision => decision.ProviderName == providerName);
+        Assert.Equal(stateText, decision.StateText);
+        Assert.Contains(recommendationText, decision.RecommendationText, StringComparison.Ordinal);
+        Assert.Equal(actionNavigationTag, decision.ActionNavigationTag);
     }
 }

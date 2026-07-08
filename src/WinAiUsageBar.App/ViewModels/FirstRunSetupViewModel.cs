@@ -42,6 +42,16 @@ public sealed class FirstRunSetupViewModel(
         }
     }
 
+    public IReadOnlyList<FirstRunProviderSetupDecision> ProviderSetupDecisions
+    {
+        get
+        {
+            return descriptors
+                .Select(CreateProviderSetupDecision)
+                .ToList();
+        }
+    }
+
     public IReadOnlyList<FirstRunSetupChecklistItem> ChecklistItems
     {
         get
@@ -105,6 +115,93 @@ public sealed class FirstRunSetupViewModel(
             .Where(provider => provider.IsEnabled);
     }
 
+    private FirstRunProviderSetupDecision CreateProviderSetupDecision(ProviderDescriptor descriptor)
+    {
+        var provider = config.Providers.FirstOrDefault(provider => provider.ProviderId == descriptor.Id)
+            ?? ProviderConfig.CreateDefault(descriptor);
+
+        if (!provider.IsEnabled)
+        {
+            return Decision(
+                descriptor,
+                "Disabled",
+                "Leave this disabled, or enable it in Providers if you want it on usage surfaces.",
+                "Open Providers",
+                "Providers");
+        }
+
+        if (!descriptor.SupportedSources.Contains(provider.SourceKind))
+        {
+            return Decision(
+                descriptor,
+                "Needs attention",
+                $"Choose a supported source mode: {string.Join(", ", descriptor.SupportedSources)}. Manual is the safest fallback.",
+                "Open Providers",
+                "Providers");
+        }
+
+        return provider.SourceKind switch
+        {
+            DataSourceKind.Manual => Decision(
+                descriptor,
+                "Manual ready",
+                "Manual fallback is ready. Enter usage values by hand, then switch to an automatic source later if one becomes reliable.",
+                "Open Providers",
+                "Providers"),
+            DataSourceKind.Mock => Decision(
+                descriptor,
+                "Mock only",
+                "Mock data is useful for UI checks only. Switch to Manual or a real source before relying on this provider.",
+                "Open Providers",
+                "Providers"),
+            DataSourceKind.Cli => Decision(
+                descriptor,
+                "CLI setup",
+                "CLI refresh needs a launchable provider command. Use a command override if PATH discovery is unreliable.",
+                "Open Providers",
+                "Providers"),
+            DataSourceKind.LocalAppServer => Decision(
+                descriptor,
+                "Local app-server setup",
+                "Local app-server refresh uses the signed-in local provider command and falls back to visible errors when startup or auth fails.",
+                "Open Providers",
+                "Providers"),
+            DataSourceKind.OfficialApi when NeedsApiReferences(provider) => Decision(
+                descriptor,
+                "Needs API references",
+                "Save the secret value in Privacy & Data first, then configure only non-secret references in Providers.",
+                "Open Privacy & Data",
+                "Privacy & Data"),
+            DataSourceKind.OfficialApi => Decision(
+                descriptor,
+                "API references ready",
+                "API mode has the required non-secret references configured. Refresh can test the provider without exposing values.",
+                "Open Providers",
+                "Providers"),
+            _ => Decision(
+                descriptor,
+                "Needs attention",
+                "Choose Manual mode until this source has explicit setup guidance.",
+                "Open Providers",
+                "Providers")
+        };
+    }
+
+    private static FirstRunProviderSetupDecision Decision(
+        ProviderDescriptor descriptor,
+        string stateText,
+        string recommendationText,
+        string actionButtonText,
+        string actionNavigationTag)
+    {
+        return new FirstRunProviderSetupDecision(
+            descriptor.DisplayName,
+            stateText,
+            recommendationText,
+            actionButtonText,
+            actionNavigationTag);
+    }
+
     private static bool NeedsApiReferences(ProviderConfig provider)
     {
         if (provider.SourceKind != DataSourceKind.OfficialApi)
@@ -128,5 +225,12 @@ public sealed record FirstRunSetupChecklistItem(
     bool IsComplete,
     string StateText,
     string ActionText,
+    string ActionButtonText,
+    string ActionNavigationTag);
+
+public sealed record FirstRunProviderSetupDecision(
+    string ProviderName,
+    string StateText,
+    string RecommendationText,
     string ActionButtonText,
     string ActionNavigationTag);

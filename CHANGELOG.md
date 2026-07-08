@@ -36,6 +36,7 @@ All notable changes to WinAI Usage Bar are documented here.
 - Release documentation and readiness checks now require an unsigned installer warning with GitHub Releases and SHA256 verification guidance.
 - Privacy & Data now lists recent crash report metadata without displaying crash messages or stack trace contents.
 - Compact panel placement tests now cover taskbar-edge work areas, negative-coordinate monitors, and oversized panel clamping.
+- First-run setup now shows provider-specific setup decisions for Manual, Mock, CLI, local app-server, API, disabled, and unsupported source states without exposing secrets.
 
 ## 0.1.4 - 2026-07-08
 

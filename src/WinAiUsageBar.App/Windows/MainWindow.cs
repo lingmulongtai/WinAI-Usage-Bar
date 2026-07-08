@@ -173,6 +173,16 @@ public sealed class MainWindow : Window
             stack.Children.Add(actionButton);
         }
 
+        stack.Children.Add(UiFactory.Text("Provider setup decisions", 13, FontWeights.SemiBold));
+        foreach (var decision in viewModel.ProviderSetupDecisions)
+        {
+            stack.Children.Add(UiFactory.Text($"{decision.ProviderName}: {decision.StateText}", 12, FontWeights.SemiBold));
+            stack.Children.Add(UiFactory.Text(decision.RecommendationText, 12));
+            var actionButton = new Button { Content = decision.ActionButtonText };
+            actionButton.Click += (_, _) => SelectNavigationItem(decision.ActionNavigationTag);
+            stack.Children.Add(actionButton);
+        }
+
         foreach (var line in viewModel.ProviderLines)
         {
             stack.Children.Add(UiFactory.Text(line, 12));
