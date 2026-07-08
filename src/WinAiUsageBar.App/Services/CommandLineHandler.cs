@@ -29,7 +29,8 @@ public static class CommandLineHandler
         CancellationToken cancellationToken,
         Func<CommandLineRefreshOnceOptions, CancellationToken, Task<CommandLineActionResult>>? refreshOnce = null,
         Func<CommandLinePruneSupportArtifactsOptions, CancellationToken, Task<CommandLineActionResult>>? pruneSupportArtifacts = null,
-        Func<CancellationToken, Task<CommandLineActionResult>>? checkForUpdates = null)
+        Func<CancellationToken, Task<CommandLineActionResult>>? checkForUpdates = null,
+        Func<CancellationToken, Task<CommandLineActionResult>>? downloadUpdate = null)
     {
         if (args.Count == 0)
         {
@@ -176,6 +177,21 @@ public static class CommandLineHandler
             return new CommandLineHandleResult(Handled: true, result.ExitCode);
         }
 
+        if (string.Equals(command, "--download-update", StringComparison.OrdinalIgnoreCase))
+        {
+            if (downloadUpdate is null)
+            {
+                await error.WriteLineAsync(
+                    "--download-update is unavailable in this host.".AsMemory(),
+                    cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var result = await downloadUpdate(cancellationToken).ConfigureAwait(false);
+            await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, result.ExitCode);
+        }
+
         if (string.Equals(command, "--validate-config-backup", StringComparison.OrdinalIgnoreCase))
         {
             await error.WriteLineAsync(
@@ -195,7 +211,7 @@ public static class CommandLineHandler
         WinAI Usage Bar
 
         Usage:
-          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--health-report|--refresh-once|--provider-catalog|--check-for-updates]
+          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--health-report|--refresh-once|--provider-catalog|--check-for-updates|--download-update]
           WinAiUsageBar.App.exe --refresh-once --provider <ProviderId> [--source <DataSourceKind>]
           WinAiUsageBar.App.exe --prune-support-artifacts [--keep-newest <N>]
           WinAiUsageBar.App.exe --validate-config-backup <path>
@@ -214,6 +230,7 @@ public static class CommandLineHandler
                                 Temporarily override the selected provider source for --refresh-once.
           --provider-catalog    Print supported provider descriptors without launching UI.
           --check-for-updates   Check GitHub Releases for a newer package without launching UI.
+          --download-update     Download and verify the latest GitHub Release package without installing it.
           --prune-support-artifacts
                                 Prune old config backups and diagnostics exports without launching UI.
           --keep-newest <N>     Keep the newest N matched support artifact files when pruning.

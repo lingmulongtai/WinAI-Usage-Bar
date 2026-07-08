@@ -226,6 +226,88 @@ public sealed class CommandLineActionsTests
         Assert.Contains("network failed", result.Output, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task DownloadUpdateAsync_DownloadsWhenUpdateIsAvailable()
+    {
+        var paths = TestPaths();
+        var downloader = new FakeUpdatePackageDownloader(new UpdateDownloadResult(
+            UpdateDownloadStatus.Downloaded,
+            "downloaded",
+            Path.Combine(paths.UpdatesDirectory, "WinAIUsageBar-0.2.0-win-x64.zip"),
+            Path.Combine(paths.UpdatesDirectory, "WinAIUsageBar-0.2.0-win-x64.zip.sha256"),
+            ExpectedSha256: new string('a', 64),
+            ActualSha256: new string('a', 64)));
+
+        var result = await CommandLineActions.DownloadUpdateAsync(
+            new AppInfo("WinAI Usage Bar", "0.1.0.0", "0.1.0"),
+            new FakeUpdateCheckService(AvailableUpdate()),
+            downloader,
+            paths,
+            CancellationToken.None);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(1, downloader.DownloadCount);
+        Assert.Contains("Update download", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Download status: Downloaded", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Package path:", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task DownloadUpdateAsync_SkipsWhenNoUpdateIsAvailable()
+    {
+        var paths = TestPaths();
+        var downloader = new FakeUpdatePackageDownloader(new UpdateDownloadResult(
+            UpdateDownloadStatus.Downloaded,
+            "should not run",
+            "package.zip",
+            "package.zip.sha256",
+            ExpectedSha256: null,
+            ActualSha256: null));
+
+        var result = await CommandLineActions.DownloadUpdateAsync(
+            new AppInfo("WinAI Usage Bar", "0.1.0.0", "0.1.0"),
+            new FakeUpdateCheckService(new ReleaseUpdateCheckResult(
+                UpdateCheckStatus.UpToDate,
+                CurrentVersion: "0.1.0",
+                LatestVersion: "0.1.0",
+                "The current app version is up to date.",
+                IsUpdateAvailable: false,
+                ReleasePageUrl: null,
+                Package: null,
+                Checksum: null)),
+            downloader,
+            paths,
+            CancellationToken.None);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(0, downloader.DownloadCount);
+        Assert.Contains("Download status: Skipped", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task DownloadUpdateAsync_ReturnsNonZeroWhenVerificationFails()
+    {
+        var paths = TestPaths();
+        var downloader = new FakeUpdatePackageDownloader(new UpdateDownloadResult(
+            UpdateDownloadStatus.ChecksumMismatch,
+            "hash mismatch",
+            PackagePath: null,
+            ChecksumPath: null,
+            ExpectedSha256: new string('a', 64),
+            ActualSha256: new string('b', 64)));
+
+        var result = await CommandLineActions.DownloadUpdateAsync(
+            new AppInfo("WinAI Usage Bar", "0.1.0.0", "0.1.0"),
+            new FakeUpdateCheckService(AvailableUpdate()),
+            downloader,
+            paths,
+            CancellationToken.None);
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Equal(1, downloader.DownloadCount);
+        Assert.Contains("Download status: ChecksumMismatch", result.Output, StringComparison.Ordinal);
+    }
+
     private static AppDataPaths TestPaths()
     {
         return new AppDataPaths(Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N")));
@@ -263,5 +345,43 @@ public sealed class CommandLineActionsTests
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult(result);
         }
+    }
+
+    private sealed class FakeUpdatePackageDownloader(UpdateDownloadResult result) : IUpdatePackageDownloader
+    {
+        public int DownloadCount { get; private set; }
+
+        public Task<UpdateDownloadResult> DownloadAndVerifyAsync(
+            UpdatePackageAsset package,
+            UpdatePackageAsset checksum,
+            string targetDirectory,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            DownloadCount++;
+            Assert.Equal("WinAIUsageBar-0.2.0-win-x64.zip", package.Name);
+            Assert.Equal("WinAIUsageBar-0.2.0-win-x64.zip.sha256", checksum.Name);
+            Assert.False(string.IsNullOrWhiteSpace(targetDirectory));
+            return Task.FromResult(result);
+        }
+    }
+
+    private static ReleaseUpdateCheckResult AvailableUpdate()
+    {
+        return new ReleaseUpdateCheckResult(
+            UpdateCheckStatus.UpdateAvailable,
+            CurrentVersion: "0.1.0",
+            LatestVersion: "0.2.0",
+            "A newer GitHub release is available.",
+            IsUpdateAvailable: true,
+            new Uri("https://example.test/releases/v0.2.0"),
+            new UpdatePackageAsset(
+                "WinAIUsageBar-0.2.0-win-x64.zip",
+                new Uri("https://example.test/package.zip"),
+                2048),
+            new UpdatePackageAsset(
+                "WinAIUsageBar-0.2.0-win-x64.zip.sha256",
+                new Uri("https://example.test/package.zip.sha256"),
+                128));
     }
 }

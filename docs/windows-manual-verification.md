@@ -103,6 +103,7 @@ Record the environment for each run.
 | Run `--prune-support-artifacts --keep-newest 5` from CLI | Old matched backups/exports are pruned and output shows matched, kept, deleted, and freed bytes without secret values |  |  |
 | Run `--health-report` from CLI | Report includes storage pressure guidance, recovery guidance, and CLI launch checks without secret values |  |  |
 | Run `--check-for-updates` from CLI | Command reports current/latest version status and package/checksum URLs or a non-crashing no-release/error status |  |  |
+| Run `--download-update` from CLI | Command skips when no update is available or stages a SHA256-verified package under app data without installing it |  |  |
 | Run `--refresh-once` from CLI | Enabled providers refresh once, snapshots/history update, and output contains no secret values or identity fields |  |  |
 | Run `--refresh-once --provider Codex --source LocalAppServer` | Codex source is tested for this run only, repair guidance is printed for failures, and `config.json` keeps the previously saved provider settings |  |  |
 | Restore config backup from CLI with `--confirm` | Current config is backed up before restore and `secrets/` is unchanged |  |  |

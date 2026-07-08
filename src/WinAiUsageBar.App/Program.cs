@@ -24,7 +24,8 @@ public static class Program
             CancellationToken.None,
             refreshOnce: CommandLineActions.RefreshOnceAsync,
             pruneSupportArtifacts: CommandLineActions.PruneSupportArtifactsAsync,
-            checkForUpdates: CommandLineActions.CheckForUpdatesAsync)
+            checkForUpdates: CommandLineActions.CheckForUpdatesAsync,
+            downloadUpdate: CommandLineActions.DownloadUpdateAsync)
             .GetAwaiter()
             .GetResult();
 

@@ -54,6 +54,7 @@ public sealed class CommandLineHandlerTests
         Assert.Contains("--source <DataSourceKind>", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--provider-catalog", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--check-for-updates", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--download-update", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--prune-support-artifacts", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--keep-newest <N>", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--validate-config-backup", output.ToString(), StringComparison.Ordinal);
@@ -359,6 +360,60 @@ public sealed class CommandLineHandlerTests
 
         var result = await CommandLineHandler.TryHandleAsync(
             ["--check-for-updates"],
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains("unavailable", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_DownloadsUpdate()
+    {
+        using var output = new StringWriter();
+        var downloadUpdateCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--download-update"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            downloadUpdate: cancellationToken =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                downloadUpdateCount++;
+                return Task.FromResult(new CommandLineActionResult("download body", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(1, downloadUpdateCount);
+        Assert.Contains("download body", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ReturnsErrorWhenDownloadUpdateIsUnavailable()
+    {
+        using var error = new StringWriter();
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--download-update"],
             new StringWriter(),
             error,
             _ => Task.FromResult(1),

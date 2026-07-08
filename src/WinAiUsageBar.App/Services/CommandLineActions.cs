@@ -85,6 +85,49 @@ public static class CommandLineActions
             result.Status == UpdateCheckStatus.Error ? 1 : 0);
     }
 
+    public static async Task<CommandLineActionResult> DownloadUpdateAsync(CancellationToken cancellationToken)
+    {
+        var paths = AppDataPaths.CreateDefault();
+        var updateCheck = new ReleaseUpdateCheckService(new GitHubLatestReleaseClient());
+        var downloader = new UpdatePackageDownloader();
+        return await DownloadUpdateAsync(
+            AppInfoProvider.Get(),
+            updateCheck,
+            downloader,
+            paths,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public static async Task<CommandLineActionResult> DownloadUpdateAsync(
+        AppInfo appInfo,
+        IReleaseUpdateCheckService updateCheck,
+        IUpdatePackageDownloader downloader,
+        AppDataPaths paths,
+        CancellationToken cancellationToken)
+    {
+        var update = await updateCheck.CheckAsync(appInfo.InformationalVersion, cancellationToken).ConfigureAwait(false);
+        if (!update.IsUpdateAvailable || update.Package is null || update.Checksum is null)
+        {
+            var exitCode = update.Status == UpdateCheckStatus.Error ? 1 : 0;
+            return new CommandLineActionResult(
+                CommandLineUpdateDownloadFormatter.Format(update, download: null),
+                exitCode);
+        }
+
+        var download = await downloader.DownloadAndVerifyAsync(
+            update.Package,
+            update.Checksum,
+            paths.UpdatesDirectory,
+            cancellationToken).ConfigureAwait(false);
+        var isFailure = download.Status is UpdateDownloadStatus.Error
+            or UpdateDownloadStatus.InvalidAsset
+            or UpdateDownloadStatus.ChecksumMismatch;
+
+        return new CommandLineActionResult(
+            CommandLineUpdateDownloadFormatter.Format(update, download),
+            isFailure ? 1 : 0);
+    }
+
     public static async Task<CommandLineActionResult> PruneSupportArtifactsAsync(
         CommandLinePruneSupportArtifactsOptions options,
         CancellationToken cancellationToken)
