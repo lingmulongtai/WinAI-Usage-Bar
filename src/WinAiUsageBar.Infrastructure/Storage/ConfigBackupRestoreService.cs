@@ -26,6 +26,8 @@ public sealed class ConfigBackupRestoreService(
 {
     private readonly IConfigBackupValidationService validationService = validationService ?? new ConfigBackupValidationService();
     private readonly JsonSerializerOptions options = JsonInfrastructureOptions.CreateIndented();
+    private readonly ConfigBackupFileWriter backupWriter =
+        new(JsonInfrastructureOptions.CreateIndented());
     private readonly Func<DateTimeOffset> nowProvider = nowProvider ?? (() => DateTimeOffset.Now);
 
     public async Task<ConfigBackupRestoreResult> RestoreAsync(
@@ -75,17 +77,10 @@ public sealed class ConfigBackupRestoreService(
         paths.EnsureCreated();
         var current = await configStore.LoadAsync(cancellationToken).ConfigureAwait(false);
         var createdAt = nowProvider();
-        var rollbackPath = Path.Combine(
-            paths.ConfigBackupsDirectory,
-            $"config-backup-before-restore-{createdAt:yyyyMMdd-HHmmss}.json");
-        var tempPath = $"{rollbackPath}.tmp";
-
-        await using (var stream = File.Create(tempPath))
-        {
-            await JsonSerializer.SerializeAsync(stream, current, options, cancellationToken).ConfigureAwait(false);
-        }
-
-        File.Move(tempPath, rollbackPath, overwrite: true);
-        return rollbackPath;
+        return await backupWriter.WriteAsync(
+            paths,
+            $"config-backup-before-restore-{createdAt:yyyyMMdd-HHmmss}",
+            current,
+            cancellationToken).ConfigureAwait(false);
     }
 }

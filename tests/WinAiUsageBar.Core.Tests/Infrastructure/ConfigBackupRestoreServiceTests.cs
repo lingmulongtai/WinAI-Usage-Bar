@@ -84,6 +84,43 @@ public sealed class ConfigBackupRestoreServiceTests
         }
     }
 
+    [Fact]
+    public async Task RestoreAsync_UsesUniqueRollbackNameWhenSameSecondBackupExists()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        var configStore = new JsonAppConfigStore(paths);
+        var backup = AppConfig.CreateDefault();
+        backup.Appearance.Theme = "Light";
+        var backupPath = Path.Combine(root, "incoming-config-backup.json");
+        var now = new DateTimeOffset(2026, 7, 8, 20, 30, 0, TimeSpan.Zero);
+        var service = new ConfigBackupRestoreService(paths, configStore, nowProvider: () => now);
+
+        try
+        {
+            paths.EnsureCreated();
+            await configStore.SaveAsync(AppConfig.CreateDefault(), CancellationToken.None);
+            await WriteConfigAsync(backupPath, backup);
+            await File.WriteAllTextAsync(
+                Path.Combine(paths.ConfigBackupsDirectory, "config-backup-before-restore-20260708-203000.json"),
+                "existing rollback");
+
+            var result = await service.RestoreAsync(backupPath, CancellationToken.None);
+
+            Assert.True(result.Restored);
+            Assert.Equal("config-backup-before-restore-20260708-203000-1.json", Path.GetFileName(result.RollbackBackupPath));
+            Assert.True(File.Exists(result.RollbackBackupPath!));
+            Assert.Empty(Directory.GetFiles(paths.ConfigBackupsDirectory, "*.tmp"));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
     private static async Task WriteConfigAsync(string path, AppConfig config)
     {
         await using var stream = File.Create(path);

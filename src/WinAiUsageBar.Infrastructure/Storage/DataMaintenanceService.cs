@@ -23,6 +23,8 @@ public sealed class DataMaintenanceService(
     IAppConfigStore configStore,
     Func<DateTimeOffset>? nowProvider = null) : IDataMaintenanceService
 {
+    private readonly ConfigBackupFileWriter backupWriter =
+        new(JsonInfrastructureOptions.CreateIndented());
     private readonly Func<DateTimeOffset> nowProvider = nowProvider ?? (() => DateTimeOffset.Now);
 
     public Task<DataMaintenanceResult> ClearSnapshotsAsync(CancellationToken cancellationToken)
@@ -40,21 +42,11 @@ public sealed class DataMaintenanceService(
         paths.EnsureCreated();
         var createdAt = nowProvider();
         var config = await configStore.LoadAsync(cancellationToken).ConfigureAwait(false);
-        var exportPath = Path.Combine(
-            paths.ConfigBackupsDirectory,
-            $"config-backup-{createdAt:yyyyMMdd-HHmmss}.json");
-
-        var tempPath = $"{exportPath}.tmp";
-        await using (var stream = File.Create(tempPath))
-        {
-            await System.Text.Json.JsonSerializer.SerializeAsync(
-                stream,
-                config,
-                JsonInfrastructureOptions.CreateIndented(),
-                cancellationToken).ConfigureAwait(false);
-        }
-
-        File.Move(tempPath, exportPath, overwrite: true);
+        var exportPath = await backupWriter.WriteAsync(
+            paths,
+            $"config-backup-{createdAt:yyyyMMdd-HHmmss}",
+            config,
+            cancellationToken).ConfigureAwait(false);
         return new ConfigBackupResult(exportPath, createdAt);
     }
 

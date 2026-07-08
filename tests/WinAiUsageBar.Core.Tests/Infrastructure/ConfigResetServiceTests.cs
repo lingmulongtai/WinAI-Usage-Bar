@@ -48,4 +48,39 @@ public sealed class ConfigResetServiceTests
             }
         }
     }
+
+    [Fact]
+    public async Task ResetToDefaultsAsync_UsesUniqueRollbackNameWhenSameSecondBackupExists()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        var configStore = new JsonAppConfigStore(paths);
+        var current = AppConfig.CreateDefault();
+        current.Appearance.Theme = "Dark";
+        var now = new DateTimeOffset(2026, 7, 8, 21, 30, 0, TimeSpan.Zero);
+        var service = new ConfigResetService(paths, configStore, () => now);
+
+        try
+        {
+            paths.EnsureCreated();
+            await configStore.SaveAsync(current, CancellationToken.None);
+            await File.WriteAllTextAsync(
+                Path.Combine(paths.ConfigBackupsDirectory, "config-backup-before-reset-20260708-213000.json"),
+                "existing rollback");
+
+            var result = await service.ResetToDefaultsAsync(CancellationToken.None);
+
+            Assert.True(result.Reset);
+            Assert.Equal("config-backup-before-reset-20260708-213000-1.json", Path.GetFileName(result.RollbackBackupPath));
+            Assert.True(File.Exists(result.RollbackBackupPath));
+            Assert.Empty(Directory.GetFiles(paths.ConfigBackupsDirectory, "*.tmp"));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
 }

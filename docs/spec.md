@@ -102,7 +102,7 @@ The Privacy & Data page shows recovery guidance derived from the non-secret diag
 
 The Privacy & Data page can clear `snapshots.json` and `history.ndjson` as local maintenance actions. These actions must not delete `config.json`, diagnostics exports, or files under `secrets/`.
 
-The Privacy & Data page can export a timestamped `config.json` backup under `config-backups/`. Backups contain configuration settings only. They must not copy secret store files or secret values; configured secret names may remain as non-secret references so users can reconnect existing local secrets after restore.
+The Privacy & Data page can export a timestamped `config.json` backup under `config-backups/`. Backups contain configuration settings only. They must not copy secret store files or secret values; configured secret names may remain as non-secret references so users can reconnect existing local secrets after restore. Backup export and rollback writes should use per-write unique temp files and add a numeric filename suffix when the timestamp-based backup name already exists.
 
 The CLI can validate a config backup with `--validate-config-backup <path>`. Validation parses the file, runs current config migrations, and reports non-secret counts and warnings without applying the backup or modifying app data.
 

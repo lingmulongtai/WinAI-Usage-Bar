@@ -1,4 +1,3 @@
-using System.Text.Json;
 using WinAiUsageBar.Core.Configuration;
 
 namespace WinAiUsageBar.Infrastructure.Storage;
@@ -21,7 +20,8 @@ public sealed class ConfigResetService(
     IAppConfigStore configStore,
     Func<DateTimeOffset>? nowProvider = null) : IConfigResetService
 {
-    private readonly JsonSerializerOptions options = JsonInfrastructureOptions.CreateIndented();
+    private readonly ConfigBackupFileWriter backupWriter =
+        new(JsonInfrastructureOptions.CreateIndented());
     private readonly Func<DateTimeOffset> nowProvider = nowProvider ?? (() => DateTimeOffset.Now);
 
     public async Task<ConfigResetResult> ResetToDefaultsAsync(CancellationToken cancellationToken)
@@ -46,17 +46,10 @@ public sealed class ConfigResetService(
         CancellationToken cancellationToken)
     {
         var createdAt = nowProvider();
-        var rollbackPath = Path.Combine(
-            paths.ConfigBackupsDirectory,
-            $"config-backup-before-reset-{createdAt:yyyyMMdd-HHmmss}.json");
-        var tempPath = $"{rollbackPath}.tmp";
-
-        await using (var stream = File.Create(tempPath))
-        {
-            await JsonSerializer.SerializeAsync(stream, current, options, cancellationToken).ConfigureAwait(false);
-        }
-
-        File.Move(tempPath, rollbackPath, overwrite: true);
-        return rollbackPath;
+        return await backupWriter.WriteAsync(
+            paths,
+            $"config-backup-before-reset-{createdAt:yyyyMMdd-HHmmss}",
+            current,
+            cancellationToken).ConfigureAwait(false);
     }
 }

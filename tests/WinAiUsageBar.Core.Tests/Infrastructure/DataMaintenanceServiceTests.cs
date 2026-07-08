@@ -131,4 +131,34 @@ public sealed class DataMaintenanceServiceTests
             }
         }
     }
+
+    [Fact]
+    public async Task ExportConfigBackupAsync_UsesUniqueNameWhenBackupAlreadyExists()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        var configStore = new JsonAppConfigStore(paths);
+        var now = new DateTimeOffset(2026, 7, 8, 19, 30, 0, TimeSpan.Zero);
+        var service = new DataMaintenanceService(paths, configStore, () => now);
+
+        try
+        {
+            await configStore.SaveAsync(AppConfig.CreateDefault(), CancellationToken.None);
+            var first = await service.ExportConfigBackupAsync(CancellationToken.None);
+            var second = await service.ExportConfigBackupAsync(CancellationToken.None);
+
+            Assert.Equal("config-backup-20260708-193000.json", Path.GetFileName(first.Path));
+            Assert.Equal("config-backup-20260708-193000-1.json", Path.GetFileName(second.Path));
+            Assert.True(File.Exists(first.Path));
+            Assert.True(File.Exists(second.Path));
+            Assert.Empty(Directory.GetFiles(paths.ConfigBackupsDirectory, "*.tmp"));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
 }

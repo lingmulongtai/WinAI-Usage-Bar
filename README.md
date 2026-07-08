@@ -31,6 +31,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - Privacy & Data can export a timestamped `config.json` backup without copying secret values.
 - Privacy & Data can validate and restore the latest config backup after explicit confirmation.
 - Privacy & Data can reset `config.json` to defaults after explicit confirmation, creating a rollback backup and leaving saved secrets untouched.
+- Config backup exports and rollback backups avoid same-second filename collisions by adding a numeric suffix when needed.
 - Mock and Manual provider modes are implemented.
 - Manual mode can track used/remaining percentage, reset datetime/description, credits, currency/unit, month cost, last-31-day tokens, and notes.
 - CLI `--refresh-once` can run one headless provider refresh and print a safe snapshot summary without launching UI.
@@ -150,8 +151,8 @@ The release workflow builds, tests, publishes, smoke-tests, packages the app, an
 - Secret values can be saved or deleted by secret name from Privacy & Data; values are never displayed back.
 - Snapshot cache and retained history can be cleared from Privacy & Data; `config.json` and `secrets/` are left untouched.
 - `config.json` can be backed up from Privacy & Data; backup files include non-secret settings only and do not copy `secrets/`.
-- Config backups can be restored from the CLI with an explicit `--confirm`, or from Privacy & Data using the latest backup and an in-app confirmation checkbox; restore creates a rollback backup first and does not copy or modify files under `secrets/`.
-- `config.json` can be reset to defaults from Privacy & Data after an in-app confirmation checkbox; reset creates a rollback backup first and does not delete or modify files under `secrets/`.
+- Config backups can be restored from the CLI with an explicit `--confirm`, or from Privacy & Data using the latest backup and an in-app confirmation checkbox; restore creates a collision-resistant rollback backup first and does not copy or modify files under `secrets/`.
+- `config.json` can be reset to defaults from Privacy & Data after an in-app confirmation checkbox; reset creates a collision-resistant rollback backup first and does not delete or modify files under `secrets/`.
 - Browser cookie scraping is intentionally not implemented in this MVP.
 - Codex integration never reads or displays `auth.json` contents.
 
