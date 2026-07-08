@@ -33,6 +33,7 @@ Overall:
 - Provider failures are designed to become visible snapshots instead of crashes.
 - Secrets are stored through an abstraction and DPAPI implementation, not plain config fields.
 - Diagnostics exports redact common secret shapes and exclude `secrets/`.
+- Tests now include a repository-level guard against common secret-shaped fixture strings, so redaction samples should use obvious placeholders or runtime-composed patterns instead of committed key-looking literals.
 - Config, snapshots, history, diagnostics, and maintenance flows are all represented in code and tests.
 - CI now builds, tests, publishes, smoke-tests app service composition, packages, and uploads artifacts on `main`.
 - The CLI surface gives useful non-UI checks: help, version, smoke test with app service composition and refresh pipeline coverage, diagnostics export, config backup export, health report with storage pressure guidance, recovery guidance, launch targets, and repair hints, provider catalog, provider CLI override setting, support artifact pruning, update checks, verified update downloads, staged install script preparation, guarded prepared-script launch, explicit latest-update install orchestration, headless startup update policy execution, and headless refresh-once.
