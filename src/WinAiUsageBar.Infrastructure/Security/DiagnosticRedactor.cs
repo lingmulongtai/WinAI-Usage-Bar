@@ -40,6 +40,20 @@ public static partial class DiagnosticRedactor
         return redacted;
     }
 
+    public static string RedactForSupportExport(string? text)
+    {
+        var redacted = Redact(text);
+        if (string.IsNullOrEmpty(redacted))
+        {
+            return string.Empty;
+        }
+
+        redacted = SupportExportQuotedKeyValueRegex().Replace(redacted, "$1[REDACTED]$3");
+        redacted = SupportExportBareKeyValueRegex().Replace(redacted, "$1[REDACTED]");
+        redacted = EmailRegex().Replace(redacted, "[REDACTED]");
+        return redacted;
+    }
+
     [GeneratedRegex(@"(?i)(authorization\s*[:=]\s*bearer\s+)[^\s,;]+")]
     private static partial Regex AuthorizationRegex();
 
@@ -66,4 +80,13 @@ public static partial class DiagnosticRedactor
 
     [GeneratedRegex(@"(?i)\b(?:api[_-]?key|access[_-]?token|refresh[_-]?token|token|secret|cookie|pat)[_-][A-Za-z0-9][A-Za-z0-9._-]{5,}\b")]
     private static partial Regex SecretishTokenRegex();
+
+    [GeneratedRegex(@"(?i)((?:""?(?:email|userEmail|accountName|account|organization|org|workspace|enterpriseSlug|enterprise|secretName|patSecretName|commandPathOverride)""?)\s*[:=]\s*"")([^""]*)("")")]
+    private static partial Regex SupportExportQuotedKeyValueRegex();
+
+    [GeneratedRegex(@"(?i)((?:""?(?:email|userEmail|accountName|account|organization|org|workspace|enterpriseSlug|enterprise|secretName|patSecretName|commandPathOverride)""?)\s*[:=]\s*)[^\s,;}]+")]
+    private static partial Regex SupportExportBareKeyValueRegex();
+
+    [GeneratedRegex(@"(?i)\b[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}\b")]
+    private static partial Regex EmailRegex();
 }

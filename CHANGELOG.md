@@ -47,6 +47,7 @@ All notable changes to WinAI Usage Bar are documented here.
 - Snapshot storage now sanitizes direct `snapshots.json` and `history.ndjson` writes as a persistence backstop.
 - Snapshot cache and history rewrites now use per-write unique temporary files instead of fixed `.tmp` paths.
 - History summaries now sanitize legacy history snapshots before aggregation.
+- Diagnostics exports now redact account identifiers, organization/workspace scopes, secret reference names, and CLI override paths in addition to common secret shapes.
 
 ## 0.1.4 - 2026-07-08
 

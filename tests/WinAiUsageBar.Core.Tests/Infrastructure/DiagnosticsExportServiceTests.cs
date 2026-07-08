@@ -17,12 +17,17 @@ public sealed class DiagnosticsExportServiceTests
             {
               "apiKey": "sample-api-key-value",
               "secretName": "gemini-reference-name",
+              "patSecretName": "copilot-reference-name",
+              "organization": "octo-org",
+              "enterpriseSlug": "octo-enterprise",
+              "commandPathOverride": "C:\\Users\\person\\Tools\\codex.cmd",
+              "email": "person@example.com",
               "visible": "keep this"
             }
             """);
-        await File.WriteAllTextAsync(paths.SnapshotsPath, "Authorization: Bearer abc123");
-        await File.WriteAllTextAsync(paths.HistoryPath, "access_token=history-secret");
-        await File.WriteAllTextAsync(paths.DiagnosticsLogPath, "token=diagnostics-token-value");
+        await File.WriteAllTextAsync(paths.SnapshotsPath, "Authorization: Bearer abc123 accountName=\"Personal Account\"");
+        await File.WriteAllTextAsync(paths.HistoryPath, "access_token=history-secret userEmail=history@example.com");
+        await File.WriteAllTextAsync(paths.DiagnosticsLogPath, "token=diagnostics-token-value org=diagnostics-org");
         await File.WriteAllTextAsync(Path.Combine(paths.SecretsDirectory, "stored-secret"), "never-export-me");
         var service = new DiagnosticsExportService(
             paths,
@@ -40,9 +45,17 @@ public sealed class DiagnosticsExportServiceTests
             Assert.Contains("SecretsDirectory: [omitted]", export);
             Assert.DoesNotContain("sample-api-key-value", export);
             Assert.DoesNotContain("gemini-reference-name", export);
+            Assert.DoesNotContain("copilot-reference-name", export);
+            Assert.DoesNotContain("octo-org", export);
+            Assert.DoesNotContain("octo-enterprise", export);
+            Assert.DoesNotContain("codex.cmd", export, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("person@example.com", export, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("abc123", export);
+            Assert.DoesNotContain("Personal Account", export);
             Assert.DoesNotContain("history-secret", export);
+            Assert.DoesNotContain("history@example.com", export, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("diagnostics-token-value", export);
+            Assert.DoesNotContain("diagnostics-org", export);
             Assert.DoesNotContain("never-export-me", export);
             Assert.Contains("[REDACTED]", export);
         }

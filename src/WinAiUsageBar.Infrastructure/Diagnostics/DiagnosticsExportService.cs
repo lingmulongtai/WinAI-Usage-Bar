@@ -96,7 +96,7 @@ public sealed class DiagnosticsExportService(
         }
 
         var content = await ReadTailAsync(path, cancellationToken).ConfigureAwait(false);
-        await writer.WriteLineAsync(DiagnosticRedactor.Redact(content)).ConfigureAwait(false);
+        await writer.WriteLineAsync(DiagnosticRedactor.RedactForSupportExport(content)).ConfigureAwait(false);
     }
 
     private async Task<string> ReadTailAsync(string path, CancellationToken cancellationToken)

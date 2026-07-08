@@ -52,6 +52,40 @@ public sealed class SecurityTests
     }
 
     [Fact]
+    public void RedactForSupportExport_RemovesAccountAndScopeIdentifiers()
+    {
+        var text = """
+            {
+              "email": "person@example.com",
+              "accountName": "Personal Account",
+              "organization": "octo-org",
+              "enterpriseSlug": "octo-enterprise",
+              "secretName": "gemini-reference",
+              "patSecretName": "copilot-reference",
+              "commandPathOverride": "C:\\Users\\person\\Tools\\codex.cmd",
+              "visible": "keep this"
+            }
+            owner=owner@example.test org=raw-org workspace=raw-workspace account=raw-account
+            """;
+
+        var redacted = DiagnosticRedactor.RedactForSupportExport(text);
+
+        Assert.Contains("keep this", redacted, StringComparison.Ordinal);
+        Assert.Contains("[REDACTED]", redacted, StringComparison.Ordinal);
+        Assert.DoesNotContain("person@example.com", redacted, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Personal Account", redacted, StringComparison.Ordinal);
+        Assert.DoesNotContain("octo-org", redacted, StringComparison.Ordinal);
+        Assert.DoesNotContain("octo-enterprise", redacted, StringComparison.Ordinal);
+        Assert.DoesNotContain("gemini-reference", redacted, StringComparison.Ordinal);
+        Assert.DoesNotContain("copilot-reference", redacted, StringComparison.Ordinal);
+        Assert.DoesNotContain("codex.cmd", redacted, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("owner@example.test", redacted, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("raw-org", redacted, StringComparison.Ordinal);
+        Assert.DoesNotContain("raw-workspace", redacted, StringComparison.Ordinal);
+        Assert.DoesNotContain("raw-account", redacted, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task FileAppDiagnosticsLog_RedactsMessagesAndExceptions()
     {
         var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
