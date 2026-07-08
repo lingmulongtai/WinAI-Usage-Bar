@@ -24,7 +24,7 @@ public sealed class UpdateInstallLaunchServiceTests
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(scriptPath)!);
-            await File.WriteAllTextAsync(scriptPath, "$ErrorActionPreference = 'Stop'");
+            await File.WriteAllTextAsync(scriptPath, GeneratedScript());
 
             var result = await service.LaunchAsync(
                 new UpdateInstallLaunchRequest(scriptPath),
@@ -41,6 +41,43 @@ public sealed class UpdateInstallLaunchServiceTests
             Assert.Equal(
                 ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", Path.GetFullPath(scriptPath)],
                 capturedStartInfo.ArgumentList.ToArray());
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task LaunchAsync_RejectsScriptWithoutGeneratedMarker()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(Path.Combine(root, "appdata"));
+        var scriptPath = Path.Combine(paths.UpdatesDirectory, "install-1", "apply-update.ps1");
+        var launchCount = 0;
+        var service = new UpdateInstallLaunchService(
+            paths,
+            _ =>
+            {
+                launchCount++;
+                return 4321;
+            });
+
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(scriptPath)!);
+            await File.WriteAllTextAsync(scriptPath, "$ErrorActionPreference = 'Stop'");
+
+            var result = await service.LaunchAsync(
+                new UpdateInstallLaunchRequest(scriptPath),
+                CancellationToken.None);
+
+            Assert.Equal(UpdateInstallLaunchStatus.InvalidScript, result.Status);
+            Assert.Equal(0, launchCount);
+            Assert.Contains("generated", result.Message, StringComparison.OrdinalIgnoreCase);
         }
         finally
         {
@@ -130,7 +167,7 @@ public sealed class UpdateInstallLaunchServiceTests
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(scriptPath)!);
-            await File.WriteAllTextAsync(scriptPath, "$ErrorActionPreference = 'Stop'");
+            await File.WriteAllTextAsync(scriptPath, GeneratedScript());
 
             var result = await service.LaunchAsync(
                 new UpdateInstallLaunchRequest(scriptPath),
@@ -146,5 +183,14 @@ public sealed class UpdateInstallLaunchServiceTests
                 Directory.Delete(root, recursive: true);
             }
         }
+    }
+
+    private static string GeneratedScript()
+    {
+        return """
+        # WinAI Usage Bar generated update script
+        $WinAiUsageBarGeneratedUpdateScriptVersion = 1
+        $ErrorActionPreference = 'Stop'
+        """;
     }
 }

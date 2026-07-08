@@ -39,6 +39,8 @@ public sealed class UpdateInstallPreparationServiceTests
             Assert.EndsWith("backup", result.BackupDirectory, StringComparison.OrdinalIgnoreCase);
 
             var script = await File.ReadAllTextAsync(result.ScriptPath!);
+            Assert.Contains("# WinAI Usage Bar generated update script", script, StringComparison.Ordinal);
+            Assert.Contains("$WinAiUsageBarGeneratedUpdateScriptVersion = 1", script, StringComparison.Ordinal);
             Assert.Contains("Wait-Process -Id $ProcessIdToWait", script, StringComparison.Ordinal);
             Assert.Contains("$ProcessIdToWait = 1234", script, StringComparison.Ordinal);
             Assert.Contains("$RestartAfterInstall = $true", script, StringComparison.Ordinal);

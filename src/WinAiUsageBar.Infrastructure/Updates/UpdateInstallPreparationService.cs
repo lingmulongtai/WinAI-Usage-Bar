@@ -180,6 +180,8 @@ public sealed class UpdateInstallPreparationService(
         bool restartAfterInstall)
     {
         return $$"""
+        {{UpdateInstallScriptMarkers.MarkerLine}}
+        {{UpdateInstallScriptMarkers.VersionLine}}
         $ErrorActionPreference = 'Stop'
 
         $PackagePath = {{PowerShellLiteral(packagePath)}}
