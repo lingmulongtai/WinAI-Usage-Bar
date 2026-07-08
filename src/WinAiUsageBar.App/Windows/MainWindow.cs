@@ -692,6 +692,12 @@ public sealed class MainWindow : Window
         };
         panel.Children.Add(installUpdatesAutomatically);
 
+        var confirmManualInstall = new CheckBox
+        {
+            Content = "Confirm manual latest-update install launch"
+        };
+        panel.Children.Add(confirmManualInstall);
+
         var retentionGrid = new Grid
         {
             ColumnSpacing = 8,
@@ -770,7 +776,13 @@ public sealed class MainWindow : Window
         };
         actions.Children.Add(checkUpdates);
 
-        var installLatestUpdate = new Button { Content = "Install Latest Update Now" };
+        var installLatestUpdate = new Button
+        {
+            Content = "Install Latest Update Now",
+            IsEnabled = false
+        };
+        confirmManualInstall.Checked += (_, _) => installLatestUpdate.IsEnabled = true;
+        confirmManualInstall.Unchecked += (_, _) => installLatestUpdate.IsEnabled = false;
         installLatestUpdate.Click += async (_, _) =>
         {
             try
