@@ -2,7 +2,7 @@
 
 WinAI Usage Bar is a personal Windows notification-area app for watching AI provider usage. It is inspired by the idea of a compact usage bar, but the implementation is native Windows: C#, WinUI 3, Windows App SDK, MVVM-style view models, and a clean provider architecture.
 
-Current app version: `0.1.3`.
+Current app version: `0.1.4`.
 
 For a strict status check, see [docs/current-state-audit.md](docs/current-state-audit.md).
 For Windows shell dogfooding checks, see [docs/windows-manual-verification.md](docs/windows-manual-verification.md).
@@ -44,6 +44,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - CLI `--export-config-backup` can create a config-only backup without launching UI.
 - CLI `--check-for-updates` can check GitHub Releases for a newer zip package and matching checksum without launching UI.
 - CLI `--download-update` can download a newer release zip plus checksum and stage it after SHA256 verification.
+- CLI update commands support `--current-version <version>` for isolated release dogfooding without changing the app assembly version.
 - CLI `--prepare-update-install` can generate a PowerShell script that applies a staged update after the app exits.
 - CLI `--launch-prepared-update` can launch an app-owned prepared update script without accepting arbitrary script paths.
 - CLI `--install-latest-update` can explicitly check, download, verify, prepare, and launch the latest update install script.

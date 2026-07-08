@@ -2,6 +2,21 @@
 
 All notable changes to WinAI Usage Bar are documented here.
 
+## 0.1.4 - 2026-07-08
+
+### Added
+
+- Generated English GitHub Release notes from `CHANGELOG.md` during the release workflow.
+- Added `--current-version <version>` for update CLI dogfooding without changing the app assembly version.
+- Added a published release update discovery dogfood helper.
+- Added a current-updater full-flow dogfood helper that downloads, verifies, prepares, and applies updates against a disposable install directory.
+
+### Fixed
+
+- Made the release notes English check safe under Windows PowerShell 5.1.
+- Guarded legacy published-release dogfooding when the source version predates isolated app-data support.
+- Hardened update dogfood helpers for non-ASCII workspace paths by falling back to isolated app-data file discovery.
+
 ## 0.1.3 - 2026-07-08
 
 ### Added
