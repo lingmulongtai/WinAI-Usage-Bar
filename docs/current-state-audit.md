@@ -36,6 +36,7 @@ Overall:
 - The CLI surface gives useful non-UI checks: help, version, smoke test, diagnostics export, and health report.
 - Release readiness checks now cover version metadata, changelog, audit date, published-app smoke test, package presence, and checksum validity.
 - Guided first-run checklist state, Provider Details, config backup export, backup validation, confirmed CLI restore, latest-backup in-app restore, and confirmed reset-to-default recovery are implemented.
+- Providers now includes non-secret setup guidance for source choices, Manual fallback, API references, Copilot metrics requirements, and CLI/app-server caveats.
 - Provider Details now includes non-secret repair guidance for warning, auth-required, unsupported, error, and unknown provider states.
 - Privacy & Data now includes non-secret storage pressure guidance and recovery guidance for backup, restore, reset, and diagnostics export choices.
 - Windows shell dogfooding now has a concrete manual verification checklist and a timestamped local report script.
@@ -50,7 +51,7 @@ Overall:
 - The UI is functional but still not visually or ergonomically proven with extended daily use.
 - Tray behavior, taskbar-near placement, topmost widget behavior, and notification delivery need real Windows manual testing.
 - There is no installer, MSIX, code signing, auto-update, or uninstall story.
-- First-run setup has a basic checklist with action targets, but it is not yet a full guided wizard with provider-specific decisions.
+- First-run setup has a basic checklist with action targets and Providers has setup guidance, but it is not yet a full guided wizard with inline provider-specific decisions.
 - Config backup and reset recovery now exist with basic decision guidance, but they still need repeated dogfooding before they can be treated as comfort features.
 - Local storage growth is visible for history, backups, and diagnostics logs, but the maintenance flow still needs real-use tuning.
 - Local CLI discovery can still be messy on Windows. Provider Details has generic CLI repair guidance, but deeper provider-specific repair checks are still needed for future CLI-backed providers.
@@ -96,7 +97,7 @@ The weak point is value density. A usage bar is only as useful as the data it ca
    The page exists now, but it needs real snapshot data and daily-use feedback.
 
 4. Dogfood the guided first-run setup checklist and decide whether it should become a deeper wizard.
-   A new user can jump to Providers or Privacy & Data from checklist items now, but the flow still does not apply provider-specific setup decisions inline.
+   A new user can jump to Providers or Privacy & Data from checklist items now, and Providers explains source setup, but the flow still does not apply provider-specific setup decisions inline.
 
 5. Dogfood config backup, restore, and reset.
    CLI restore, latest-backup in-app restore, and reset-to-default recovery exist now, but they need repeated real-use recovery checks before they become comfort features.

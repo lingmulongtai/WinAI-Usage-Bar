@@ -300,6 +300,14 @@ public sealed class MainWindow : Window
         }
     }
 
+    private static void RefreshProviderSetupGuidance(
+        StackPanel guidancePanel,
+        ProviderSettingsEditorViewModel provider)
+    {
+        guidancePanel.Children.Clear();
+        AddDetailSection(guidancePanel, "Setup guidance", provider.SetupGuidanceLines);
+    }
+
     private async Task<UIElement> BuildProvidersPageAsync()
     {
         var config = await host.LoadConfigAsync(CancellationToken.None);
@@ -385,6 +393,10 @@ public sealed class MainWindow : Window
         sourceCombo.SelectedItem = provider.SourceKindText;
         stack.Children.Add(sourceCombo);
 
+        var guidancePanel = new StackPanel { Spacing = 4 };
+        RefreshProviderSetupGuidance(guidancePanel, provider);
+        stack.Children.Add(guidancePanel);
+
         var manualGrid = new Grid
         {
             ColumnSpacing = 8,
@@ -419,19 +431,22 @@ public sealed class MainWindow : Window
         TextBox? gitHubOrganizationBox = null;
         TextBox? gitHubEnterpriseBox = null;
         TextBox? gitHubPatSecretNameBox = null;
+        InfoBar? apiKeyInfo = null;
+        InfoBar? gitHubCopilotInfo = null;
 
         if (provider.HasApiKeySettings)
         {
             apiKeySecretNameBox = TextBox("API key secret name", provider.ApiKeySecretNameText);
             stack.Children.Add(apiKeySecretNameBox);
 
-            stack.Children.Add(new InfoBar
+            apiKeyInfo = new InfoBar
             {
                 Severity = InfoBarSeverity.Informational,
                 IsOpen = true,
                 IsClosable = false,
                 Message = provider.ApiKeyStatusText
-            });
+            };
+            stack.Children.Add(apiKeyInfo);
         }
 
         if (provider.HasGitHubCopilotSettings)
@@ -452,13 +467,14 @@ public sealed class MainWindow : Window
             AddToGrid(copilotGrid, gitHubPatSecretNameBox, 1, 0);
             stack.Children.Add(copilotGrid);
 
-            stack.Children.Add(new InfoBar
+            gitHubCopilotInfo = new InfoBar
             {
                 Severity = InfoBarSeverity.Informational,
                 IsOpen = true,
                 IsClosable = false,
                 Message = provider.GitHubCopilotStatusText
-            });
+            };
+            stack.Children.Add(gitHubCopilotInfo);
         }
 
         stack.Children.Add(new TextBlock
@@ -467,6 +483,49 @@ public sealed class MainWindow : Window
             FontSize = 12,
             TextWrapping = TextWrapping.Wrap
         });
+
+        void RefreshGuidanceFromControls()
+        {
+            provider.IsEnabled = toggle.IsOn;
+            provider.SourceKindText = sourceCombo.SelectedItem?.ToString() ?? string.Empty;
+            provider.ApiKeySecretNameText = apiKeySecretNameBox?.Text ?? string.Empty;
+            provider.GitHubOrganizationText = gitHubOrganizationBox?.Text ?? string.Empty;
+            provider.GitHubEnterpriseSlugText = gitHubEnterpriseBox?.Text ?? string.Empty;
+            provider.GitHubPatSecretNameText = gitHubPatSecretNameBox?.Text ?? string.Empty;
+            RefreshProviderSetupGuidance(guidancePanel, provider);
+
+            if (apiKeyInfo is not null)
+            {
+                apiKeyInfo.Message = provider.ApiKeyStatusText;
+            }
+
+            if (gitHubCopilotInfo is not null)
+            {
+                gitHubCopilotInfo.Message = provider.GitHubCopilotStatusText;
+            }
+        }
+
+        toggle.Toggled += (_, _) => RefreshGuidanceFromControls();
+        sourceCombo.SelectionChanged += (_, _) => RefreshGuidanceFromControls();
+        if (apiKeySecretNameBox is not null)
+        {
+            apiKeySecretNameBox.TextChanged += (_, _) => RefreshGuidanceFromControls();
+        }
+
+        if (gitHubOrganizationBox is not null)
+        {
+            gitHubOrganizationBox.TextChanged += (_, _) => RefreshGuidanceFromControls();
+        }
+
+        if (gitHubEnterpriseBox is not null)
+        {
+            gitHubEnterpriseBox.TextChanged += (_, _) => RefreshGuidanceFromControls();
+        }
+
+        if (gitHubPatSecretNameBox is not null)
+        {
+            gitHubPatSecretNameBox.TextChanged += (_, _) => RefreshGuidanceFromControls();
+        }
 
         return new ProviderEditor(
             root,

@@ -75,6 +75,8 @@ public sealed class ProviderSettingsEditorViewModel(
         ? "Automatic sources use placeholders unless an official or local integration is available."
         : "Manual source is available.";
 
+    public IReadOnlyList<string> SetupGuidanceLines => BuildSetupGuidanceLines();
+
     public IReadOnlyList<string> SupportedSourceNames { get; } = descriptor.SupportedSources
         .Select(source => source.ToString())
         .ToList();
@@ -116,7 +118,13 @@ public sealed class ProviderSettingsEditorViewModel(
     public bool IsEnabled
     {
         get => isEnabled;
-        set => SetProperty(ref isEnabled, value);
+        set
+        {
+            if (SetProperty(ref isEnabled, value))
+            {
+                OnPropertyChanged(nameof(SetupGuidanceLines));
+            }
+        }
     }
 
     public string SourceKindText
@@ -128,6 +136,7 @@ public sealed class ProviderSettingsEditorViewModel(
             {
                 OnPropertyChanged(nameof(ApiKeyStatusText));
                 OnPropertyChanged(nameof(GitHubCopilotStatusText));
+                OnPropertyChanged(nameof(SetupGuidanceLines));
             }
         }
     }
@@ -189,25 +198,49 @@ public sealed class ProviderSettingsEditorViewModel(
     public string ApiKeySecretNameText
     {
         get => apiKeySecretNameText;
-        set => SetProperty(ref apiKeySecretNameText, value);
+        set
+        {
+            if (SetProperty(ref apiKeySecretNameText, value))
+            {
+                OnPropertyChanged(nameof(SetupGuidanceLines));
+            }
+        }
     }
 
     public string GitHubOrganizationText
     {
         get => gitHubOrganizationText;
-        set => SetProperty(ref gitHubOrganizationText, value);
+        set
+        {
+            if (SetProperty(ref gitHubOrganizationText, value))
+            {
+                OnPropertyChanged(nameof(SetupGuidanceLines));
+            }
+        }
     }
 
     public string GitHubEnterpriseSlugText
     {
         get => gitHubEnterpriseSlugText;
-        set => SetProperty(ref gitHubEnterpriseSlugText, value);
+        set
+        {
+            if (SetProperty(ref gitHubEnterpriseSlugText, value))
+            {
+                OnPropertyChanged(nameof(SetupGuidanceLines));
+            }
+        }
     }
 
     public string GitHubPatSecretNameText
     {
         get => gitHubPatSecretNameText;
-        set => SetProperty(ref gitHubPatSecretNameText, value);
+        set
+        {
+            if (SetProperty(ref gitHubPatSecretNameText, value))
+            {
+                OnPropertyChanged(nameof(SetupGuidanceLines));
+            }
+        }
     }
 
     public ProviderSettingsEditorValidationResult Validate()
@@ -263,6 +296,100 @@ public sealed class ProviderSettingsEditorViewModel(
         }
 
         return sourceKind;
+    }
+
+    private IReadOnlyList<string> BuildSetupGuidanceLines()
+    {
+        var lines = new List<string>
+        {
+            IsEnabled
+                ? $"Enabled provider will refresh from the current {SourceKindText} source."
+                : "Disabled providers are not refreshed or shown on usage surfaces until enabled."
+        };
+
+        if (!Enum.TryParse<DataSourceKind>(SourceKindText, out var sourceKind)
+            || !descriptor.SupportedSources.Contains(sourceKind))
+        {
+            lines.Add($"Current source is not supported here. Choose one of: {string.Join(", ", SupportedSourceNames)}.");
+            return lines;
+        }
+
+        lines.Add(GetSourceGuidance(sourceKind));
+
+        if (descriptor.SupportsCredits)
+        {
+            lines.Add("Credits or costs can appear when the selected source provides them; Manual mode can still track them by hand.");
+        }
+        else
+        {
+            lines.Add("This provider is not expected to return credits yet; Manual mode can still track usage values.");
+        }
+
+        AddApiKeyGuidance(lines, sourceKind);
+        AddGitHubCopilotGuidance(lines, sourceKind);
+        return lines;
+    }
+
+    private static string GetSourceGuidance(DataSourceKind sourceKind)
+    {
+        return sourceKind switch
+        {
+            DataSourceKind.Manual => "Manual mode is the safe fallback and does not need secrets or external CLI commands.",
+            DataSourceKind.Mock => "Mock mode is for UI and refresh testing only; switch sources before relying on the data.",
+            DataSourceKind.Cli => "CLI mode requires the provider command to be installed and discoverable on PATH.",
+            DataSourceKind.LocalFile => "Local file mode must read only explicitly supported paths and should never inspect secret files.",
+            DataSourceKind.LocalAppServer => "Local app-server mode requires a signed-in local provider command and reports failures without crashing.",
+            DataSourceKind.OfficialApi => "API mode stores only secret references in config; save secret values from Privacy & Data.",
+            _ => "This source is not recognized yet."
+        };
+    }
+
+    private void AddApiKeyGuidance(
+        ICollection<string> lines,
+        DataSourceKind sourceKind)
+    {
+        if (!HasApiKeySettings)
+        {
+            return;
+        }
+
+        if (sourceKind != DataSourceKind.OfficialApi)
+        {
+            lines.Add("API key references are only used in API mode.");
+            return;
+        }
+
+        lines.Add(TrimToNull(ApiKeySecretNameText) is null
+            ? "API mode needs an API key secret reference before refresh can work."
+            : "API mode has an API key reference configured; this guidance does not echo the reference name or value.");
+    }
+
+    private void AddGitHubCopilotGuidance(
+        ICollection<string> lines,
+        DataSourceKind sourceKind)
+    {
+        if (!HasGitHubCopilotSettings)
+        {
+            return;
+        }
+
+        if (sourceKind != DataSourceKind.OfficialApi)
+        {
+            lines.Add("Personal Copilot users can stay in Manual mode without organization metrics.");
+            return;
+        }
+
+        var hasScope = TrimToNull(GitHubOrganizationText) is not null
+            || TrimToNull(GitHubEnterpriseSlugText) is not null;
+        var hasPatReference = TrimToNull(GitHubPatSecretNameText) is not null;
+
+        lines.Add((hasScope, hasPatReference) switch
+        {
+            (false, false) => "Copilot API mode needs an organization or enterprise scope plus a PAT secret reference.",
+            (false, true) => "Copilot API mode still needs an organization or enterprise scope; guidance does not echo configured reference values.",
+            (true, false) => "Copilot API mode still needs a PAT secret reference; guidance does not echo configured scope values.",
+            _ => "Copilot API mode has scope and PAT references configured; this guidance does not echo their names or values."
+        });
     }
 
     private void ValidateApiKeySettings(

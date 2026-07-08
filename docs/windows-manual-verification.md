@@ -54,7 +54,7 @@ Record the environment for each run.
 | Check | Expected result | Pass | Notes |
 | --- | --- | --- | --- |
 | Open Overview | Provider cards, actions, and first-run setup checklist action buttons render |  |  |
-| Open Providers | Provider editors render and save validation works |  |  |
+| Open Providers | Provider editors render, setup guidance updates with source changes, and save validation works |  |  |
 | Open Provider Details | Detailed snapshot rows and repair guidance render without secret values |  |  |
 | Open Appearance | Theme and start-at-login controls render |  |  |
 | Open Widget | Widget settings render and enforce one to three providers |  |  |
@@ -91,6 +91,7 @@ Record the environment for each run.
 | --- | --- | --- | --- |
 | Save a secret value | Value is accepted but never displayed back |  |  |
 | Check a secret name | UI reports present or missing without showing the value |  |  |
+| Review provider setup guidance | Guidance explains source requirements without echoing secret references, org names, enterprise slugs, PAT names, tokens, or auth contents |  |  |
 | Review storage pressure in Privacy & Data | Guidance explains history, backup, and diagnostics log pressure without showing secret names or values |  |  |
 | Review recovery guidance in Privacy & Data | Guidance explains backup, restore, reset, and diagnostics choices without showing secret names or values |  |  |
 | Export diagnostics | Export excludes `secrets/` and redacts common secret shapes |  |  |

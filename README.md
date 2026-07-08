@@ -17,6 +17,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - Right-click tray icon shows Show, Show Widget, Refresh Now, Settings, and Exit.
 - Settings window uses WinUI `NavigationView`.
 - Overview includes a first-run setup checklist with action buttons until setup is marked complete.
+- Providers shows per-provider setup guidance for source choices, Manual fallback, CLI/app-server caveats, and API reference requirements without echoing configured secret or scope values.
 - Desktop widget window shows up to three selected providers, remembers placement, and has settings for startup/topmost/provider selection.
 - Provider cards show health, usage percentage, reset text, status messages, credits/costs, source, update time, and errors.
 - Provider Details shows non-secret snapshot details for identity, usage windows, credits, status, errors, and repair guidance.

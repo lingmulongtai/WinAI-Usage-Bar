@@ -213,4 +213,96 @@ public sealed class ProviderSettingsPageViewModelTests
         Assert.Null(provider.GitHubCopilot.EnterpriseSlug);
         Assert.Equal("github-copilot-pat", provider.GitHubCopilot.PatSecretName);
     }
+
+    [Fact]
+    public void SetupGuidanceLines_ExplainManualFallbackWithoutEchoingApiSecretReference()
+    {
+        var config = AppConfig.CreateDefault();
+        var descriptor = ProviderDescriptors.Get(ProviderId.Gemini);
+        var provider = config.GetOrCreateProvider(descriptor);
+        provider.ApiKey.SecretName = "gemini-api-key";
+        var viewModel = new ProviderSettingsPageViewModel(config, [descriptor]);
+        var editor = viewModel.Editors.Single();
+        editor.SourceKindText = DataSourceKind.Manual.ToString();
+
+        var guidance = GuidanceText(editor);
+
+        Assert.Contains("Manual mode is the safe fallback", guidance, StringComparison.Ordinal);
+        Assert.Contains("API key references are only used in API mode.", guidance, StringComparison.Ordinal);
+        Assert.DoesNotContain("gemini-api-key", guidance, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SetupGuidanceLines_ReportUnsupportedSourceBeforeApply()
+    {
+        var config = AppConfig.CreateDefault();
+        var descriptor = ProviderDescriptors.Get(ProviderId.Gemini);
+        var viewModel = new ProviderSettingsPageViewModel(config, [descriptor]);
+        var editor = viewModel.Editors.Single();
+        editor.SourceKindText = DataSourceKind.LocalAppServer.ToString();
+
+        var guidance = GuidanceText(editor);
+
+        Assert.Contains("Current source is not supported here.", guidance, StringComparison.Ordinal);
+        Assert.Contains("Manual, OfficialApi", guidance, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(ProviderId.Gemini, "gemini-api-key")]
+    [InlineData(ProviderId.OpenCodeZen, "opencode-zen-api-key")]
+    public void SetupGuidanceLines_GuideApiSecretReferenceWithoutEchoingConfiguredName(
+        ProviderId providerId,
+        string secretName)
+    {
+        var config = AppConfig.CreateDefault();
+        var descriptor = ProviderDescriptors.Get(providerId);
+        var viewModel = new ProviderSettingsPageViewModel(config, [descriptor]);
+        var editor = viewModel.Editors.Single();
+        editor.SourceKindText = DataSourceKind.OfficialApi.ToString();
+        editor.ApiKeySecretNameText = secretName;
+
+        var guidance = GuidanceText(editor);
+
+        Assert.Contains("API mode has an API key reference configured", guidance, StringComparison.Ordinal);
+        Assert.DoesNotContain(secretName, guidance, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SetupGuidanceLines_GuideMissingGitHubCopilotApiRequirements()
+    {
+        var config = AppConfig.CreateDefault();
+        var descriptor = ProviderDescriptors.Get(ProviderId.GitHubCopilot);
+        var viewModel = new ProviderSettingsPageViewModel(config, [descriptor]);
+        var editor = viewModel.Editors.Single();
+        editor.SourceKindText = DataSourceKind.OfficialApi.ToString();
+
+        var guidance = GuidanceText(editor);
+
+        Assert.Contains("Copilot API mode needs an organization or enterprise scope plus a PAT secret reference.", guidance, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SetupGuidanceLines_GuideGitHubCopilotApiReferencesWithoutEchoingScopeOrSecret()
+    {
+        var config = AppConfig.CreateDefault();
+        var descriptor = ProviderDescriptors.Get(ProviderId.GitHubCopilot);
+        var viewModel = new ProviderSettingsPageViewModel(config, [descriptor]);
+        var editor = viewModel.Editors.Single();
+        editor.SourceKindText = DataSourceKind.OfficialApi.ToString();
+        editor.GitHubOrganizationText = "my-org";
+        editor.GitHubEnterpriseSlugText = "my-enterprise";
+        editor.GitHubPatSecretNameText = "github-copilot-pat";
+
+        var guidance = GuidanceText(editor);
+
+        Assert.Contains("Copilot API mode has scope and PAT references configured", guidance, StringComparison.Ordinal);
+        Assert.DoesNotContain("my-org", guidance, StringComparison.Ordinal);
+        Assert.DoesNotContain("my-enterprise", guidance, StringComparison.Ordinal);
+        Assert.DoesNotContain("github-copilot-pat", guidance, StringComparison.Ordinal);
+    }
+
+    private static string GuidanceText(ProviderSettingsEditorViewModel editor)
+    {
+        return string.Join('\n', editor.SetupGuidanceLines);
+    }
 }
