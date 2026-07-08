@@ -51,6 +51,7 @@ public sealed class CommandLineHandlerTests
         Assert.Contains("--version", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--refresh-once", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--set-provider-cli-override", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--clear-provider-cli-override", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--provider <ProviderId>", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--command <path-or-command>", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--source <DataSourceKind>", output.ToString(), StringComparison.Ordinal);
@@ -387,6 +388,37 @@ public sealed class CommandLineHandlerTests
         Assert.Contains("override saved", output.ToString(), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task TryHandleAsync_ClearsProviderCliOverride()
+    {
+        using var output = new StringWriter();
+        CommandLineClearProviderCliOverrideOptions? capturedOptions = null;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--clear-provider-cli-override", "--provider", "Codex"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            clearProviderCliOverride: (options, cancellationToken) =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                capturedOptions = options;
+                return Task.FromResult(new CommandLineActionResult("override cleared", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("Codex", capturedOptions?.ProviderId);
+        Assert.Contains("override cleared", output.ToString(), StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("--set-provider-cli-override")]
     [InlineData("--set-provider-cli-override", "--provider", "Codex")]
@@ -424,6 +456,40 @@ public sealed class CommandLineHandlerTests
         Assert.Contains("--set-provider-cli-override", error.ToString(), StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("--clear-provider-cli-override")]
+    [InlineData("--clear-provider-cli-override", "--provider")]
+    [InlineData("--clear-provider-cli-override", "--provider", "Codex", "--provider", "ChatGPT")]
+    [InlineData("--clear-provider-cli-override", "--provider", "Codex", "--wat")]
+    public async Task TryHandleAsync_ReturnsErrorForInvalidClearProviderCliOverrideOptions(params string[] args)
+    {
+        using var error = new StringWriter();
+        var clearCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            args,
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            clearProviderCliOverride: (_, _) =>
+            {
+                clearCount++;
+                return Task.FromResult(new CommandLineActionResult("should not run", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Equal(0, clearCount);
+        Assert.Contains("--clear-provider-cli-override", error.ToString(), StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task TryHandleAsync_ReturnsErrorWhenProviderCliOverrideSetterIsUnavailable()
     {
@@ -431,6 +497,29 @@ public sealed class CommandLineHandlerTests
 
         var result = await CommandLineHandler.TryHandleAsync(
             ["--set-provider-cli-override", "--provider", "Codex", "--command", @"C:\Tools\codex.cmd"],
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains("unavailable", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ReturnsErrorWhenProviderCliOverrideClearerIsUnavailable()
+    {
+        using var error = new StringWriter();
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--clear-provider-cli-override", "--provider", "Codex"],
             new StringWriter(),
             error,
             _ => Task.FromResult(1),

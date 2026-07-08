@@ -124,6 +124,43 @@ public static class CommandLineActions
             0);
     }
 
+    public static async Task<CommandLineActionResult> ClearProviderCliOverrideAsync(
+        CommandLineClearProviderCliOverrideOptions options,
+        CancellationToken cancellationToken)
+    {
+        return await ClearProviderCliOverrideAsync(
+            options,
+            cancellationToken,
+            AppDataPaths.CreateDefault()).ConfigureAwait(false);
+    }
+
+    public static async Task<CommandLineActionResult> ClearProviderCliOverrideAsync(
+        CommandLineClearProviderCliOverrideOptions options,
+        CancellationToken cancellationToken,
+        AppDataPaths paths)
+    {
+        var validation = ValidateProviderCliOverrideProvider(options.ProviderId);
+        if (!validation.IsValid || validation.Descriptor is null)
+        {
+            return new CommandLineActionResult(validation.ErrorMessage, 2);
+        }
+
+        var configStore = new JsonAppConfigStore(paths);
+        var config = await configStore.LoadAsync(cancellationToken).ConfigureAwait(false);
+        var provider = config.GetOrCreateProvider(validation.Descriptor);
+        provider.Cli.CommandPathOverride = null;
+        await configStore.SaveAsync(config, cancellationToken).ConfigureAwait(false);
+
+        return new CommandLineActionResult(
+            $"""
+            Provider CLI override
+            Provider: {validation.Descriptor.DisplayName}
+            Status: cleared
+            Command override: not configured
+            """,
+            0);
+    }
+
     public static async Task<CommandLineActionResult> CheckForUpdatesAsync(CancellationToken cancellationToken)
     {
         return await CheckForUpdatesAsync(
@@ -495,23 +532,10 @@ public static class CommandLineActions
     private static ProviderCliOverrideValidationResult ValidateProviderCliOverrideOptions(
         CommandLineSetProviderCliOverrideOptions options)
     {
-        if (!Enum.TryParse<ProviderId>(options.ProviderId, ignoreCase: true, out var providerId))
+        var providerValidation = ValidateProviderCliOverrideProvider(options.ProviderId);
+        if (!providerValidation.IsValid || providerValidation.Descriptor is null)
         {
-            return ProviderCliOverrideValidationResult.Invalid(
-                $"Unknown provider '{options.ProviderId}'. Use --provider-catalog to list supported providers.");
-        }
-
-        var descriptor = ProviderDescriptors.All.FirstOrDefault(item => item.Id == providerId);
-        if (descriptor is null)
-        {
-            return ProviderCliOverrideValidationResult.Invalid(
-                $"Unknown provider '{options.ProviderId}'. Use --provider-catalog to list supported providers.");
-        }
-
-        if (!descriptor.SupportedSources.Any(source => source is DataSourceKind.Cli or DataSourceKind.LocalAppServer))
-        {
-            return ProviderCliOverrideValidationResult.Invalid(
-                $"{descriptor.DisplayName} does not support CLI command overrides.");
+            return ProviderCliOverrideValidationResult.Invalid(providerValidation.ErrorMessage);
         }
 
         if (CliCommandSettings.HasInvalidCommandPathOverrideQuotes(options.CommandPathOverride))
@@ -545,7 +569,32 @@ public static class CommandLineActions
                 "CLI command override must not contain tokens, cookies, or auth values.");
         }
 
-        return ProviderCliOverrideValidationResult.Valid(descriptor, normalizedOverride);
+        return ProviderCliOverrideValidationResult.Valid(providerValidation.Descriptor, normalizedOverride);
+    }
+
+    private static ProviderCliOverrideProviderValidationResult ValidateProviderCliOverrideProvider(
+        string providerIdText)
+    {
+        if (!Enum.TryParse<ProviderId>(providerIdText, ignoreCase: true, out var providerId))
+        {
+            return ProviderCliOverrideProviderValidationResult.Invalid(
+                $"Unknown provider '{providerIdText}'. Use --provider-catalog to list supported providers.");
+        }
+
+        var descriptor = ProviderDescriptors.All.FirstOrDefault(item => item.Id == providerId);
+        if (descriptor is null)
+        {
+            return ProviderCliOverrideProviderValidationResult.Invalid(
+                $"Unknown provider '{providerIdText}'. Use --provider-catalog to list supported providers.");
+        }
+
+        if (!descriptor.SupportedSources.Any(source => source is DataSourceKind.Cli or DataSourceKind.LocalAppServer))
+        {
+            return ProviderCliOverrideProviderValidationResult.Invalid(
+                $"{descriptor.DisplayName} does not support CLI command overrides.");
+        }
+
+        return ProviderCliOverrideProviderValidationResult.Valid(descriptor);
     }
 
     public static async Task<CommandLineActionResult> ValidateConfigBackupAsync(
@@ -608,6 +657,23 @@ internal sealed record ProviderCliOverrideValidationResult(
     public static ProviderCliOverrideValidationResult Invalid(string errorMessage)
     {
         return new ProviderCliOverrideValidationResult(false, null, null, errorMessage);
+    }
+}
+
+internal sealed record ProviderCliOverrideProviderValidationResult(
+    bool IsValid,
+    ProviderDescriptor? Descriptor,
+    string ErrorMessage)
+{
+    public static ProviderCliOverrideProviderValidationResult Valid(
+        ProviderDescriptor descriptor)
+    {
+        return new ProviderCliOverrideProviderValidationResult(true, descriptor, string.Empty);
+    }
+
+    public static ProviderCliOverrideProviderValidationResult Invalid(string errorMessage)
+    {
+        return new ProviderCliOverrideProviderValidationResult(false, null, errorMessage);
     }
 }
 

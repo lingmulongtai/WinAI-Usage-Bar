@@ -119,6 +119,60 @@ public sealed class CommandLineActionsTests
     }
 
     [Fact]
+    public async Task ClearProviderCliOverrideAsync_ClearsSavedOverrideWithoutEchoingValue()
+    {
+        var paths = TestPaths();
+        var commandPath = @"C:\Program Files\Codex\codex.cmd";
+        var configStore = new JsonAppConfigStore(paths);
+        var config = AppConfig.CreateDefault();
+        var codex = config.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.Codex));
+        codex.Cli.CommandPathOverride = commandPath;
+
+        try
+        {
+            await configStore.SaveAsync(config, CancellationToken.None);
+
+            var result = await CommandLineActions.ClearProviderCliOverrideAsync(
+                new CommandLineClearProviderCliOverrideOptions("Codex"),
+                CancellationToken.None,
+                paths);
+
+            var reloaded = await configStore.LoadAsync(CancellationToken.None);
+            var reloadedCodex = reloaded.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.Codex));
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Null(reloadedCodex.Cli.CommandPathOverride);
+            Assert.Contains("Provider CLI override", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Codex", result.Output, StringComparison.Ordinal);
+            Assert.Contains("cleared", result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain(commandPath, result.Output, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(paths.RootDirectory))
+            {
+                Directory.Delete(paths.RootDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData("Nope", "Unknown provider")]
+    [InlineData("Gemini", "does not support CLI command overrides")]
+    public async Task ClearProviderCliOverrideAsync_ReturnsValidationErrors(
+        string providerId,
+        string expectedError)
+    {
+        var result = await CommandLineActions.ClearProviderCliOverrideAsync(
+            new CommandLineClearProviderCliOverrideOptions(providerId),
+            CancellationToken.None,
+            TestPaths());
+
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains(expectedError, result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task PruneSupportArtifactsAsync_PrunesBackupsAndDiagnosticsExports()
     {
         var paths = TestPaths();

@@ -24,6 +24,7 @@ public static class Program
             CancellationToken.None,
             refreshOnce: CommandLineActions.RefreshOnceAsync,
             setProviderCliOverride: CommandLineActions.SetProviderCliOverrideAsync,
+            clearProviderCliOverride: CommandLineActions.ClearProviderCliOverrideAsync,
             pruneSupportArtifacts: CommandLineActions.PruneSupportArtifactsAsync,
             checkForUpdates: CommandLineActions.CheckForUpdatesAsync,
             downloadUpdate: CommandLineActions.DownloadUpdateAsync,

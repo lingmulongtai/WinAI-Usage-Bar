@@ -12,6 +12,9 @@ public sealed record CommandLineSetProviderCliOverrideOptions(
     string ProviderId,
     string CommandPathOverride);
 
+public sealed record CommandLineClearProviderCliOverrideOptions(
+    string ProviderId);
+
 public sealed record CommandLinePruneSupportArtifactsOptions(
     int KeepNewest);
 
@@ -48,6 +51,7 @@ public static class CommandLineHandler
         CancellationToken cancellationToken,
         Func<CommandLineRefreshOnceOptions, CancellationToken, Task<CommandLineActionResult>>? refreshOnce = null,
         Func<CommandLineSetProviderCliOverrideOptions, CancellationToken, Task<CommandLineActionResult>>? setProviderCliOverride = null,
+        Func<CommandLineClearProviderCliOverrideOptions, CancellationToken, Task<CommandLineActionResult>>? clearProviderCliOverride = null,
         Func<CommandLinePruneSupportArtifactsOptions, CancellationToken, Task<CommandLineActionResult>>? pruneSupportArtifacts = null,
         Func<CommandLineUpdateVersionOptions, CancellationToken, Task<CommandLineActionResult>>? checkForUpdates = null,
         Func<CommandLineUpdateVersionOptions, CancellationToken, Task<CommandLineActionResult>>? downloadUpdate = null,
@@ -133,6 +137,30 @@ public static class CommandLineHandler
             }
 
             var result = await setProviderCliOverride(parseResult.Options, cancellationToken).ConfigureAwait(false);
+            await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, result.ExitCode);
+        }
+
+        if (args.Count >= 1
+            && string.Equals(args[0].Trim(), "--clear-provider-cli-override", StringComparison.OrdinalIgnoreCase))
+        {
+            if (clearProviderCliOverride is null)
+            {
+                await error.WriteLineAsync(
+                    "--clear-provider-cli-override is unavailable in this host.".AsMemory(),
+                    cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var parseResult = ParseClearProviderCliOverrideOptions(args);
+            if (!parseResult.IsValid || parseResult.Options is null)
+            {
+                await error.WriteLineAsync(parseResult.ErrorMessage.AsMemory(), cancellationToken).ConfigureAwait(false);
+                await error.WriteLineAsync(CreateHelpText().AsMemory(), cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var result = await clearProviderCliOverride(parseResult.Options, cancellationToken).ConfigureAwait(false);
             await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
             return new CommandLineHandleResult(Handled: true, result.ExitCode);
         }
@@ -390,9 +418,10 @@ public static class CommandLineHandler
         WinAI Usage Bar
 
         Usage:
-          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--export-config-backup|--health-report|--refresh-once|--set-provider-cli-override|--provider-catalog|--check-for-updates|--download-update|--launch-prepared-update|--install-latest-update|--run-startup-update-check]
+          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--export-config-backup|--health-report|--refresh-once|--set-provider-cli-override|--clear-provider-cli-override|--provider-catalog|--check-for-updates|--download-update|--launch-prepared-update|--install-latest-update|--run-startup-update-check]
           WinAiUsageBar.App.exe --refresh-once --provider <ProviderId> [--source <DataSourceKind>]
           WinAiUsageBar.App.exe --set-provider-cli-override --provider <ProviderId> --command <path-or-command>
+          WinAiUsageBar.App.exe --clear-provider-cli-override --provider <ProviderId>
           WinAiUsageBar.App.exe --prune-support-artifacts [--keep-newest <N>]
           WinAiUsageBar.App.exe --check-for-updates [--current-version <version>]
           WinAiUsageBar.App.exe --download-update [--current-version <version>]
@@ -417,6 +446,8 @@ public static class CommandLineHandler
                                 Temporarily override the selected provider source for --refresh-once.
           --set-provider-cli-override
                                 Save a non-secret CLI command override for a CLI/local app-server provider.
+          --clear-provider-cli-override
+                                Clear the saved CLI command override for a CLI/local app-server provider.
           --command <path-or-command>
                                 Command or path to save for --set-provider-cli-override.
           --provider-catalog    Print supported provider descriptors without launching UI.
@@ -564,6 +595,44 @@ public static class CommandLineHandler
 
         return CommandLineSetProviderCliOverrideParseResult.Valid(
             new CommandLineSetProviderCliOverrideOptions(providerId, commandPathOverride));
+    }
+
+    private static CommandLineClearProviderCliOverrideParseResult ParseClearProviderCliOverrideOptions(
+        IReadOnlyList<string> args)
+    {
+        string? providerId = null;
+
+        for (var index = 1; index < args.Count; index++)
+        {
+            var option = args[index].Trim();
+            if (string.Equals(option, "--provider", StringComparison.OrdinalIgnoreCase))
+            {
+                if (providerId is not null)
+                {
+                    return CommandLineClearProviderCliOverrideParseResult.Invalid("Duplicate --provider option.");
+                }
+
+                if (++index >= args.Count || string.IsNullOrWhiteSpace(args[index]))
+                {
+                    return CommandLineClearProviderCliOverrideParseResult.Invalid("Missing value for --provider.");
+                }
+
+                providerId = args[index].Trim();
+                continue;
+            }
+
+            return CommandLineClearProviderCliOverrideParseResult.Invalid(
+                $"Unknown --clear-provider-cli-override option: {option}");
+        }
+
+        if (providerId is null)
+        {
+            return CommandLineClearProviderCliOverrideParseResult.Invalid(
+                "--clear-provider-cli-override requires --provider <ProviderId>.");
+        }
+
+        return CommandLineClearProviderCliOverrideParseResult.Valid(
+            new CommandLineClearProviderCliOverrideOptions(providerId));
     }
 
     private static CommandLinePruneSupportArtifactsParseResult ParsePruneSupportArtifactsOptions(
@@ -915,6 +984,23 @@ internal sealed record CommandLineSetProviderCliOverrideParseResult(
     public static CommandLineSetProviderCliOverrideParseResult Invalid(string errorMessage)
     {
         return new CommandLineSetProviderCliOverrideParseResult(false, null, errorMessage);
+    }
+}
+
+internal sealed record CommandLineClearProviderCliOverrideParseResult(
+    bool IsValid,
+    CommandLineClearProviderCliOverrideOptions? Options,
+    string ErrorMessage)
+{
+    public static CommandLineClearProviderCliOverrideParseResult Valid(
+        CommandLineClearProviderCliOverrideOptions options)
+    {
+        return new CommandLineClearProviderCliOverrideParseResult(true, options, string.Empty);
+    }
+
+    public static CommandLineClearProviderCliOverrideParseResult Invalid(string errorMessage)
+    {
+        return new CommandLineClearProviderCliOverrideParseResult(false, null, errorMessage);
     }
 }
 

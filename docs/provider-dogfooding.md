@@ -25,3 +25,9 @@ Use Manual mode until a launchable Codex CLI path is available. If a separate la
 ```powershell
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --set-provider-cli-override --provider Codex --command C:\Tools\codex.cmd
 ```
+
+Clear the workaround with:
+
+```powershell
+.\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --clear-provider-cli-override --provider Codex
+```
