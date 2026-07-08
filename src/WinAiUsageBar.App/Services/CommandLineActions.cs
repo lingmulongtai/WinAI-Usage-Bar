@@ -1,3 +1,5 @@
+using WinAiUsageBar.Core.Configuration;
+using WinAiUsageBar.Core.Models;
 using WinAiUsageBar.Core.Providers;
 using WinAiUsageBar.Infrastructure.Diagnostics;
 using WinAiUsageBar.Infrastructure.Notifications;
@@ -51,25 +53,101 @@ public static class CommandLineActions
         return CommandLineProviderCatalogFormatter.Format(ProviderDescriptors.All);
     }
 
-    public static async Task<string> RefreshOnceAsync(CancellationToken cancellationToken)
+    public static async Task<CommandLineActionResult> RefreshOnceAsync(
+        CommandLineRefreshOnceOptions options,
+        CancellationToken cancellationToken)
     {
-        var paths = AppDataPaths.CreateDefault();
-        var services = AppCompositionRoot.CreateServices(paths, new NoOpAppNotificationService());
+        return await RefreshOnceAsync(options, cancellationToken, AppDataPaths.CreateDefault()).ConfigureAwait(false);
+    }
+
+    public static async Task<CommandLineActionResult> RefreshOnceAsync(
+        CommandLineRefreshOnceOptions options,
+        CancellationToken cancellationToken,
+        AppDataPaths paths)
+    {
+        var baseConfigStore = new JsonAppConfigStore(paths);
+        var config = await baseConfigStore.LoadAsync(cancellationToken).ConfigureAwait(false);
+        var overrideResult = ApplyRefreshOnceOverrides(config, options);
+        if (!overrideResult.IsValid)
+        {
+            return new CommandLineActionResult(overrideResult.ErrorMessage, 2);
+        }
+
+        var services = AppCompositionRoot.CreateServices(
+            paths,
+            new NoOpAppNotificationService(),
+            new OneShotConfigStore(config));
         var refreshService = services.RefreshService;
 
         try
         {
             await refreshService.InitializeAsync(cancellationToken).ConfigureAwait(false);
             await refreshService.RefreshNowAsync(cancellationToken).ConfigureAwait(false);
-            return CommandLineRefreshReportFormatter.Format(
+            var output = CommandLineRefreshReportFormatter.Format(
                 AppInfoProvider.Get(),
                 refreshService.CurrentSnapshots,
                 DateTimeOffset.Now);
+            return new CommandLineActionResult(output, 0);
         }
         finally
         {
             await refreshService.DisposeAsync().ConfigureAwait(false);
         }
+    }
+
+    private static RefreshOnceOverrideResult ApplyRefreshOnceOverrides(
+        AppConfig config,
+        CommandLineRefreshOnceOptions options)
+    {
+        if (string.IsNullOrWhiteSpace(options.ProviderId))
+        {
+            return RefreshOnceOverrideResult.Valid();
+        }
+
+        if (!Enum.TryParse<ProviderId>(options.ProviderId, ignoreCase: true, out var providerId))
+        {
+            return RefreshOnceOverrideResult.Invalid(
+                $"Unknown provider '{options.ProviderId}'. Use --provider-catalog to list supported providers.");
+        }
+
+        var descriptor = ProviderDescriptors.All.FirstOrDefault(item => item.Id == providerId);
+        if (descriptor is null)
+        {
+            return RefreshOnceOverrideResult.Invalid(
+                $"Unknown provider '{options.ProviderId}'. Use --provider-catalog to list supported providers.");
+        }
+
+        DataSourceKind? sourceKind = null;
+        if (!string.IsNullOrWhiteSpace(options.SourceKind))
+        {
+            if (!Enum.TryParse<DataSourceKind>(options.SourceKind, ignoreCase: true, out var parsedSourceKind))
+            {
+                return RefreshOnceOverrideResult.Invalid(
+                    $"Unknown source '{options.SourceKind}'. Use --provider-catalog to list supported sources.");
+            }
+
+            if (!descriptor.SupportedSources.Contains(parsedSourceKind))
+            {
+                return RefreshOnceOverrideResult.Invalid(
+                    $"{descriptor.DisplayName} does not support source {parsedSourceKind}. Supported sources: {string.Join(", ", descriptor.SupportedSources)}.");
+            }
+
+            sourceKind = parsedSourceKind;
+        }
+
+        foreach (var provider in config.Providers)
+        {
+            provider.IsEnabled = false;
+        }
+
+        var selectedProvider = config.GetOrCreateProvider(descriptor);
+        selectedProvider.IsEnabled = true;
+        if (sourceKind is not null)
+        {
+            selectedProvider.SourceKind = sourceKind.Value;
+        }
+
+        return RefreshOnceOverrideResult.Valid();
     }
 
     public static async Task<CommandLineActionResult> ValidateConfigBackupAsync(
@@ -100,3 +178,33 @@ public static class CommandLineActions
 public sealed record CommandLineActionResult(
     string Output,
     int ExitCode);
+
+internal sealed record RefreshOnceOverrideResult(
+    bool IsValid,
+    string ErrorMessage)
+{
+    public static RefreshOnceOverrideResult Valid()
+    {
+        return new RefreshOnceOverrideResult(true, string.Empty);
+    }
+
+    public static RefreshOnceOverrideResult Invalid(string errorMessage)
+    {
+        return new RefreshOnceOverrideResult(false, errorMessage);
+    }
+}
+
+internal sealed class OneShotConfigStore(AppConfig config) : IAppConfigStore
+{
+    public Task<AppConfig> LoadAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(config);
+    }
+
+    public Task SaveAsync(AppConfig nextConfig, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.CompletedTask;
+    }
+}

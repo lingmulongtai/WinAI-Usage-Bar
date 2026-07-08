@@ -27,12 +27,13 @@ public static class AppCompositionRoot
 
     public static AppHostServices CreateServices(
         AppDataPaths paths,
-        IAppNotificationService? notificationService = null)
+        IAppNotificationService? notificationService = null,
+        IAppConfigStore? configStoreOverride = null)
     {
         var diagnosticsLog = new FileAppDiagnosticsLog(paths);
         var secretStore = new DpapiSecretStore(paths);
         var secretResolver = new SecretStoreResolver(secretStore);
-        var configStore = new JsonAppConfigStore(paths);
+        var configStore = configStoreOverride ?? new JsonAppConfigStore(paths);
         var snapshotStore = new JsonSnapshotStore(paths);
         var commandProbe = new CliCommandProbe();
         var codexClient = new CodexAppServerClient();

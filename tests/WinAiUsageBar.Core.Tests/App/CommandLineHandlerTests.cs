@@ -50,6 +50,8 @@ public sealed class CommandLineHandlerTests
         Assert.Equal(0, result.ExitCode);
         Assert.Contains("--version", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--refresh-once", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--provider <ProviderId>", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--source <DataSourceKind>", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--provider-catalog", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--validate-config-backup", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--restore-config-backup", output.ToString(), StringComparison.Ordinal);
@@ -182,17 +184,86 @@ public sealed class CommandLineHandlerTests
             RestoreConfigBackup,
             AppInfo,
             CancellationToken.None,
-            refreshOnce: cancellationToken =>
+            refreshOnce: (options, cancellationToken) =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 refreshCount++;
-                return Task.FromResult("refresh report body");
+                Assert.Null(options.ProviderId);
+                Assert.Null(options.SourceKind);
+                return Task.FromResult(new CommandLineActionResult("refresh report body", 0));
             });
 
         Assert.True(result.Handled);
         Assert.Equal(0, result.ExitCode);
         Assert.Equal(1, refreshCount);
         Assert.Contains("refresh report body", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_RunsRefreshOnceWithProviderAndSourceOptions()
+    {
+        using var output = new StringWriter();
+        CommandLineRefreshOnceOptions? capturedOptions = null;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--refresh-once", "--provider", "Codex", "--source", "LocalAppServer"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            refreshOnce: (options, cancellationToken) =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                capturedOptions = options;
+                return Task.FromResult(new CommandLineActionResult("codex local app-server report", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("Codex", capturedOptions?.ProviderId);
+        Assert.Equal("LocalAppServer", capturedOptions?.SourceKind);
+        Assert.Contains("codex local app-server report", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("--refresh-once", "--source", "Mock")]
+    [InlineData("--refresh-once", "--provider")]
+    [InlineData("--refresh-once", "--provider", "Codex", "--source")]
+    [InlineData("--refresh-once", "--provider", "Codex", "--provider", "ChatGPT")]
+    [InlineData("--refresh-once", "--wat")]
+    public async Task TryHandleAsync_ReturnsErrorForInvalidRefreshOnceOptions(params string[] args)
+    {
+        using var error = new StringWriter();
+        var refreshCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            args,
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            refreshOnce: (_, _) =>
+            {
+                refreshCount++;
+                return Task.FromResult(new CommandLineActionResult("should not run", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Equal(0, refreshCount);
+        Assert.Contains("--refresh-once", error.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]

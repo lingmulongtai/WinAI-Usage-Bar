@@ -96,12 +96,13 @@ Published builds also support lightweight command-line checks:
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --export-diagnostics
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --health-report
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --refresh-once
+.\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --refresh-once --provider Codex --source LocalAppServer
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --provider-catalog
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --validate-config-backup .\config-backup.json
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --restore-config-backup .\config-backup.json --confirm
 ```
 
-Use `--export-diagnostics` when you want a redacted support bundle on disk. Use `--health-report` when you want a quick non-secret summary printed to the console, including safe CLI environment checks for `codex`, `claude`, `gh`, and `git`. Use `--refresh-once` to run enabled providers once, update local snapshots/history, and print a safe provider summary without opening WinUI windows. Use `--provider-catalog` to inspect the built-in provider descriptors without reading local config. Use `--validate-config-backup` to check a backup file before applying it. Use `--restore-config-backup <path> --confirm` to validate and restore a config backup after creating a rollback copy of the current `config.json`.
+Use `--export-diagnostics` when you want a redacted support bundle on disk. Use `--health-report` when you want a quick non-secret summary printed to the console, including safe CLI environment checks for `codex`, `claude`, `gh`, and `git`. Use `--refresh-once` to run enabled providers once, update local snapshots/history, and print a safe provider summary without opening WinUI windows. Add `--provider <ProviderId>` and optional `--source <DataSourceKind>` to try one provider/source for that run only; these overrides are not saved to `config.json`. Use `--provider-catalog` to inspect the built-in provider descriptors without reading local config. Use `--validate-config-backup` to check a backup file before applying it. Use `--restore-config-backup <path> --confirm` to validate and restore a config backup after creating a rollback copy of the current `config.json`.
 
 ## Release
 

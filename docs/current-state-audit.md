@@ -39,7 +39,7 @@ Overall:
 - Providers now includes non-secret setup guidance for source choices, Manual fallback, API references, Copilot metrics requirements, and CLI/app-server caveats.
 - Provider Details now includes non-secret repair guidance for warning, auth-required, unsupported, error, and unknown provider states.
 - Codex app-server parsing now handles common absolute and relative reset timestamp shapes in addition to basic usage and rate-limit percentages, and the client can keep partial account/rate-limit/usage data when one optional method is unavailable.
-- Headless `--refresh-once` can exercise the real enabled-provider refresh pipeline and print safe snapshot summaries without opening WinUI windows.
+- Headless `--refresh-once` can exercise the real enabled-provider refresh pipeline and print safe snapshot summaries without opening WinUI windows, including one-shot provider/source overrides for dogfooding paths such as Codex LocalAppServer.
 - Privacy & Data now includes non-secret storage pressure guidance and recovery guidance for backup, restore, reset, and diagnostics export choices.
 - Windows shell dogfooding now has a concrete manual verification checklist and a timestamped local report script.
 - The issue and commit history is becoming meaningful rather than fake contribution noise.

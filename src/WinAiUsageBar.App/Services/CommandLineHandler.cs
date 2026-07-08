@@ -4,6 +4,10 @@ public sealed record CommandLineHandleResult(
     bool Handled,
     int ExitCode);
 
+public sealed record CommandLineRefreshOnceOptions(
+    string? ProviderId,
+    string? SourceKind);
+
 public static class CommandLineHandler
 {
     public static async Task<CommandLineHandleResult> TryHandleAsync(
@@ -18,7 +22,7 @@ public static class CommandLineHandler
         Func<string, CancellationToken, Task<CommandLineActionResult>> restoreConfigBackup,
         Func<AppInfo> appInfoProvider,
         CancellationToken cancellationToken,
-        Func<CancellationToken, Task<string>>? refreshOnce = null)
+        Func<CommandLineRefreshOnceOptions, CancellationToken, Task<CommandLineActionResult>>? refreshOnce = null)
     {
         if (args.Count == 0)
         {
@@ -50,6 +54,30 @@ public static class CommandLineHandler
                 cancellationToken).ConfigureAwait(false);
             await error.WriteLineAsync(CreateHelpText().AsMemory(), cancellationToken).ConfigureAwait(false);
             return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+        }
+
+        if (args.Count >= 1
+            && string.Equals(args[0].Trim(), "--refresh-once", StringComparison.OrdinalIgnoreCase))
+        {
+            if (refreshOnce is null)
+            {
+                await error.WriteLineAsync(
+                    "--refresh-once is unavailable in this host.".AsMemory(),
+                    cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var parseResult = ParseRefreshOnceOptions(args);
+            if (!parseResult.IsValid || parseResult.Options is null)
+            {
+                await error.WriteLineAsync(parseResult.ErrorMessage.AsMemory(), cancellationToken).ConfigureAwait(false);
+                await error.WriteLineAsync(CreateHelpText().AsMemory(), cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var result = await refreshOnce(parseResult.Options, cancellationToken).ConfigureAwait(false);
+            await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, result.ExitCode);
         }
 
         if (args.Count != 1)
@@ -96,21 +124,6 @@ public static class CommandLineHandler
             return new CommandLineHandleResult(Handled: true, ExitCode: 0);
         }
 
-        if (string.Equals(command, "--refresh-once", StringComparison.OrdinalIgnoreCase))
-        {
-            if (refreshOnce is null)
-            {
-                await error.WriteLineAsync(
-                    "--refresh-once is unavailable in this host.".AsMemory(),
-                    cancellationToken).ConfigureAwait(false);
-                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
-            }
-
-            var report = await refreshOnce(cancellationToken).ConfigureAwait(false);
-            await output.WriteLineAsync(report.AsMemory(), cancellationToken).ConfigureAwait(false);
-            return new CommandLineHandleResult(Handled: true, ExitCode: 0);
-        }
-
         if (string.Equals(command, "--provider-catalog", StringComparison.OrdinalIgnoreCase))
         {
             await output.WriteLineAsync(providerCatalog().AsMemory(), cancellationToken).ConfigureAwait(false);
@@ -137,6 +150,7 @@ public static class CommandLineHandler
 
         Usage:
           WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--health-report|--refresh-once|--provider-catalog]
+          WinAiUsageBar.App.exe --refresh-once --provider <ProviderId> [--source <DataSourceKind>]
           WinAiUsageBar.App.exe --validate-config-backup <path>
           WinAiUsageBar.App.exe --restore-config-backup <path> --confirm
 
@@ -147,6 +161,10 @@ public static class CommandLineHandler
           --export-diagnostics  Write a redacted diagnostics export without launching UI.
           --health-report       Print local config, cache, and history health without launching UI.
           --refresh-once        Refresh enabled providers once and print a safe snapshot report without launching UI.
+          --provider <ProviderId>
+                                Limit --refresh-once to one provider.
+          --source <DataSourceKind>
+                                Temporarily override the selected provider source for --refresh-once.
           --provider-catalog    Print supported provider descriptors without launching UI.
           --validate-config-backup <path>
                                 Validate a config backup without applying it.
@@ -162,6 +180,57 @@ public static class CommandLineHandler
             || string.Equals(command, "/?", StringComparison.OrdinalIgnoreCase);
     }
 
+    private static CommandLineRefreshOnceParseResult ParseRefreshOnceOptions(IReadOnlyList<string> args)
+    {
+        string? providerId = null;
+        string? sourceKind = null;
+
+        for (var index = 1; index < args.Count; index++)
+        {
+            var option = args[index].Trim();
+            if (string.Equals(option, "--provider", StringComparison.OrdinalIgnoreCase))
+            {
+                if (providerId is not null)
+                {
+                    return CommandLineRefreshOnceParseResult.Invalid("Duplicate --provider option.");
+                }
+
+                if (++index >= args.Count || string.IsNullOrWhiteSpace(args[index]))
+                {
+                    return CommandLineRefreshOnceParseResult.Invalid("Missing value for --provider.");
+                }
+
+                providerId = args[index].Trim();
+                continue;
+            }
+
+            if (string.Equals(option, "--source", StringComparison.OrdinalIgnoreCase))
+            {
+                if (sourceKind is not null)
+                {
+                    return CommandLineRefreshOnceParseResult.Invalid("Duplicate --source option.");
+                }
+
+                if (++index >= args.Count || string.IsNullOrWhiteSpace(args[index]))
+                {
+                    return CommandLineRefreshOnceParseResult.Invalid("Missing value for --source.");
+                }
+
+                sourceKind = args[index].Trim();
+                continue;
+            }
+
+            return CommandLineRefreshOnceParseResult.Invalid($"Unknown --refresh-once option: {option}");
+        }
+
+        if (sourceKind is not null && providerId is null)
+        {
+            return CommandLineRefreshOnceParseResult.Invalid("--source requires --provider.");
+        }
+
+        return CommandLineRefreshOnceParseResult.Valid(new CommandLineRefreshOnceOptions(providerId, sourceKind));
+    }
+
     private static async Task WriteUnknownArgumentsAsync(
         IReadOnlyList<string> args,
         TextWriter error,
@@ -171,5 +240,21 @@ public static class CommandLineHandler
             $"Unknown command-line argument(s): {string.Join(" ", args)}".AsMemory(),
             cancellationToken).ConfigureAwait(false);
         await error.WriteLineAsync(CreateHelpText().AsMemory(), cancellationToken).ConfigureAwait(false);
+    }
+}
+
+internal sealed record CommandLineRefreshOnceParseResult(
+    bool IsValid,
+    CommandLineRefreshOnceOptions? Options,
+    string ErrorMessage)
+{
+    public static CommandLineRefreshOnceParseResult Valid(CommandLineRefreshOnceOptions options)
+    {
+        return new CommandLineRefreshOnceParseResult(true, options, string.Empty);
+    }
+
+    public static CommandLineRefreshOnceParseResult Invalid(string errorMessage)
+    {
+        return new CommandLineRefreshOnceParseResult(false, null, errorMessage);
     }
 }
