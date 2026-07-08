@@ -23,6 +23,20 @@ public static partial class DiagnosticRedactor
         return diagnostics.Select(Redact).ToList();
     }
 
+    public static string RedactForDisplay(string? text)
+    {
+        var redacted = Redact(text);
+        if (string.IsNullOrEmpty(redacted))
+        {
+            return string.Empty;
+        }
+
+        redacted = DisplayKeyValueSecretRegex().Replace(redacted, "[REDACTED]");
+        redacted = DisplayOpenAiStyleKeyRegex().Replace(redacted, "[REDACTED]");
+        redacted = DisplayGitHubTokenRegex().Replace(redacted, "[REDACTED]");
+        return redacted;
+    }
+
     [GeneratedRegex(@"(?i)(authorization\s*[:=]\s*bearer\s+)[^\s,;]+")]
     private static partial Regex AuthorizationRegex();
 
@@ -34,4 +48,13 @@ public static partial class DiagnosticRedactor
 
     [GeneratedRegex(@"ghp_[A-Za-z0-9_]{8,}")]
     private static partial Regex GitHubTokenRegex();
+
+    [GeneratedRegex(@"(?i)\b(?:authorization\s*[:=]\s*bearer\s+|""?(?:api[_-]?key|access[_-]?token|refresh[_-]?token|token|secret(?:[_-]?name)?|pat[_-]?secret(?:[_-]?name)?|cookie)""?\s*[:=]\s*""?)\[REDACTED\]""?")]
+    private static partial Regex DisplayKeyValueSecretRegex();
+
+    [GeneratedRegex(@"sk-\[REDACTED\]")]
+    private static partial Regex DisplayOpenAiStyleKeyRegex();
+
+    [GeneratedRegex(@"ghp_\[REDACTED\]")]
+    private static partial Regex DisplayGitHubTokenRegex();
 }

@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Text;
-using System.Text.RegularExpressions;
 using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Infrastructure.Diagnostics;
 using WinAiUsageBar.Infrastructure.Process;
@@ -246,10 +245,6 @@ public static class CommandLineHealthReportFormatter
             return "n/a";
         }
 
-        var redacted = DiagnosticRedactor.Redact(value);
-        return Regex.Replace(
-            redacted,
-            @"(?i)\b(?:authorization\s*[:=]\s*bearer|api[_-]?key|access[_-]?token|refresh[_-]?token|token|secret(?:[_-]?name)?|pat[_-]?secret(?:[_-]?name)?|cookie)\s*[:=]\s*\[REDACTED\]",
-            "[REDACTED]");
+        return DiagnosticRedactor.RedactForDisplay(value);
     }
 }

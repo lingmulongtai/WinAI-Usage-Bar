@@ -1,5 +1,6 @@
 using System.Globalization;
 using WinAiUsageBar.Core.Configuration;
+using WinAiUsageBar.Infrastructure.Security;
 
 namespace WinAiUsageBar.App.ViewModels;
 
@@ -95,22 +96,22 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
             : $"Last checked: {updates.LastCheckedAt:yyyy-MM-dd HH:mm:ss zzz}";
         var status = string.IsNullOrWhiteSpace(updates.LastStatus)
             ? "Unknown"
-            : updates.LastStatus;
+            : SafeValue(updates.LastStatus);
         var latest = string.IsNullOrWhiteSpace(updates.LastLatestVersion)
             ? "n/a"
-            : updates.LastLatestVersion;
+            : SafeValue(updates.LastLatestVersion);
         var current = string.IsNullOrWhiteSpace(updates.LastCurrentVersion)
             ? null
-            : updates.LastCurrentVersion;
+            : SafeValue(updates.LastCurrentVersion);
         var message = string.IsNullOrWhiteSpace(updates.LastMessage)
             ? "No update status has been recorded yet."
-            : updates.LastMessage;
+            : SafeValue(updates.LastMessage);
         var interval = updates.MinimumCheckIntervalHours <= 0
             ? "Startup interval: every startup"
             : $"Startup interval: at most every {updates.MinimumCheckIntervalHours} hour(s)";
         var launchedVersion = string.IsNullOrWhiteSpace(updates.LastInstallLaunchedVersion)
             ? "Last launched install: n/a"
-            : $"Last launched install: {updates.LastInstallLaunchedVersion}";
+            : $"Last launched install: {SafeValue(updates.LastInstallLaunchedVersion)}";
 
         var lines = new List<string>
         {
@@ -129,12 +130,12 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
 
         if (!string.IsNullOrWhiteSpace(updates.LastPackagePath))
         {
-            lines.Add($"Package path: {updates.LastPackagePath}");
+            lines.Add($"Package path: {SafeValue(updates.LastPackagePath)}");
         }
 
         if (!string.IsNullOrWhiteSpace(updates.LastInstallScriptPath))
         {
-            lines.Add($"Install script: {updates.LastInstallScriptPath}");
+            lines.Add($"Install script: {SafeValue(updates.LastInstallScriptPath)}");
         }
 
         lines.Add($"Message: {message}");
@@ -164,6 +165,11 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
 
         errors.Add($"{label} must be a whole number.");
         return null;
+    }
+
+    private static string SafeValue(string value)
+    {
+        return DiagnosticRedactor.RedactForDisplay(value);
     }
 }
 

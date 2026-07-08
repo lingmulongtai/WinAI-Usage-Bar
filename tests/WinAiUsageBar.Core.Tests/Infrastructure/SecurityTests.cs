@@ -23,6 +23,27 @@ public sealed class SecurityTests
     }
 
     [Fact]
+    public void RedactForDisplay_CollapsesSensitiveLabels()
+    {
+        var text = "Authorization: Bearer abc123 token=secret secretName=secret-ref cookie=session sk-1234567890 ghp_1234567890";
+
+        var redacted = DiagnosticRedactor.RedactForDisplay(text);
+
+        Assert.Contains("[REDACTED]", redacted, StringComparison.Ordinal);
+        Assert.DoesNotContain("abc123", redacted, StringComparison.Ordinal);
+        Assert.DoesNotContain("secret-ref", redacted, StringComparison.Ordinal);
+        Assert.DoesNotContain("session", redacted, StringComparison.Ordinal);
+        Assert.DoesNotContain("sk-1234567890", redacted, StringComparison.Ordinal);
+        Assert.DoesNotContain("ghp_1234567890", redacted, StringComparison.Ordinal);
+        Assert.DoesNotContain("authorization", redacted, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("token", redacted, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("secret", redacted, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("cookie", redacted, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("sk-", redacted, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("ghp_", redacted, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task FileAppDiagnosticsLog_RedactsMessagesAndExceptions()
     {
         var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));

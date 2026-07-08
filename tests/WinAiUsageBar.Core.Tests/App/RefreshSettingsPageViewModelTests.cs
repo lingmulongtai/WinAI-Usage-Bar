@@ -113,6 +113,34 @@ public sealed class RefreshSettingsPageViewModelTests
     }
 
     [Fact]
+    public void Constructor_RedactsSensitiveStartupUpdateStatus()
+    {
+        var config = AppConfig.CreateDefault();
+        config.Updates.LastStatus = "Downloaded token=sk-secret-value";
+        config.Updates.LastCurrentVersion = "0.1.9 access_token=current-secret";
+        config.Updates.LastLatestVersion = "0.2.0 cookie=session-secret";
+        config.Updates.LastMessage = "Authorization: Bearer bearer-secret and ghp_1234567890";
+        config.Updates.LastInstallLaunchedVersion = "0.2.0 patSecretName=install-secret";
+        config.Updates.LastPackagePath = @"C:\Updates\token=sk-secret-value\WinAIUsageBar.zip";
+        config.Updates.LastInstallScriptPath = @"C:\Updates\secret=script-secret\apply-update.ps1";
+
+        var viewModel = new RefreshSettingsPageViewModel(config);
+
+        Assert.Contains("[REDACTED]", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("sk-secret-value", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("current-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("session-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("bearer-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("ghp_1234567890", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("install-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("script-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("token", viewModel.UpdateStatusText, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("secret", viewModel.UpdateStatusText, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("cookie", viewModel.UpdateStatusText, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("authorization", viewModel.UpdateStatusText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Constructor_OmitsMissingUpdateArtifactPaths()
     {
         var config = AppConfig.CreateDefault();
