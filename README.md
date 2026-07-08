@@ -112,6 +112,10 @@ Create a local Windows setup executable with Inno Setup 6 installed:
 
 The installer script is `installer\WinAIUsageBar.iss`, and the default setup output goes under `artifacts\installer`. The build script publishes the app first unless `-SkipPublish` is passed. It also writes `WinAIUsageBar-<version>-setup.exe.sha256`. If `ISCC.exe` is not on `PATH`, pass `-InnoSetupCompiler <path>` or install Inno Setup 6 locally. Pushes to `main` upload a `WinAIUsageBar-win-x64-installer` artifact from GitHub Actions.
 
+### Unsigned installer notice
+
+WinAI Usage Bar setup installer and executable are currently unsigned. Windows SmartScreen or unknown publisher warnings are expected until code signing is added. Download only from GitHub Releases. Verify the published SHA256 checksum before running the zip package or setup installer. Treat files from other locations as untrusted.
+
 Dogfood a prepared update install against a disposable install directory:
 
 ```powershell

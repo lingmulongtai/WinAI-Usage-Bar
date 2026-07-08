@@ -4,6 +4,7 @@ param(
     [string]$ReadmePath = "",
     [string]$ChangelogPath = "",
     [string]$AuditPath = "",
+    [string]$SpecPath = "",
     [string]$PublishedAppPath = "",
     [string]$PackageDirectory = "",
     [string]$InstallerDirectory = "",
@@ -31,6 +32,10 @@ if ([string]::IsNullOrWhiteSpace($ChangelogPath)) {
 
 if ([string]::IsNullOrWhiteSpace($AuditPath)) {
     $AuditPath = Join-Path $repoRoot "docs\current-state-audit.md"
+}
+
+if ([string]::IsNullOrWhiteSpace($SpecPath)) {
+    $SpecPath = Join-Path $repoRoot "docs\spec.md"
 }
 
 if ([string]::IsNullOrWhiteSpace($PublishedAppPath)) {
@@ -158,6 +163,15 @@ $releaseDate = Get-ChangelogReleaseDate -Path $ChangelogPath -Version $version
 
 Assert-FileExists -Path $AuditPath -Description "Current state audit"
 Assert-ContainsText -Path $AuditPath -Text "Date: $releaseDate" -Description "Current state audit date for release"
+Assert-FileExists -Path $SpecPath -Description "Product spec"
+Assert-ContainsText -Path $ReadmePath -Text "### Unsigned installer notice" -Description "README unsigned installer notice heading"
+Assert-ContainsText -Path $ReadmePath -Text "WinAI Usage Bar setup installer and executable are currently unsigned." -Description "README unsigned installer warning"
+Assert-ContainsText -Path $ReadmePath -Text "Windows SmartScreen or unknown publisher warnings" -Description "README Windows trust warning"
+Assert-ContainsText -Path $ReadmePath -Text "Download only from GitHub Releases" -Description "README GitHub Releases download warning"
+Assert-ContainsText -Path $ReadmePath -Text "Verify the published SHA256 checksum" -Description "README SHA256 verification warning"
+Assert-ContainsText -Path $SpecPath -Text "Signing remains future work" -Description "Spec unsigned installer future signing statement"
+Assert-ContainsText -Path $SpecPath -Text "while the app is still unsigned, release readiness verification must fail if this warning disappears" -Description "Spec unsigned installer readiness gate"
+Assert-ContainsText -Path $AuditPath -Text "unsigned installer notice" -Description "Current state audit unsigned installer notice tracking"
 
 Assert-FileExists -Path $PublishedAppPath -Description "Published app executable"
 $smokeProcess = Start-Process `
