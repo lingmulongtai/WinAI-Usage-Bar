@@ -96,7 +96,7 @@ Create a local Windows setup executable with Inno Setup 6 installed:
 .\scripts\build-installer.ps1
 ```
 
-The installer script is `installer\WinAIUsageBar.iss`, and the default setup output goes under `artifacts\installer`. The build script publishes the app first unless `-SkipPublish` is passed. If `ISCC.exe` is not on `PATH`, pass `-InnoSetupCompiler <path>` or install Inno Setup 6 locally.
+The installer script is `installer\WinAIUsageBar.iss`, and the default setup output goes under `artifacts\installer`. The build script publishes the app first unless `-SkipPublish` is passed. It also writes `WinAIUsageBar-<version>-setup.exe.sha256`. If `ISCC.exe` is not on `PATH`, pass `-InnoSetupCompiler <path>` or install Inno Setup 6 locally. Pushes to `main` upload a `WinAIUsageBar-win-x64-installer` artifact from GitHub Actions.
 
 Run the published-app smoke test without opening UI:
 
@@ -148,10 +148,11 @@ To create a draft GitHub Release:
 ```powershell
 .\scripts\publish.ps1
 .\scripts\package.ps1
+.\scripts\build-installer.ps1 -SkipPublish
 $report = Get-ChildItem .\artifacts\verification\windows-verification-*.md |
   Sort-Object LastWriteTime -Descending |
   Select-Object -First 1
-.\scripts\verify-release-readiness.ps1 -TagName v0.1.0 -VerificationReportPath $report.FullName -RequireVerificationReport
+.\scripts\verify-release-readiness.ps1 -TagName v0.1.0 -VerificationReportPath $report.FullName -RequireVerificationReport -RequireInstaller
 ```
 
 5. Create and push a version tag:
@@ -161,7 +162,7 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-The release workflow builds, tests, publishes, smoke-tests, packages the app, and creates a draft release with the versioned zip and checksum attached. Review the draft in GitHub before publishing it.
+The release workflow builds, tests, publishes, smoke-tests, packages the app, builds the setup installer, and creates a draft release with the versioned zip, zip checksum, setup exe, and setup checksum attached. Review the draft in GitHub before publishing it.
 
 ## Privacy
 

@@ -109,6 +109,8 @@ Record the environment for each run.
 | Run `--install-latest-update` from CLI | Command reports up-to-date safely or runs check/download/verify/prepare/guarded-launch when a newer release exists |  |  |
 | Run `.\scripts\verify-installer-script.ps1` | Installer scaffold verification passes without requiring Inno Setup |  |  |
 | Run `.\scripts\build-installer.ps1` on a machine with Inno Setup 6 | Setup executable is created under `artifacts\installer` and launches the app after install when selected |  |  |
+| Inspect latest main CI artifacts | `WinAIUsageBar-win-x64-installer` contains setup exe and `.sha256` files |  |  |
+| Inspect a draft release after tagging | Draft release contains zip, zip checksum, setup exe, and setup checksum assets |  |  |
 | Run `--refresh-once` from CLI | Enabled providers refresh once, snapshots/history update, and output contains no secret values or identity fields |  |  |
 | Run `--refresh-once --provider Codex --source LocalAppServer` | Codex source is tested for this run only, repair guidance is printed for failures, and `config.json` keeps the previously saved provider settings |  |  |
 | Restore config backup from CLI with `--confirm` | Current config is backed up before restore and `secrets/` is unchanged |  |  |

@@ -6,8 +6,10 @@ param(
     [string]$AuditPath = "",
     [string]$PublishedAppPath = "",
     [string]$PackageDirectory = "",
+    [string]$InstallerDirectory = "",
     [string]$VerificationReportPath = "",
-    [switch]$RequireVerificationReport
+    [switch]$RequireVerificationReport,
+    [switch]$RequireInstaller
 )
 
 $ErrorActionPreference = "Stop"
@@ -37,6 +39,10 @@ if ([string]::IsNullOrWhiteSpace($PublishedAppPath)) {
 
 if ([string]::IsNullOrWhiteSpace($PackageDirectory)) {
     $PackageDirectory = Join-Path $repoRoot "artifacts\packages"
+}
+
+if ([string]::IsNullOrWhiteSpace($InstallerDirectory)) {
+    $InstallerDirectory = Join-Path $repoRoot "artifacts\installer"
 }
 
 function Get-FirstTextValue {
@@ -174,6 +180,19 @@ $checksumPath = "$zipPath.sha256"
 Assert-FileExists -Path $zipPath -Description "Release zip package"
 Assert-FileExists -Path $checksumPath -Description "Release zip checksum"
 Assert-ChecksumMatches -ZipPath $zipPath -ChecksumPath $checksumPath
+
+if ($RequireInstaller) {
+    if (-not (Test-Path -LiteralPath $InstallerDirectory -PathType Container)) {
+        throw "Installer directory was not found: $InstallerDirectory"
+    }
+
+    $installerName = "WinAIUsageBar-$version-setup.exe"
+    $installerPath = Join-Path $InstallerDirectory $installerName
+    $installerChecksumPath = "$installerPath.sha256"
+    Assert-FileExists -Path $installerPath -Description "Release setup installer"
+    Assert-FileExists -Path $installerChecksumPath -Description "Release setup installer checksum"
+    Assert-ChecksumMatches -ZipPath $installerPath -ChecksumPath $installerChecksumPath
+}
 
 if ($RequireVerificationReport -and [string]::IsNullOrWhiteSpace($VerificationReportPath)) {
     throw "VerificationReportPath is required when -RequireVerificationReport is set."

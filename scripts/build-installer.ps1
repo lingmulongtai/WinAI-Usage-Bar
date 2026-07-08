@@ -98,4 +98,16 @@ if ($LASTEXITCODE -ne 0) {
     throw "Inno Setup compiler failed with exit code $LASTEXITCODE"
 }
 
+$installerPath = Join-Path $outputRoot "WinAIUsageBar-$version-setup.exe"
+if (-not (Test-Path -LiteralPath $installerPath -PathType Leaf)) {
+    throw "Expected installer was not created: $installerPath"
+}
+
+$checksumPath = "$installerPath.sha256"
+$hash = Get-FileHash -Algorithm SHA256 -LiteralPath $installerPath
+"$($hash.Hash.ToLowerInvariant())  $(Split-Path -Leaf $installerPath)" |
+    Set-Content -LiteralPath $checksumPath -Encoding ascii
+
 Write-Host "Created installer output under $outputRoot"
+Write-Host "Created installer $installerPath"
+Write-Host "Created installer checksum $checksumPath"

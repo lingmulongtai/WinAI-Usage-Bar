@@ -21,6 +21,9 @@ jobs:
       - name: Verify release metadata
         run: .\scripts\verify-release.ps1
 
+      - name: Verify installer script
+        run: .\scripts\verify-installer-script.ps1
+
       - name: Restore
         run: .\scripts\restore.ps1 -SolutionPath .\WinAIUsageBar.sln
 
@@ -42,9 +45,17 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: .\scripts\package.ps1 -PublishPath .\artifacts\publish\WinAIUsageBar-win-x64 -OutputDirectory .\artifacts\packages -Runtime win-x64
 
+      - name: Install Inno Setup
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: choco install innosetup -y --no-progress
+
+      - name: Build setup installer
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: .\scripts\build-installer.ps1 -SkipPublish -PublishPath .\artifacts\publish\WinAIUsageBar-win-x64 -OutputDirectory .\artifacts\installer -Runtime win-x64
+
       - name: Verify release readiness
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: .\scripts\verify-release-readiness.ps1 -PublishedAppPath .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe -PackageDirectory .\artifacts\packages
+        run: .\scripts\verify-release-readiness.ps1 -PublishedAppPath .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe -PackageDirectory .\artifacts\packages -InstallerDirectory .\artifacts\installer -RequireInstaller
 
       - name: Upload app artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -61,3 +72,12 @@ jobs:
           path: |
             .\artifacts\packages\*.zip
             .\artifacts\packages\*.zip.sha256
+
+      - name: Upload installer artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: WinAIUsageBar-win-x64-installer
+          path: |
+            .\artifacts\installer\*.exe
+            .\artifacts\installer\*.exe.sha256

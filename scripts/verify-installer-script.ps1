@@ -51,7 +51,9 @@ $requiredBuildSnippets = @(
     "/DAppVersion=",
     "/DPublishPath=",
     "/DOutputDir=",
-    "WinAiUsageBar.App.exe"
+    "WinAiUsageBar.App.exe",
+    "Get-FileHash",
+    ".sha256"
 )
 
 foreach ($snippet in $requiredBuildSnippets) {

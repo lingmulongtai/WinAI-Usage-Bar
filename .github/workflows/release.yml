@@ -24,6 +24,9 @@ jobs:
       - name: Verify release metadata
         run: .\scripts\verify-release.ps1 -TagName $env:GITHUB_REF_NAME
 
+      - name: Verify installer script
+        run: .\scripts\verify-installer-script.ps1
+
       - name: Restore
         run: .\scripts\restore.ps1 -SolutionPath .\WinAIUsageBar.sln
 
@@ -42,8 +45,14 @@ jobs:
       - name: Package app
         run: .\scripts\package.ps1 -PublishPath .\artifacts\publish\WinAIUsageBar-win-x64 -OutputDirectory .\artifacts\packages -Runtime win-x64
 
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build setup installer
+        run: .\scripts\build-installer.ps1 -SkipPublish -PublishPath .\artifacts\publish\WinAIUsageBar-win-x64 -OutputDirectory .\artifacts\installer -Runtime win-x64
+
       - name: Verify release readiness
-        run: .\scripts\verify-release-readiness.ps1 -TagName $env:GITHUB_REF_NAME -PublishedAppPath .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe -PackageDirectory .\artifacts\packages
+        run: .\scripts\verify-release-readiness.ps1 -TagName $env:GITHUB_REF_NAME -PublishedAppPath .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe -PackageDirectory .\artifacts\packages -InstallerDirectory .\artifacts\installer -RequireInstaller
 
       - name: Create draft release
         env:
@@ -52,9 +61,11 @@ jobs:
           $assets = @()
           $assets += Get-ChildItem -LiteralPath .\artifacts\packages -Filter "*.zip" | Select-Object -ExpandProperty FullName
           $assets += Get-ChildItem -LiteralPath .\artifacts\packages -Filter "*.zip.sha256" | Select-Object -ExpandProperty FullName
+          $assets += Get-ChildItem -LiteralPath .\artifacts\installer -Filter "*.exe" | Select-Object -ExpandProperty FullName
+          $assets += Get-ChildItem -LiteralPath .\artifacts\installer -Filter "*.exe.sha256" | Select-Object -ExpandProperty FullName
 
-          if ($assets.Count -lt 2) {
-            throw "Expected zip and checksum assets under artifacts\packages."
+          if ($assets.Count -lt 4) {
+            throw "Expected zip, zip checksum, setup exe, and setup checksum assets."
           }
 
           gh release create $env:GITHUB_REF_NAME @assets `
