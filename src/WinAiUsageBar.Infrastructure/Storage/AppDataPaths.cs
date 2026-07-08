@@ -2,6 +2,8 @@ namespace WinAiUsageBar.Infrastructure.Storage;
 
 public sealed class AppDataPaths
 {
+    public const string RootOverrideEnvironmentVariable = "WINAIUSAGEBAR_APPDATA";
+
     public AppDataPaths(string rootDirectory)
     {
         RootDirectory = rootDirectory;
@@ -35,7 +37,23 @@ public sealed class AppDataPaths
 
     public static AppDataPaths CreateDefault()
     {
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        return CreateDefault(
+            Environment.GetEnvironmentVariable(RootOverrideEnvironmentVariable),
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
+    }
+
+    public static AppDataPaths CreateDefault(
+        string? rootOverride,
+        string appDataRoot)
+    {
+        if (!string.IsNullOrWhiteSpace(rootOverride))
+        {
+            return new AppDataPaths(Path.GetFullPath(rootOverride));
+        }
+
+        var appData = string.IsNullOrWhiteSpace(appDataRoot)
+            ? Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
+            : appDataRoot;
         return new AppDataPaths(Path.Combine(appData, "WinAiUsageBar"));
     }
 
