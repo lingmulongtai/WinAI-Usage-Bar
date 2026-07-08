@@ -8,6 +8,7 @@ using WinAiUsageBar.App.ViewModels;
 using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Core.Models;
 using WinAiUsageBar.Core.Providers;
+using WinAiUsageBar.Infrastructure.Diagnostics;
 using WinAiUsageBar.Infrastructure.Storage;
 
 namespace WinAiUsageBar.App.Windows;
@@ -777,8 +778,9 @@ public sealed class MainWindow : Window
 
     private async Task<UIElement> BuildPrivacyPageAsync()
     {
-        var diagnosticsSummary = new DiagnosticsSummaryViewModel(
-            await host.GetDiagnosticsSummaryAsync(CancellationToken.None));
+        var summary = await host.GetDiagnosticsSummaryAsync(CancellationToken.None);
+        var diagnosticsSummary = new DiagnosticsSummaryViewModel(summary);
+        var recoveryGuidance = new RecoveryGuidanceService().CreateGuidance(summary);
         var panel = PageStack("Privacy & Data");
         panel.Children.Add(new InfoBar
         {
@@ -799,6 +801,17 @@ public sealed class MainWindow : Window
         foreach (var file in diagnosticsSummary.Files)
         {
             panel.Children.Add(UiFactory.Text($"{file.Label}: {file.StatusText}", 12));
+        }
+
+        panel.Children.Add(UiFactory.Text("Recovery guidance", 16, FontWeights.SemiBold));
+        foreach (var item in recoveryGuidance)
+        {
+            panel.Children.Add(UiFactory.Text(
+                $"{item.Title} - {(item.IsAvailable ? "Available" : "Not ready")}",
+                13,
+                FontWeights.SemiBold));
+            panel.Children.Add(UiFactory.Text(item.Recommendation, 12));
+            panel.Children.Add(UiFactory.Text(item.SafetyNote, 12));
         }
 
         panel.Children.Add(UiFactory.Text("Secrets are stored through the secret store abstraction and are not written to config.json.", 14));

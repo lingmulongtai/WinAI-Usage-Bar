@@ -24,6 +24,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - Refresh settings include interval, notification enablement, and history retention limits.
 - Appearance settings apply System, Light, or Dark theme to app windows.
 - Privacy & Data shows a diagnostics summary with local file paths, config version, cached snapshot count, latest update time, and tracked file sizes.
+- Privacy & Data shows recovery guidance for choosing config backup export, latest-backup restore, reset-to-default recovery, or diagnostics export.
 - Privacy & Data can clear cached snapshots and retained history without deleting config or saved secrets.
 - Privacy & Data can export a timestamped `config.json` backup without copying secret values.
 - Privacy & Data can validate and restore the latest config backup after explicit confirmation.
@@ -139,6 +140,7 @@ The release workflow builds, tests, publishes, smoke-tests, packages the app, an
 - `DpapiSecretStore` stores secrets in protected files under `%AppData%\WinAiUsageBar\secrets`.
 - Diagnostics pass through redaction before being stored or surfaced.
 - Privacy & Data shows non-secret diagnostics metadata only; it does not list secret names or values.
+- Privacy & Data recovery guidance is derived from non-secret diagnostics metadata only.
 - Diagnostics can be exported from Privacy & Data; exports redact common secret shapes and never include files under `secrets/`.
 - Secret values can be saved or deleted by secret name from Privacy & Data; values are never displayed back.
 - Snapshot cache and retained history can be cleared from Privacy & Data; `config.json` and `secrets/` are left untouched.

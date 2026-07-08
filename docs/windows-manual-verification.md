@@ -91,6 +91,7 @@ Record the environment for each run.
 | --- | --- | --- | --- |
 | Save a secret value | Value is accepted but never displayed back |  |  |
 | Check a secret name | UI reports present or missing without showing the value |  |  |
+| Review recovery guidance in Privacy & Data | Guidance explains backup, restore, reset, and diagnostics choices without showing secret names or values |  |  |
 | Export diagnostics | Export excludes `secrets/` and redacts common secret shapes |  |  |
 | Export config backup | Backup includes config only and does not copy `secrets/` |  |  |
 | Validate latest config backup from Privacy & Data | Latest backup is validated and result does not expose secret values |  |  |
