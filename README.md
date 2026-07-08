@@ -61,7 +61,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - Codex CLI startup uses provider command overrides when configured, otherwise resolved Windows command paths, including `.cmd` shims and `.exe` paths. Startup failures are classified separately from auth and JSON-RPC errors with repair-oriented messages for WindowsApps/App Execution Alias or permission problems, including the option to set a provider CLI override to a launchable path.
 - Claude, Claude Code, Gemini, OpenCode Zen, and GitHub Copilot have MVP-safe descriptors and manual mode support.
 - Gemini and OpenCode Zen expose API key secret-name fields without storing API key values in config.
-- JSON config, snapshot cache, history, diagnostics exports, crash reports, update staging, and local secrets are stored under `%AppData%\WinAiUsageBar`; config saves use unique temporary files so parallel CLI commands do not collide on a fixed temp file, and loading an already-normalized config does not rewrite it during read-only diagnostics.
+- JSON config, snapshot cache, history, diagnostics exports, crash reports, update staging, and local secrets are stored under `%AppData%\WinAiUsageBar`; config saves plus snapshot cache/history rewrites use unique temporary files so parallel CLI commands do not collide on fixed temp files, and loading an already-normalized config does not rewrite it during read-only diagnostics.
 
 ## Build And Run
 
@@ -246,6 +246,7 @@ The release workflow builds, tests, publishes, smoke-tests, packages the app, bu
 - Diagnostics can be exported from Privacy & Data; exports redact common secret shapes, never include files under `secrets/`, and avoid overwriting same-second exports by adding a numeric suffix when needed.
 - Crash reports are local JSON files only. They include timestamp, source, exception type, redacted message, redacted stack trace, app version, and optional redacted context. Privacy & Data lists recent crash report metadata only; it does not display message or stack trace contents.
 - Secret values can be saved or deleted by secret name from Privacy & Data; values are never displayed back.
+- Provider snapshots are sanitized before cache/history persistence, and legacy history summaries are sanitized before aggregation.
 - Snapshot cache and retained history can be cleared from Privacy & Data; `config.json` and `secrets/` are left untouched.
 - `config.json` can be backed up from Privacy & Data; backup files include non-secret settings only and do not copy `secrets/`.
 - Config backups can be listed from the CLI with `--list-config-backups`; backups can be validated from the CLI with an explicit path or with `--validate-latest-config-backup`; backups can be restored from the CLI with an explicit path and `--confirm`, from the CLI using the latest app-owned backup with `--restore-latest-config-backup --confirm`, or from Privacy & Data using the latest backup and an in-app confirmation checkbox; restore creates a collision-resistant rollback backup first and does not copy or modify files under `secrets/`.
