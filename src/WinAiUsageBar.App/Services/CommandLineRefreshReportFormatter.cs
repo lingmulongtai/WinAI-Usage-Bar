@@ -33,8 +33,8 @@ public static class CommandLineRefreshReportFormatter
             builder.AppendLine($"  Remaining: {FormatPercent(snapshot.PrimaryWindow?.RemainingPercent)}");
             builder.AppendLine($"  Reset: {FormatReset(snapshot.PrimaryWindow)}");
             builder.AppendLine($"  Credits: {FormatCredits(snapshot.Credits)}");
-            AppendSafeLine(builder, "Status", snapshot.StatusMessage);
-            AppendSafeLine(builder, "Error", snapshot.ErrorMessage);
+            AppendSnapshotMessages(builder, snapshot);
+            AppendRepairLines(builder, snapshot);
         }
 
         return builder.ToString().TrimEnd();
@@ -46,6 +46,42 @@ public static class CommandLineRefreshReportFormatter
         if (safe is not null)
         {
             builder.AppendLine($"  {label}: {safe}");
+        }
+    }
+
+    private static void AppendSnapshotMessages(StringBuilder builder, UsageSnapshot snapshot)
+    {
+        if (snapshot.Health == ProviderHealth.AuthRequired)
+        {
+            builder.AppendLine("  Status: Auth required; details are omitted from the CLI report.");
+            if (!string.IsNullOrWhiteSpace(snapshot.ErrorMessage))
+            {
+                builder.AppendLine("  Error: Auth error details are omitted from the CLI report.");
+            }
+
+            return;
+        }
+
+        AppendSafeLine(builder, "Status", snapshot.StatusMessage);
+        AppendSafeLine(builder, "Error", snapshot.ErrorMessage);
+    }
+
+    private static void AppendRepairLines(StringBuilder builder, UsageSnapshot snapshot)
+    {
+        var repairLines = ProviderRepairGuidanceService.BuildRepairLines(snapshot);
+        if (repairLines.Count == 0)
+        {
+            return;
+        }
+
+        builder.AppendLine("  Repair:");
+        foreach (var line in repairLines)
+        {
+            var safe = SafeText(line);
+            if (safe is not null)
+            {
+                builder.AppendLine($"    - {safe}");
+            }
         }
     }
 

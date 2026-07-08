@@ -100,7 +100,7 @@ Record the environment for each run.
 | Restore latest config backup from Privacy & Data | Restore requires confirmation, creates rollback backup, and restarts refresh |  |  |
 | Reset config to defaults from Privacy & Data | Reset requires confirmation, creates rollback backup, keeps `secrets/` unchanged, and restarts refresh |  |  |
 | Run `--refresh-once` from CLI | Enabled providers refresh once, snapshots/history update, and output contains no secret values or identity fields |  |  |
-| Run `--refresh-once --provider Codex --source LocalAppServer` | Codex source is tested for this run only and `config.json` keeps the previously saved provider settings |  |  |
+| Run `--refresh-once --provider Codex --source LocalAppServer` | Codex source is tested for this run only, repair guidance is printed for failures, and `config.json` keeps the previously saved provider settings |  |  |
 | Restore config backup from CLI with `--confirm` | Current config is backed up before restore and `secrets/` is unchanged |  |  |
 | Attempt restore without `--confirm` | Command exits non-zero and config is unchanged |  |  |
 

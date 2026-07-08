@@ -44,10 +44,65 @@ public sealed class CommandLineRefreshReportFormatterTests
         Assert.Contains("Remaining: 17.5%", report, StringComparison.Ordinal);
         Assert.Contains("Reset: 2026-07-08 09:30:00 +09:00", report, StringComparison.Ordinal);
         Assert.Contains("Credits: 12.34 USD, month 5.67, tokens31d 8901", report, StringComparison.Ordinal);
+        Assert.Contains("Repair:", report, StringComparison.Ordinal);
+        Assert.Contains("Review the status message", report, StringComparison.Ordinal);
+        Assert.Contains("local provider command can start", report, StringComparison.Ordinal);
         Assert.Contains("[REDACTED]", report, StringComparison.Ordinal);
         Assert.DoesNotContain("status-secret", report, StringComparison.Ordinal);
         Assert.DoesNotContain("error-secret", report, StringComparison.Ordinal);
         Assert.DoesNotContain("person@example.com", report, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Format_IncludesUnsupportedLocalAppServerRepairGuidance()
+    {
+        var generatedAt = new DateTimeOffset(2026, 7, 8, 7, 30, 0, TimeSpan.FromHours(9));
+        var snapshot = Snapshot(
+            ProviderId.Codex,
+            "Codex",
+            ProviderHealth.Unsupported,
+            DataSourceKind.LocalAppServer,
+            "Codex CLI could not start with token=start-secret",
+            "cookie=error-secret",
+            generatedAt);
+
+        var report = CommandLineRefreshReportFormatter.Format(
+            new AppInfo("WinAI Usage Bar", "1.2.3.0", "1.2.3"),
+            [snapshot],
+            generatedAt);
+
+        Assert.Contains("Repair:", report, StringComparison.Ordinal);
+        Assert.Contains("Switch to Manual mode", report, StringComparison.Ordinal);
+        Assert.Contains("local provider command can start", report, StringComparison.Ordinal);
+        Assert.Contains("[REDACTED]", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("start-secret", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("error-secret", report, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Format_IncludesCopilotAuthRepairGuidanceWithoutConfiguredScopeOrSecretNames()
+    {
+        var generatedAt = new DateTimeOffset(2026, 7, 8, 7, 30, 0, TimeSpan.FromHours(9));
+        var snapshot = Snapshot(
+            ProviderId.GitHubCopilot,
+            "GitHub Copilot",
+            ProviderHealth.AuthRequired,
+            DataSourceKind.OfficialApi,
+            "missing github-copilot-pat for my-org",
+            "ghp_123456789abcdef",
+            generatedAt);
+
+        var report = CommandLineRefreshReportFormatter.Format(
+            new AppInfo("WinAI Usage Bar", "1.2.3.0", "1.2.3"),
+            [snapshot],
+            generatedAt);
+
+        Assert.Contains("Repair:", report, StringComparison.Ordinal);
+        Assert.Contains("Reconnect credentials", report, StringComparison.Ordinal);
+        Assert.Contains("PAT secret reference", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("github-copilot-pat", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("my-org", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("ghp_123456789abcdef", report, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -60,5 +115,28 @@ public sealed class CommandLineRefreshReportFormatterTests
 
         Assert.Contains("Snapshots: 0", report, StringComparison.Ordinal);
         Assert.Contains("No enabled provider snapshots were produced.", report, StringComparison.Ordinal);
+    }
+
+    private static UsageSnapshot Snapshot(
+        ProviderId providerId,
+        string displayName,
+        ProviderHealth health,
+        DataSourceKind sourceKind,
+        string? statusMessage,
+        string? errorMessage,
+        DateTimeOffset updatedAt)
+    {
+        return new UsageSnapshot(
+            providerId,
+            displayName,
+            health,
+            Identity: new ProviderIdentity("person@example.com", "person", "Plus", "my-org"),
+            PrimaryWindow: null,
+            SecondaryWindow: null,
+            Credits: null,
+            sourceKind,
+            updatedAt,
+            statusMessage,
+            errorMessage);
     }
 }
