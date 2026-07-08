@@ -33,6 +33,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - Privacy & Data can reset `config.json` to defaults after explicit confirmation, creating a rollback backup and leaving saved secrets untouched.
 - Mock and Manual provider modes are implemented.
 - Manual mode can track used/remaining percentage, reset datetime/description, credits, currency/unit, month cost, last-31-day tokens, and notes.
+- CLI `--refresh-once` can run one headless provider refresh and print a safe snapshot summary without launching UI.
 - Codex/ChatGPT app-server probing is isolated behind safe abstractions.
 - Codex CLI startup failures are classified separately from auth and JSON-RPC errors, with repair-oriented messages for Windows app alias or permission problems.
 - Claude, Claude Code, Gemini, OpenCode Zen, and GitHub Copilot have MVP-safe descriptors and manual mode support.
@@ -94,12 +95,13 @@ Published builds also support lightweight command-line checks:
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --smoke-test
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --export-diagnostics
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --health-report
+.\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --refresh-once
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --provider-catalog
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --validate-config-backup .\config-backup.json
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --restore-config-backup .\config-backup.json --confirm
 ```
 
-Use `--export-diagnostics` when you want a redacted support bundle on disk. Use `--health-report` when you want a quick non-secret summary printed to the console, including safe CLI environment checks for `codex`, `claude`, `gh`, and `git`. Use `--provider-catalog` to inspect the built-in provider descriptors without reading local config. Use `--validate-config-backup` to check a backup file before applying it. Use `--restore-config-backup <path> --confirm` to validate and restore a config backup after creating a rollback copy of the current `config.json`.
+Use `--export-diagnostics` when you want a redacted support bundle on disk. Use `--health-report` when you want a quick non-secret summary printed to the console, including safe CLI environment checks for `codex`, `claude`, `gh`, and `git`. Use `--refresh-once` to run enabled providers once, update local snapshots/history, and print a safe provider summary without opening WinUI windows. Use `--provider-catalog` to inspect the built-in provider descriptors without reading local config. Use `--validate-config-backup` to check a backup file before applying it. Use `--restore-config-backup <path> --confirm` to validate and restore a config backup after creating a rollback copy of the current `config.json`.
 
 ## Release
 

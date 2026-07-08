@@ -25,7 +25,9 @@ public static class AppCompositionRoot
         return host;
     }
 
-    public static AppHostServices CreateServices(AppDataPaths paths)
+    public static AppHostServices CreateServices(
+        AppDataPaths paths,
+        IAppNotificationService? notificationService = null)
     {
         var diagnosticsLog = new FileAppDiagnosticsLog(paths);
         var secretStore = new DpapiSecretStore(paths);
@@ -40,7 +42,8 @@ public static class AppCompositionRoot
             codexClient,
             secretResolver,
             gitHubCopilotClient);
-        var notifications = new WindowsAppNotificationService(new WindowsAppNotificationTransport());
+        var notifications = notificationService
+            ?? new WindowsAppNotificationService(new WindowsAppNotificationTransport());
         var diagnosticsExportService = new DiagnosticsExportService(paths);
         var diagnosticsSummaryService = new DiagnosticsSummaryService(paths, configStore, snapshotStore);
         var historySummaryService = new HistorySummaryService(paths);

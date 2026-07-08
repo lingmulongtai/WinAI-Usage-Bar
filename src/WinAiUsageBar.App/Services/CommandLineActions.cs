@@ -1,5 +1,6 @@
 using WinAiUsageBar.Core.Providers;
 using WinAiUsageBar.Infrastructure.Diagnostics;
+using WinAiUsageBar.Infrastructure.Notifications;
 using WinAiUsageBar.Infrastructure.Process;
 using WinAiUsageBar.Infrastructure.Storage;
 
@@ -48,6 +49,27 @@ public static class CommandLineActions
     public static string CreateProviderCatalog()
     {
         return CommandLineProviderCatalogFormatter.Format(ProviderDescriptors.All);
+    }
+
+    public static async Task<string> RefreshOnceAsync(CancellationToken cancellationToken)
+    {
+        var paths = AppDataPaths.CreateDefault();
+        var services = AppCompositionRoot.CreateServices(paths, new NoOpAppNotificationService());
+        var refreshService = services.RefreshService;
+
+        try
+        {
+            await refreshService.InitializeAsync(cancellationToken).ConfigureAwait(false);
+            await refreshService.RefreshNowAsync(cancellationToken).ConfigureAwait(false);
+            return CommandLineRefreshReportFormatter.Format(
+                AppInfoProvider.Get(),
+                refreshService.CurrentSnapshots,
+                DateTimeOffset.Now);
+        }
+        finally
+        {
+            await refreshService.DisposeAsync().ConfigureAwait(false);
+        }
     }
 
     public static async Task<CommandLineActionResult> ValidateConfigBackupAsync(

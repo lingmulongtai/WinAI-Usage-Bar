@@ -49,6 +49,7 @@ public sealed class CommandLineHandlerTests
         Assert.True(result.Handled);
         Assert.Equal(0, result.ExitCode);
         Assert.Contains("--version", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--refresh-once", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--provider-catalog", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--validate-config-backup", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--restore-config-backup", output.ToString(), StringComparison.Ordinal);
@@ -161,6 +162,60 @@ public sealed class CommandLineHandlerTests
         Assert.Equal(0, result.ExitCode);
         Assert.Equal(1, healthReportCount);
         Assert.Contains("health report body", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_RunsRefreshOnce()
+    {
+        using var output = new StringWriter();
+        var refreshCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--refresh-once"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            refreshOnce: cancellationToken =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                refreshCount++;
+                return Task.FromResult("refresh report body");
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(1, refreshCount);
+        Assert.Contains("refresh report body", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ReturnsErrorWhenRefreshOnceIsUnavailable()
+    {
+        using var error = new StringWriter();
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--refresh-once"],
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains("unavailable", error.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]

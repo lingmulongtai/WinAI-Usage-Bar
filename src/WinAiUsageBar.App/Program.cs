@@ -21,7 +21,8 @@ public static class Program
             CommandLineActions.ValidateConfigBackupAsync,
             CommandLineActions.RestoreConfigBackupAsync,
             AppInfoProvider.Get,
-            CancellationToken.None)
+            CancellationToken.None,
+            refreshOnce: CommandLineActions.RefreshOnceAsync)
             .GetAwaiter()
             .GetResult();
 

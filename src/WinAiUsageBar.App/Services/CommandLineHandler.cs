@@ -17,7 +17,8 @@ public static class CommandLineHandler
         Func<string, CancellationToken, Task<CommandLineActionResult>> validateConfigBackup,
         Func<string, CancellationToken, Task<CommandLineActionResult>> restoreConfigBackup,
         Func<AppInfo> appInfoProvider,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<CancellationToken, Task<string>>? refreshOnce = null)
     {
         if (args.Count == 0)
         {
@@ -95,6 +96,21 @@ public static class CommandLineHandler
             return new CommandLineHandleResult(Handled: true, ExitCode: 0);
         }
 
+        if (string.Equals(command, "--refresh-once", StringComparison.OrdinalIgnoreCase))
+        {
+            if (refreshOnce is null)
+            {
+                await error.WriteLineAsync(
+                    "--refresh-once is unavailable in this host.".AsMemory(),
+                    cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var report = await refreshOnce(cancellationToken).ConfigureAwait(false);
+            await output.WriteLineAsync(report.AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, ExitCode: 0);
+        }
+
         if (string.Equals(command, "--provider-catalog", StringComparison.OrdinalIgnoreCase))
         {
             await output.WriteLineAsync(providerCatalog().AsMemory(), cancellationToken).ConfigureAwait(false);
@@ -120,7 +136,7 @@ public static class CommandLineHandler
         WinAI Usage Bar
 
         Usage:
-          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--health-report|--provider-catalog]
+          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--health-report|--refresh-once|--provider-catalog]
           WinAiUsageBar.App.exe --validate-config-backup <path>
           WinAiUsageBar.App.exe --restore-config-backup <path> --confirm
 
@@ -130,6 +146,7 @@ public static class CommandLineHandler
           --smoke-test          Run packaged-app startup checks without launching UI.
           --export-diagnostics  Write a redacted diagnostics export without launching UI.
           --health-report       Print local config, cache, and history health without launching UI.
+          --refresh-once        Refresh enabled providers once and print a safe snapshot report without launching UI.
           --provider-catalog    Print supported provider descriptors without launching UI.
           --validate-config-backup <path>
                                 Validate a config backup without applying it.

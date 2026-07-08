@@ -122,6 +122,8 @@ Supported intervals:
 
 The refresh service updates enabled providers asynchronously, caches snapshots, appends history, and keeps the previous successful usage data visible when a provider reports an error. Saving refresh settings restarts the timer so interval changes apply without restarting the app. Periodic refresh-level failures are written to diagnostics and future ticks continue.
 
+The CLI `--refresh-once` command runs the same enabled-provider refresh pipeline once without launching WinUI windows or sending local notifications. It should update snapshots/history, then print provider name, health, source, updated time, remaining percent, reset text, credits, and redacted status/error summaries. It must not print raw diagnostics, identity fields, secret values, token values, cookies, auth file contents, or unredacted provider messages.
+
 Refresh settings also expose notification enablement and history retention limits. History max days is clamped to 1-3650 and max bytes is clamped to 100000-500000000 before saving.
 
 ## Notifications
