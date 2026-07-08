@@ -794,6 +794,7 @@ public sealed class MainWindow : Window
         var summary = await host.GetDiagnosticsSummaryAsync(CancellationToken.None);
         var diagnosticsSummary = new DiagnosticsSummaryViewModel(summary);
         var recoveryGuidance = new RecoveryGuidanceService().CreateGuidance(summary);
+        var storagePressure = new StoragePressureGuidanceService().CreateGuidance(summary);
         var panel = PageStack("Privacy & Data");
         panel.Children.Add(new InfoBar
         {
@@ -814,6 +815,17 @@ public sealed class MainWindow : Window
         foreach (var file in diagnosticsSummary.Files)
         {
             panel.Children.Add(UiFactory.Text($"{file.Label}: {file.StatusText}", 12));
+        }
+
+        panel.Children.Add(UiFactory.Text("Storage pressure", 16, FontWeights.SemiBold));
+        foreach (var item in storagePressure)
+        {
+            panel.Children.Add(UiFactory.Text(
+                $"{item.Title} - {item.Level}",
+                13,
+                FontWeights.SemiBold));
+            panel.Children.Add(UiFactory.Text(item.Detail, 12));
+            panel.Children.Add(UiFactory.Text(item.Recommendation, 12));
         }
 
         panel.Children.Add(UiFactory.Text("Recovery guidance", 16, FontWeights.SemiBold));

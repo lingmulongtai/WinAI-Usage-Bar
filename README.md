@@ -24,6 +24,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - Refresh settings include interval, notification enablement, and history retention limits.
 - Appearance settings apply System, Light, or Dark theme to app windows.
 - Privacy & Data shows a diagnostics summary with local file paths, config version, cached snapshot count, latest update time, and tracked file sizes.
+- Privacy & Data shows storage pressure guidance for retained history, config backups, and diagnostics log growth.
 - Privacy & Data shows recovery guidance for choosing config backup export, latest-backup restore, reset-to-default recovery, or diagnostics export.
 - Privacy & Data can clear cached snapshots and retained history without deleting config or saved secrets.
 - Privacy & Data can export a timestamped `config.json` backup without copying secret values.

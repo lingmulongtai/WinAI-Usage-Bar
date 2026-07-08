@@ -37,7 +37,7 @@ Overall:
 - Release readiness checks now cover version metadata, changelog, audit date, published-app smoke test, package presence, and checksum validity.
 - Guided first-run checklist state, Provider Details, config backup export, backup validation, confirmed CLI restore, latest-backup in-app restore, and confirmed reset-to-default recovery are implemented.
 - Provider Details now includes non-secret repair guidance for warning, auth-required, unsupported, error, and unknown provider states.
-- Privacy & Data now includes non-secret recovery guidance for backup, restore, reset, and diagnostics export choices.
+- Privacy & Data now includes non-secret storage pressure guidance and recovery guidance for backup, restore, reset, and diagnostics export choices.
 - Windows shell dogfooding now has a concrete manual verification checklist and a timestamped local report script.
 - The issue and commit history is becoming meaningful rather than fake contribution noise.
 
@@ -52,6 +52,7 @@ Overall:
 - There is no installer, MSIX, code signing, auto-update, or uninstall story.
 - First-run setup has a basic checklist, but it is not yet a full guided wizard with provider-specific decisions and safe setup actions.
 - Config backup and reset recovery now exist with basic decision guidance, but they still need repeated dogfooding before they can be treated as comfort features.
+- Local storage growth is visible for history, backups, and diagnostics logs, but the maintenance flow still needs real-use tuning.
 - Local CLI discovery can still be messy on Windows. Provider Details has generic CLI repair guidance, but deeper provider-specific repair checks are still needed for future CLI-backed providers.
 - There is no visual regression or automated UI smoke test for WinUI windows.
 
@@ -65,7 +66,7 @@ Overall:
 | CI restore flakiness blocks progress | Medium | Retry script and NuGet audit disabled by default | Keep restore helper simple and inspect future failures quickly. |
 | App feels like a demo because provider data is manual | High | Mock, Manual, Codex parser tests, and provider details are stable | Prioritize one reliable real provider path end to end. |
 | Public binaries are not trusted by Windows | High | Zip and checksum exist | Add signing or at least documented install warnings before public release. |
-| Local data files grow too much | Medium | History retention by days and bytes | Add UI display for current storage pressure and backup/compact actions. |
+| Local data files grow too much | Medium | History retention by days and bytes; Privacy & Data storage pressure guidance | Dogfood pressure thresholds and add richer backup pruning or compaction actions if needed. |
 | Config corruption causes user confusion | Medium | Corrupt config backup, default migration, config export, validation, confirmed CLI restore, latest-backup in-app restore, reset-to-default recovery, and recovery guidance | Dogfood restore and reset repeatedly, then tighten recovery copy and guidance based on real failures. |
 | CLI availability is ambiguous on Windows | Medium | Safe health report checks command discovery and short startup; Codex provider classifies startup failures; Provider Details gives generic CLI repair guidance | Extend provider-specific repair checks to every future CLI-backed provider. |
 
