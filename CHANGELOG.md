@@ -51,6 +51,7 @@ All notable changes to WinAI Usage Bar are documented here.
 
 ### Fixed
 
+- Truncated diagnostics export sections now read a small bounded context window before the visible tail so key/value secrets split by the truncation boundary can still be redacted.
 - Diagnostics export headers now omit the local app-data root path instead of writing a raw absolute path into support bundles.
 
 ## 0.1.4 - 2026-07-08

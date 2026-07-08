@@ -17,9 +17,12 @@ public sealed record DiagnosticsExportResult(
 public sealed class DiagnosticsExportService(
     AppDataPaths paths,
     Func<DateTimeOffset>? nowProvider = null,
-    int maxBytesPerFile = 200_000) : IDiagnosticsExportService
+    int maxBytesPerFile = 200_000,
+    int redactionContextBytes = 4_096) : IDiagnosticsExportService
 {
     private readonly Func<DateTimeOffset> nowProvider = nowProvider ?? (() => DateTimeOffset.Now);
+    private readonly int maxFileBytes = Math.Max(1, maxBytesPerFile);
+    private readonly int redactionContextByteCount = Math.Max(0, redactionContextBytes);
 
     public async Task<DiagnosticsExportResult> ExportAsync(CancellationToken cancellationToken)
     {
@@ -104,10 +107,16 @@ public sealed class DiagnosticsExportService(
         await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         var prefix = string.Empty;
 
-        if (stream.Length > maxBytesPerFile)
+        if (stream.Length > maxFileBytes)
         {
-            stream.Seek(-maxBytesPerFile, SeekOrigin.End);
-            prefix = $"[truncated to last {maxBytesPerFile} bytes]{Environment.NewLine}";
+            var visibleStartOffset = Math.Max(0, stream.Length - maxFileBytes);
+            var readStartOffset = Math.Max(0, visibleStartOffset - redactionContextByteCount);
+            var contextBytesUsed = visibleStartOffset - readStartOffset;
+
+            stream.Seek(readStartOffset, SeekOrigin.Begin);
+            prefix = contextBytesUsed > 0
+                ? $"[truncated to last {maxFileBytes} bytes with {contextBytesUsed} bytes of redaction context]{Environment.NewLine}"
+                : $"[truncated to last {maxFileBytes} bytes]{Environment.NewLine}";
         }
 
         using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);

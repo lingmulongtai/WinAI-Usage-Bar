@@ -79,7 +79,8 @@ public sealed class DiagnosticsExportServiceTests
         var service = new DiagnosticsExportService(
             paths,
             () => new DateTimeOffset(2026, 7, 8, 12, 34, 57, TimeSpan.Zero),
-            maxBytesPerFile: 8);
+            maxBytesPerFile: 8,
+            redactionContextBytes: 0);
 
         try
         {
@@ -90,6 +91,36 @@ public sealed class DiagnosticsExportServiceTests
             Assert.Contains("[truncated to last 8 bytes]", export);
             Assert.Contains("89abcdef", export);
             Assert.DoesNotContain("01234567", export);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ExportAsync_RedactsSecretWhenTruncationSplitsKeyValueContext()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        paths.EnsureCreated();
+        var context = "safe-prefix apiKey=\"";
+        var sensitiveTail = "leaky-value-alpha\"";
+        await File.WriteAllTextAsync(paths.DiagnosticsLogPath, context + sensitiveTail);
+        var service = new DiagnosticsExportService(
+            paths,
+            () => new DateTimeOffset(2026, 7, 8, 12, 34, 58, TimeSpan.Zero),
+            maxBytesPerFile: sensitiveTail.Length,
+            redactionContextBytes: context.Length);
+
+        try
+        {
+            var result = await service.ExportAsync(CancellationToken.None);
+            var export = await File.ReadAllTextAsync(result.Path);
+
+            Assert.Contains("redaction context", export);
+            Assert.DoesNotContain("leaky-value-alpha", export);
+            Assert.Contains("apiKey=\"[REDACTED]\"", export);
         }
         finally
         {
