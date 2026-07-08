@@ -586,7 +586,7 @@ public sealed class AppHost : IAsyncDisposable
         config.Updates.LastCurrentVersion = result.CurrentVersion;
         config.Updates.LastLatestVersion = result.LatestVersion;
         config.Updates.LastReleasePageUrl = result.ReleasePageUrl?.ToString();
-        SaveInstallerAssetStatus(config.Updates, result);
+        SaveReleaseAssetStatus(config.Updates, result);
         config.Updates.LastCheckedAt = DateTimeOffset.Now;
         await ConfigStore.SaveAsync(config, cancellationToken).ConfigureAwait(false);
     }
@@ -604,7 +604,7 @@ public sealed class AppHost : IAsyncDisposable
         config.Updates.LastReleasePageUrl = result.UpdateCheck?.ReleasePageUrl?.ToString();
         if (result.UpdateCheck is not null)
         {
-            SaveInstallerAssetStatus(config.Updates, result.UpdateCheck);
+            SaveReleaseAssetStatus(config.Updates, result.UpdateCheck);
         }
 
         config.Updates.LastPackagePath = result.Download?.PackagePath;
@@ -638,10 +638,12 @@ public sealed class AppHost : IAsyncDisposable
         await ConfigStore.SaveAsync(config, cancellationToken).ConfigureAwait(false);
     }
 
-    private static void SaveInstallerAssetStatus(
+    private static void SaveReleaseAssetStatus(
         UpdateSettings settings,
         ReleaseUpdateCheckResult result)
     {
+        settings.LastPackageAssetName = result.Package?.Name;
+        settings.LastPackageChecksumAssetName = result.Checksum?.Name;
         settings.LastInstallerAssetName = result.Installer?.Name;
         settings.LastInstallerChecksumAssetName = result.InstallerChecksum?.Name;
     }

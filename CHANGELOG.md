@@ -20,6 +20,7 @@ All notable changes to WinAI Usage Bar are documented here.
 - Codex app-server initialization now reports the current app informational version in `clientInfo.version`.
 - Latest-release checks now persist the observed GitHub Release page URL for Refresh settings and health reports.
 - A repository test guard now rejects common secret-shaped fixture patterns before they can trigger scanner noise again.
+- Latest-release checks now persist observed zip package and checksum asset names for Refresh settings and health reports.
 - Latest-release checks now persist observed setup installer asset status for Refresh settings and health reports.
 - Update checks now report setup installer and setup checksum asset availability alongside the zip package assets.
 - Published release dogfooding can now exercise the startup update policy path with isolated app data.

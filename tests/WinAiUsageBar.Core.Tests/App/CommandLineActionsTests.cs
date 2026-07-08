@@ -835,6 +835,8 @@ public sealed class CommandLineActionsTests
             Assert.Contains("package.zip.sha256", result.Output, StringComparison.Ordinal);
             Assert.Equal("0.2.0", config.Updates.LastLatestVersion);
             Assert.Equal("https://example.test/releases/v0.2.0", config.Updates.LastReleasePageUrl);
+            Assert.Equal("WinAIUsageBar-0.2.0-win-x64.zip", config.Updates.LastPackageAssetName);
+            Assert.Equal("WinAIUsageBar-0.2.0-win-x64.zip.sha256", config.Updates.LastPackageChecksumAssetName);
             Assert.Equal("WinAIUsageBar-0.2.0-setup.exe", config.Updates.LastInstallerAssetName);
             Assert.Equal("WinAIUsageBar-0.2.0-setup.exe.sha256", config.Updates.LastInstallerChecksumAssetName);
             Assert.Null(config.Updates.LastStatus);

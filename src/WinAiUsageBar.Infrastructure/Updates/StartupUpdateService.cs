@@ -97,7 +97,7 @@ public sealed class StartupUpdateService(
 
             var update = await updateCheck.CheckAsync(request.CurrentVersion, cancellationToken)
                 .ConfigureAwait(false);
-            SaveInstallerAssetStatus(config.Updates, update);
+            SaveReleaseAssetStatus(config.Updates, update);
             if (!update.IsUpdateAvailable
                 && update.Status is UpdateCheckStatus.UpToDate or UpdateCheckStatus.NoRelease)
             {
@@ -381,10 +381,12 @@ public sealed class StartupUpdateService(
         }
     }
 
-    private static void SaveInstallerAssetStatus(
+    private static void SaveReleaseAssetStatus(
         UpdateSettings settings,
         ReleaseUpdateCheckResult result)
     {
+        settings.LastPackageAssetName = result.Package?.Name;
+        settings.LastPackageChecksumAssetName = result.Checksum?.Name;
         settings.LastInstallerAssetName = result.Installer?.Name;
         settings.LastInstallerChecksumAssetName = result.InstallerChecksum?.Name;
     }

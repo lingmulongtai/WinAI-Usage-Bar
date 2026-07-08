@@ -133,6 +133,16 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
 
         lines.Add(launchedVersion);
 
+        if (!string.IsNullOrWhiteSpace(updates.LastPackageAssetName))
+        {
+            lines.Add($"Package asset: {SafeValue(updates.LastPackageAssetName)}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(updates.LastPackageChecksumAssetName))
+        {
+            lines.Add($"Package checksum asset: {SafeValue(updates.LastPackageChecksumAssetName)}");
+        }
+
         if (!string.IsNullOrWhiteSpace(updates.LastPackagePath))
         {
             lines.Add($"Package path: {SafeValue(updates.LastPackagePath)}");
