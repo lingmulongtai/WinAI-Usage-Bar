@@ -119,6 +119,29 @@ public sealed class ProviderAdapterTests
         Assert.Contains("not found", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Theory]
+    [InlineData(DataSourceKind.LocalAppServer)]
+    [InlineData(DataSourceKind.Cli)]
+    public async Task CodexAppServerProviderAdapter_ReportsConfiguredSourceWhenCodexCliIsMissing(
+        DataSourceKind sourceKind)
+    {
+        var descriptor = ProviderDescriptors.Get(ProviderId.Codex);
+        var adapter = new CodexAppServerProviderAdapter(
+            descriptor,
+            FixedCommandProbe.Missing("codex"),
+            new ThrowingCodexClient(new InvalidOperationException("client should not be called")),
+            sourceKind);
+        var config = ProviderConfig.CreateDefault(descriptor);
+        config.SourceKind = sourceKind;
+
+        var result = await adapter.FetchAsync(
+            new ProviderFetchContext(config, DateTimeOffset.UtcNow, "test"),
+            CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(sourceKind, result.Snapshot?.SourceKind);
+    }
+
     [Fact]
     public async Task CodexAppServerProviderAdapter_ReturnsAuthRequiredWhenClientRejects()
     {
@@ -137,6 +160,60 @@ public sealed class ProviderAdapterTests
         Assert.False(result.Success);
         Assert.Equal(ProviderHealth.AuthRequired, result.Snapshot?.Health);
         Assert.Equal("Codex app-server requires authentication.", result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task CodexAppServerProviderAdapter_ReportsConfiguredSourceForSuccessfulSnapshot()
+    {
+        var descriptor = ProviderDescriptors.Get(ProviderId.Codex);
+        var adapter = new CodexAppServerProviderAdapter(
+            descriptor,
+            FixedCommandProbe.Found("codex"),
+            new SuccessfulCodexClient(),
+            DataSourceKind.Cli);
+        var config = ProviderConfig.CreateDefault(descriptor);
+        config.SourceKind = DataSourceKind.Cli;
+
+        var result = await adapter.FetchAsync(
+            new ProviderFetchContext(config, DateTimeOffset.UtcNow, "test"),
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal(DataSourceKind.Cli, result.Snapshot?.SourceKind);
+        Assert.Equal(ProviderHealth.Ok, result.Snapshot?.Health);
+    }
+
+    [Theory]
+    [InlineData(DataSourceKind.Cli)]
+    [InlineData(DataSourceKind.LocalAppServer)]
+    public async Task CodexAppServerProviderAdapter_ReportsConfiguredSourceForFailures(
+        DataSourceKind sourceKind)
+    {
+        var descriptor = ProviderDescriptors.Get(ProviderId.Codex);
+        var failures = new Exception[]
+        {
+            new UnauthorizedAccessException("auth required"),
+            new Win32Exception(5, "Access is denied."),
+            new InvalidOperationException("app-server failed")
+        };
+
+        foreach (var failure in failures)
+        {
+            var adapter = new CodexAppServerProviderAdapter(
+                descriptor,
+                FixedCommandProbe.Found("codex"),
+                new ThrowingCodexClient(failure),
+                sourceKind);
+            var config = ProviderConfig.CreateDefault(descriptor);
+            config.SourceKind = sourceKind;
+
+            var result = await adapter.FetchAsync(
+                new ProviderFetchContext(config, DateTimeOffset.UtcNow, "test"),
+                CancellationToken.None);
+
+            Assert.False(result.Success);
+            Assert.Equal(sourceKind, result.Snapshot?.SourceKind);
+        }
     }
 
     [Fact]
@@ -230,6 +307,44 @@ public sealed class ProviderAdapterTests
         Assert.Contains("provider CLI command override", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Contains("found on PATH", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Contains("startup failed", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task ProviderRegistry_CodexCliFallbackWithoutServicesReportsCliSource()
+    {
+        var descriptor = ProviderDescriptors.Get(ProviderId.Codex);
+        var registry = new ProviderRegistry();
+        var config = ProviderConfig.CreateDefault(descriptor);
+        config.SourceKind = DataSourceKind.Cli;
+
+        var adapter = registry.CreateAdapter(descriptor, config);
+
+        var result = await adapter.FetchAsync(
+            new ProviderFetchContext(config, DateTimeOffset.UtcNow, "test"),
+            CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(DataSourceKind.Cli, result.Snapshot?.SourceKind);
+    }
+
+    [Fact]
+    public async Task ProviderRegistry_ChatGptAppServerReportsLocalAppServerSource()
+    {
+        var descriptor = ProviderDescriptors.Get(ProviderId.ChatGPT);
+        var registry = new ProviderRegistry(
+            FixedCommandProbe.Found("codex"),
+            new SuccessfulCodexClient());
+        var config = ProviderConfig.CreateDefault(descriptor);
+        config.SourceKind = DataSourceKind.LocalAppServer;
+
+        var adapter = registry.CreateAdapter(descriptor, config);
+        var result = await adapter.FetchAsync(
+            new ProviderFetchContext(config, DateTimeOffset.UtcNow, "test"),
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal(DataSourceKind.LocalAppServer, result.Snapshot?.SourceKind);
+        Assert.Equal(ProviderId.ChatGPT, result.Snapshot?.ProviderId);
     }
 
     [Fact]
@@ -335,6 +450,30 @@ public sealed class ProviderAdapterTests
             CancellationToken cancellationToken)
         {
             throw exception;
+        }
+    }
+
+    private sealed class SuccessfulCodexClient : ICodexAppServerClient
+    {
+        public Task<CodexAppServerData> FetchAccountUsageAsync(
+            CommandProbeResult commandProbe,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            const string usage = """
+            {
+              "result": {
+                "used": 20,
+                "limit": 100
+              }
+            }
+            """;
+
+            return Task.FromResult(new CodexAppServerData(
+                AccountJson: null,
+                RateLimitsJson: null,
+                UsageJson: usage,
+                Diagnostics: []));
         }
     }
 

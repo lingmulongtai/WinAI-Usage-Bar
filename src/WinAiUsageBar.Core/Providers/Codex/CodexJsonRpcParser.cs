@@ -178,7 +178,8 @@ public static class CodexJsonRpcParser
     public static UsageSnapshot CreateSnapshot(
         ProviderDescriptor descriptor,
         CodexAppServerData data,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        DataSourceKind sourceKind = DataSourceKind.LocalAppServer)
     {
         var account = ParseAccount(data.AccountJson);
         var usageWindow = ParseUsageWindow(data.UsageJson, "Codex usage", now);
@@ -209,7 +210,7 @@ public static class CodexJsonRpcParser
             primaryWindow,
             secondaryWindow,
             credits,
-            DataSourceKind.LocalAppServer,
+            sourceKind,
             now,
             status,
             ErrorMessage: null);

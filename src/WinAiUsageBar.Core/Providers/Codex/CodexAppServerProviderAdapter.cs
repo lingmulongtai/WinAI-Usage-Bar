@@ -8,7 +8,8 @@ namespace WinAiUsageBar.Core.Providers.Codex;
 public sealed class CodexAppServerProviderAdapter(
     ProviderDescriptor descriptor,
     ICommandProbe commandProbe,
-    ICodexAppServerClient client) : IProviderAdapter
+    ICodexAppServerClient client,
+    DataSourceKind sourceKind = DataSourceKind.LocalAppServer) : IProviderAdapter
 {
     public ProviderDescriptor Descriptor { get; } = descriptor;
 
@@ -23,7 +24,7 @@ public sealed class CodexAppServerProviderAdapter(
             return ProviderFetchResult.Failure(
                 Descriptor,
                 ProviderHealth.Unsupported,
-                DataSourceKind.LocalAppServer,
+                sourceKind,
                 context.Now,
                 "Codex CLI was not found. Use Manual mode or install Codex.",
                 probe.StatusMessage);
@@ -32,7 +33,7 @@ public sealed class CodexAppServerProviderAdapter(
         try
         {
             var data = await client.FetchAccountUsageAsync(probe, cancellationToken).ConfigureAwait(false);
-            var snapshot = CodexJsonRpcParser.CreateSnapshot(Descriptor, data, context.Now);
+            var snapshot = CodexJsonRpcParser.CreateSnapshot(Descriptor, data, context.Now, sourceKind);
 
             return new ProviderFetchResult(
                 snapshot,
@@ -49,7 +50,7 @@ public sealed class CodexAppServerProviderAdapter(
             return ProviderFetchResult.Failure(
                 Descriptor,
                 ProviderHealth.AuthRequired,
-                DataSourceKind.LocalAppServer,
+                sourceKind,
                 context.Now,
                 "Codex app-server requires authentication.",
                 ex.Message);
@@ -59,7 +60,7 @@ public sealed class CodexAppServerProviderAdapter(
             return ProviderFetchResult.Failure(
                 Descriptor,
                 ProviderHealth.Unsupported,
-                DataSourceKind.LocalAppServer,
+                sourceKind,
                 context.Now,
                 $"Codex CLI was found but Windows could not start it. Check the app execution alias, reinstall Codex outside WindowsApps, or set a provider CLI command override to a launchable path. Details: {ex.Message}",
                 probe.StatusMessage,
@@ -70,7 +71,7 @@ public sealed class CodexAppServerProviderAdapter(
             return ProviderFetchResult.Failure(
                 Descriptor,
                 ProviderHealth.Error,
-                DataSourceKind.LocalAppServer,
+                sourceKind,
                 context.Now,
                 "Codex app-server failed. Manual mode is still available.",
                 probe.StatusMessage,

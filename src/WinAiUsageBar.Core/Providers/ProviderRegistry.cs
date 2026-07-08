@@ -41,9 +41,9 @@ public sealed class ProviderRegistry(
             DataSourceKind.Manual => new ManualProviderAdapter(descriptor),
             DataSourceKind.Mock => new MockProviderAdapter(descriptor),
             DataSourceKind.LocalAppServer when descriptor.Id is ProviderId.Codex or ProviderId.ChatGPT =>
-                CreateCodexAdapter(descriptor),
+                CreateCodexAdapter(descriptor, config.SourceKind),
             DataSourceKind.Cli when descriptor.Id is ProviderId.Codex =>
-                CreateCodexAdapter(descriptor),
+                CreateCodexAdapter(descriptor, config.SourceKind),
             DataSourceKind.Cli when descriptor.Id is ProviderId.Claude or ProviderId.ClaudeCode =>
                 CreateClaudeAdapter(descriptor),
             DataSourceKind.OfficialApi when descriptor.Id == ProviderId.Gemini =>
@@ -83,17 +83,17 @@ public sealed class ProviderRegistry(
         return adapters;
     }
 
-    private IProviderAdapter CreateCodexAdapter(ProviderDescriptor descriptor)
+    private IProviderAdapter CreateCodexAdapter(ProviderDescriptor descriptor, DataSourceKind sourceKind)
     {
         if (commandProbe is null || codexAppServerClient is null)
         {
             return new UnsupportedProviderAdapter(
                 descriptor,
-                DataSourceKind.LocalAppServer,
+                sourceKind,
                 "Codex app-server source needs process services; use Manual mode when running without Infrastructure.");
         }
 
-        return new CodexAppServerProviderAdapter(descriptor, commandProbe, codexAppServerClient);
+        return new CodexAppServerProviderAdapter(descriptor, commandProbe, codexAppServerClient, sourceKind);
     }
 
     private IProviderAdapter CreateClaudeAdapter(ProviderDescriptor descriptor)
