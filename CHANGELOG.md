@@ -46,6 +46,7 @@ All notable changes to WinAI Usage Bar are documented here.
 - Provider refresh now sanitizes snapshot free-text fields before caching snapshots or appending history.
 - Snapshot storage now sanitizes direct `snapshots.json` and `history.ndjson` writes as a persistence backstop.
 - Snapshot cache and history rewrites now use per-write unique temporary files instead of fixed `.tmp` paths.
+- History summaries now sanitize legacy history snapshots before aggregation.
 
 ## 0.1.4 - 2026-07-08
 

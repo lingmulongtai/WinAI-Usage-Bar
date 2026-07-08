@@ -108,6 +108,76 @@ public sealed class HistorySummaryServiceTests
         }
     }
 
+    [Fact]
+    public async Task GetSummaryAsync_SanitizesLegacyHistorySnapshotsBeforeAggregation()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        paths.EnsureCreated();
+        var service = new HistorySummaryService(paths);
+        var jsonOptions = JsonInfrastructureOptions.CreateNdjson();
+        var updatedAt = new DateTimeOffset(2026, 7, 8, 12, 0, 0, TimeSpan.Zero);
+        var secretValue = "sample-legacy-secret";
+        var snapshot = new UsageSnapshot(
+            ProviderId.Codex,
+            $"Codex token={secretValue}",
+            ProviderHealth.Warning,
+            Identity: new ProviderIdentity(
+                $"person access_token={secretValue}",
+                $"account cookie={secretValue}",
+                null,
+                null),
+            PrimaryWindow: new UsageWindow(
+                $"Primary token={secretValue}",
+                88,
+                12,
+                null,
+                $"reset cookie={secretValue}",
+                $"requests secret_name={secretValue}",
+                88,
+                100),
+            SecondaryWindow: null,
+            Credits: null,
+            DataSourceKind.Manual,
+            updatedAt,
+            $"status authorization: bearer {secretValue}",
+            $"error cookie={secretValue}");
+
+        try
+        {
+            await File.WriteAllTextAsync(
+                paths.HistoryPath,
+                JsonSerializer.Serialize(snapshot, jsonOptions) + Environment.NewLine);
+
+            var summary = await service.GetSummaryAsync(CancellationToken.None);
+            var provider = Assert.Single(summary.Providers);
+            var viewModel = new HistorySummaryViewModel(summary);
+            var visibleText = string.Join(
+                Environment.NewLine,
+                viewModel.Providers.SelectMany(row => new[]
+                {
+                    row.DisplayName,
+                    row.EntryText,
+                    row.LatestText,
+                    row.HealthText,
+                    row.RemainingText,
+                    row.SourceText
+                }));
+
+            Assert.Equal("Codex token=[REDACTED]", provider.DisplayName);
+            Assert.DoesNotContain(secretValue, visibleText, StringComparison.Ordinal);
+            Assert.Contains("[REDACTED]", visibleText, StringComparison.Ordinal);
+            Assert.Equal(12, provider.LatestRemainingPercent);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
     private static UsageSnapshot Snapshot(
         ProviderId providerId,
         string displayName,

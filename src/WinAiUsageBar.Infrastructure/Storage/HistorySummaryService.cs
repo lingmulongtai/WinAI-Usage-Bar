@@ -1,5 +1,6 @@
 using System.Text.Json;
 using WinAiUsageBar.Core.Models;
+using WinAiUsageBar.Infrastructure.Security;
 
 namespace WinAiUsageBar.Infrastructure.Storage;
 
@@ -51,7 +52,7 @@ public sealed class HistorySummaryService(AppDataPaths paths) : IHistorySummaryS
 
             if (TryParseSnapshot(line, out var snapshot))
             {
-                snapshots.Add(snapshot);
+                snapshots.Add(UsageSnapshotSanitizer.Sanitize(snapshot));
             }
             else
             {
