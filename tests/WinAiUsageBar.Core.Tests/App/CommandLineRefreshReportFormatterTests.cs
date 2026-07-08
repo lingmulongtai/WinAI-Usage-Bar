@@ -43,6 +43,7 @@ public sealed class CommandLineRefreshReportFormatterTests
         Assert.Contains("Source: LocalAppServer", report, StringComparison.Ordinal);
         Assert.Contains("Remaining: 17.5%", report, StringComparison.Ordinal);
         Assert.Contains("Reset: 2026-07-08 09:30:00 +09:00", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("Secondary:", report, StringComparison.Ordinal);
         Assert.Contains("Credits: 12.34 USD, month 5.67, tokens31d 8901", report, StringComparison.Ordinal);
         Assert.Contains("Repair:", report, StringComparison.Ordinal);
         Assert.Contains("Review the status message", report, StringComparison.Ordinal);
@@ -51,6 +52,51 @@ public sealed class CommandLineRefreshReportFormatterTests
         Assert.DoesNotContain("status-secret", report, StringComparison.Ordinal);
         Assert.DoesNotContain("error-secret", report, StringComparison.Ordinal);
         Assert.DoesNotContain("person@example.com", report, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Format_IncludesSafeSecondaryWindowSummary()
+    {
+        var generatedAt = new DateTimeOffset(2026, 7, 8, 7, 30, 0, TimeSpan.FromHours(9));
+        var snapshot = new UsageSnapshot(
+            ProviderId.Codex,
+            "Codex",
+            ProviderHealth.Ok,
+            Identity: null,
+            PrimaryWindow: new UsageWindow(
+                "Codex usage",
+                UsedPercent: 40,
+                RemainingPercent: 60,
+                ResetsAt: null,
+                ResetDescription: "primary",
+                Unit: "%",
+                Used: 40,
+                Limit: 100),
+            SecondaryWindow: new UsageWindow(
+                "Codex rate token=label-secret",
+                UsedPercent: 77.75,
+                RemainingPercent: 22.25,
+                ResetsAt: null,
+                ResetDescription: "reset cookie=reset-secret",
+                Unit: "%",
+                Used: 77.75,
+                Limit: 100),
+            Credits: null,
+            DataSourceKind.LocalAppServer,
+            UpdatedAt: generatedAt,
+            StatusMessage: "Loaded",
+            ErrorMessage: null);
+
+        var report = CommandLineRefreshReportFormatter.Format(
+            new AppInfo("WinAI Usage Bar", "1.2.3.0", "1.2.3"),
+            [snapshot],
+            generatedAt);
+
+        Assert.Contains("Secondary:", report, StringComparison.Ordinal);
+        Assert.Contains("remaining 22.25%", report, StringComparison.Ordinal);
+        Assert.Contains("[REDACTED]", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("label-secret", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("reset-secret", report, StringComparison.Ordinal);
     }
 
     [Fact]

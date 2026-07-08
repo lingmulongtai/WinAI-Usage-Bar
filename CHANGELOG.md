@@ -10,6 +10,7 @@ All notable changes to WinAI Usage Bar are documented here.
 - Added a confirmation-gated `--reset-config-to-defaults` CLI recovery command.
 - Added a `--validate-latest-config-backup` CLI recovery check.
 - Added a `--list-config-backups` CLI recovery inventory command.
+- `--refresh-once` now prints a redacted secondary usage window summary when provider snapshots include one.
 - Codex app-server usage parsing now recognizes more real-world quota and reset aliases.
 - Codex app-server usage parsing now recognizes nested usage/rate-limit windows without mixing unrelated candidates.
 - Codex app-server usage parsing now recognizes top-level usage arrays and plural window containers such as `rateLimits` and `usageWindows`.

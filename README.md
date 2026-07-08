@@ -38,7 +38,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - Config backup exports and rollback backups avoid same-second filename collisions by adding a numeric suffix when needed.
 - Mock and Manual provider modes are implemented.
 - Manual mode can track used/remaining percentage, reset datetime/description, credits, currency/unit, month cost, last-31-day tokens, and notes.
-- CLI `--refresh-once` can run one headless provider refresh and print a safe snapshot summary without launching UI.
+- CLI `--refresh-once` can run one headless provider refresh and print a safe snapshot summary, including a redacted secondary usage/rate-limit window when available, without launching UI.
 - CLI `--set-provider-cli-override` can save a non-secret command override for CLI/local app-server providers without echoing the value, and `--clear-provider-cli-override` can remove it.
 - CLI `--prune-support-artifacts` can prune old config backups and diagnostics exports without launching UI.
 - CLI `--export-config-backup` can create a config-only backup without launching UI.

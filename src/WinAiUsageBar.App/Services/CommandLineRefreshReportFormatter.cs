@@ -32,6 +32,7 @@ public static class CommandLineRefreshReportFormatter
             builder.AppendLine($"  Updated: {FormatDate(snapshot.UpdatedAt)}");
             builder.AppendLine($"  Remaining: {FormatPercent(snapshot.PrimaryWindow?.RemainingPercent)}");
             builder.AppendLine($"  Reset: {FormatReset(snapshot.PrimaryWindow)}");
+            AppendSecondaryWindow(builder, snapshot.SecondaryWindow);
             builder.AppendLine($"  Credits: {FormatCredits(snapshot.Credits)}");
             AppendSnapshotMessages(builder, snapshot);
             AppendRepairLines(builder, snapshot);
@@ -64,6 +65,18 @@ public static class CommandLineRefreshReportFormatter
 
         AppendSafeLine(builder, "Status", snapshot.StatusMessage);
         AppendSafeLine(builder, "Error", snapshot.ErrorMessage);
+    }
+
+    private static void AppendSecondaryWindow(StringBuilder builder, UsageWindow? window)
+    {
+        if (window is null)
+        {
+            return;
+        }
+
+        var label = SafeText(window.Label) ?? "usage window";
+        builder.AppendLine(
+            $"  Secondary: {label}; remaining {FormatPercent(window.RemainingPercent)}; reset {FormatReset(window)}");
     }
 
     private static void AppendRepairLines(StringBuilder builder, UsageSnapshot snapshot)
