@@ -220,13 +220,19 @@ public static class CodexJsonRpcParser
     {
         using var document = JsonDocument.Parse(json);
         var root = document.RootElement;
+        if (root.ValueKind != JsonValueKind.Object)
+        {
+            throw new InvalidOperationException("JSON-RPC envelope root must be an object.");
+        }
 
-        var id = TryGetNumber(root, ["id"]);
-        var method = TryGetSafeString(root, ["method"]);
-        var errorMessage = TryGetSafeString(root, ["message", "errorMessage", "detail"]);
-        var hasError = root.TryGetProperty("error", out _);
+        var id = TryGetEnvelopeId(root);
+        var method = TryGetDirectSafeString(root, ["method"]);
+        var hasError = root.TryGetProperty("error", out var error);
+        var errorMessage = hasError
+            ? TryGetDirectSafeString(error, ["message", "errorMessage", "detail"])
+            : null;
 
-        return new JsonRpcEnvelope(id is null ? null : Convert.ToInt32(id.Value), method, hasError, errorMessage);
+        return new JsonRpcEnvelope(id, method, hasError, errorMessage);
     }
 
     public static ProviderIdentity? ParseAccount(string? json)
@@ -373,6 +379,19 @@ public static class CodexJsonRpcParser
 
         result = root.Clone();
         return true;
+    }
+
+    private static int? TryGetEnvelopeId(JsonElement root)
+    {
+        if (!root.TryGetProperty("id", out var idElement) || idElement.ValueKind == JsonValueKind.Null)
+        {
+            return null;
+        }
+
+        var number = TryGetNumberValue(idElement)
+            ?? throw new FormatException("JSON-RPC envelope id must be numeric.");
+
+        return Convert.ToInt32(number);
     }
 
     private static string? TryGetSafeString(JsonElement root, string[] names)

@@ -32,6 +32,31 @@ public sealed class CodexAppServerClientTests
     }
 
     [Fact]
+    public async Task FetchAccountUsageAsync_IgnoresNotificationsWithNestedIds()
+    {
+        var transport = new FakeCodexTransport(
+            [
+                Response(1, """{"ok":true}"""),
+                Response(2, """{"email":"person@example.com"}"""),
+                """{"jsonrpc":"2.0","method":"session/changed","params":{"id":3,"message":"not a response"}}""",
+                Response(3, """{"used":10,"limit":100}"""),
+                Response(4, """{"used":20,"limit":100}""")
+            ],
+            []);
+        var client = new CodexAppServerClient(() => transport, TimeSpan.FromSeconds(1));
+
+        var data = await client.FetchAccountUsageAsync(CodexProbe(), CancellationToken.None);
+
+        Assert.Contains("person@example.com", data.AccountJson);
+        Assert.Contains("\"id\":3", data.RateLimitsJson);
+        Assert.Contains("\"used\":10", data.RateLimitsJson);
+        Assert.DoesNotContain("session/changed", data.RateLimitsJson);
+        Assert.Contains("\"id\":4", data.UsageJson);
+        Assert.Equal(4, transport.Requests.Count);
+        Assert.True(transport.Stopped);
+    }
+
+    [Fact]
     public async Task FetchAccountUsageAsync_ContinuesWhenOptionalMethodReturnsNonAuthError()
     {
         var transport = new FakeCodexTransport(

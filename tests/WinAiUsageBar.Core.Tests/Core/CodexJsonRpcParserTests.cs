@@ -648,4 +648,33 @@ public sealed class CodexJsonRpcParserTests
         Assert.True(envelope.HasError);
         Assert.Equal("Auth required", envelope.ErrorMessage);
     }
+
+    [Fact]
+    public void ParseEnvelope_IgnoresNestedIdsWhenTopLevelIdIsMissing()
+    {
+        var envelope = CodexJsonRpcParser.ParseEnvelope(
+            """{"jsonrpc":"2.0","method":"session/changed","params":{"id":3,"message":"not an error"}}""");
+
+        Assert.Null(envelope.Id);
+        Assert.Equal("session/changed", envelope.Method);
+        Assert.False(envelope.HasError);
+        Assert.Null(envelope.ErrorMessage);
+    }
+
+    [Fact]
+    public void ParseEnvelope_PrefersTopLevelIdWhenNestedObjectsHaveIds()
+    {
+        var envelope = CodexJsonRpcParser.ParseEnvelope(
+            """{"jsonrpc":"2.0","id":4,"result":{"id":99,"message":"not an envelope message"}}""");
+
+        Assert.Equal(4, envelope.Id);
+        Assert.Null(envelope.ErrorMessage);
+    }
+
+    [Fact]
+    public void ParseEnvelope_ThrowsForInvalidTopLevelId()
+    {
+        Assert.Throws<FormatException>(
+            () => CodexJsonRpcParser.ParseEnvelope("""{"jsonrpc":"2.0","id":"not-a-number","result":{}}"""));
+    }
 }
