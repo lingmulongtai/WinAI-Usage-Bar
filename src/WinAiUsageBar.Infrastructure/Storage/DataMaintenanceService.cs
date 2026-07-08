@@ -1,3 +1,5 @@
+using WinAiUsageBar.Infrastructure.Diagnostics;
+
 namespace WinAiUsageBar.Infrastructure.Storage;
 
 public interface IDataMaintenanceService
@@ -11,6 +13,8 @@ public interface IDataMaintenanceService
     Task<DataPruneResult> PruneConfigBackupsAsync(int keepNewest, CancellationToken cancellationToken);
 
     Task<DataPruneResult> PruneDiagnosticsExportsAsync(int keepNewest, CancellationToken cancellationToken);
+
+    Task<DataPruneResult> PruneCrashReportsAsync(int keepNewest, CancellationToken cancellationToken);
 }
 
 public sealed record DataMaintenanceResult(
@@ -72,7 +76,8 @@ public sealed class DataMaintenanceService(
             paths.ConfigBackupsDirectory,
             "config-backup-*.json",
             keepNewest,
-            cancellationToken);
+            cancellationToken,
+            fileNamePredicate: null);
     }
 
     public Task<DataPruneResult> PruneDiagnosticsExportsAsync(
@@ -83,7 +88,20 @@ public sealed class DataMaintenanceService(
             paths.DiagnosticsExportsDirectory,
             "diagnostics-export-*.txt",
             keepNewest,
-            cancellationToken);
+            cancellationToken,
+            fileNamePredicate: null);
+    }
+
+    public Task<DataPruneResult> PruneCrashReportsAsync(
+        int keepNewest,
+        CancellationToken cancellationToken)
+    {
+        return PruneFileSetAsync(
+            paths.CrashReportsDirectory,
+            CrashReportService.GeneratedReportSearchPattern,
+            keepNewest,
+            cancellationToken,
+            CrashReportService.IsGeneratedCrashReportFileName);
     }
 
     private Task<DataMaintenanceResult> DeleteKnownFileAsync(
@@ -110,7 +128,8 @@ public sealed class DataMaintenanceService(
         string directory,
         string searchPattern,
         int keepNewest,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<string, bool>? fileNamePredicate)
     {
         if (keepNewest < 1)
         {
@@ -123,7 +142,8 @@ public sealed class DataMaintenanceService(
         var files = Directory
             .EnumerateFiles(directory, searchPattern, SearchOption.TopDirectoryOnly)
             .Select(path => new FileInfo(path))
-            .Where(file => file.Exists)
+            .Where(file => file.Exists
+                && (fileNamePredicate is null || fileNamePredicate(file.Name)))
             .OrderByDescending(file => file.LastWriteTimeUtc)
             .ThenByDescending(file => file.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();

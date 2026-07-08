@@ -37,7 +37,12 @@ public sealed record DiagnosticsSummary(
     DiagnosticsFileSummary ConfigFile,
     DiagnosticsFileSummary SnapshotsFile,
     DiagnosticsFileSummary HistoryFile,
-    DiagnosticsFileSummary DiagnosticsLogFile);
+    DiagnosticsFileSummary DiagnosticsLogFile,
+    string? CrashReportsDirectory = null,
+    int CrashReportCount = 0,
+    string? LatestCrashReportPath = null,
+    DateTimeOffset? LatestCrashReportCreatedAt = null,
+    long CrashReportTotalBytes = 0);
 
 public sealed record DiagnosticsFileSummary(
     string Path,
@@ -60,6 +65,7 @@ public sealed class DiagnosticsSummaryService(
             : snapshots.Values.Max(snapshot => snapshot.UpdatedAt);
         var backupSummary = ReadConfigBackups(paths.ConfigBackupsDirectory);
         var exportSummary = ReadDiagnosticsExports(paths.DiagnosticsExportsDirectory);
+        var crashReportSummary = ReadCrashReports(paths.CrashReportsDirectory);
 
         return new DiagnosticsSummary(
             paths.RootDirectory,
@@ -89,7 +95,12 @@ public sealed class DiagnosticsSummaryService(
             ReadFile(paths.ConfigPath),
             ReadFile(paths.SnapshotsPath),
             ReadFile(paths.HistoryPath),
-            ReadFile(paths.DiagnosticsLogPath));
+            ReadFile(paths.DiagnosticsLogPath),
+            paths.CrashReportsDirectory,
+            crashReportSummary.Count,
+            crashReportSummary.LatestPath,
+            crashReportSummary.LatestCreatedAt,
+            crashReportSummary.TotalBytes);
     }
 
     private static DiagnosticsFileSummary ReadFile(string path)
@@ -127,7 +138,23 @@ public sealed class DiagnosticsSummaryService(
             summary.TotalBytes);
     }
 
-    private static FileSetSummary ReadDirectorySummary(string directory, string searchPattern)
+    private static CrashReportSummary ReadCrashReports(string directory)
+    {
+        var summary = ReadDirectorySummary(
+            directory,
+            CrashReportService.GeneratedReportSearchPattern,
+            CrashReportService.IsGeneratedCrashReportFileName);
+        return new CrashReportSummary(
+            summary.Count,
+            summary.LatestPath,
+            summary.LatestCreatedAt,
+            summary.TotalBytes);
+    }
+
+    private static FileSetSummary ReadDirectorySummary(
+        string directory,
+        string searchPattern,
+        Func<string, bool>? fileNamePredicate = null)
     {
         if (!Directory.Exists(directory))
         {
@@ -137,7 +164,8 @@ public sealed class DiagnosticsSummaryService(
         var files = Directory
             .EnumerateFiles(directory, searchPattern, SearchOption.TopDirectoryOnly)
             .Select(path => new FileInfo(path))
-            .Where(file => file.Exists)
+            .Where(file => file.Exists
+                && (fileNamePredicate is null || fileNamePredicate(file.Name)))
             .ToList();
 
         if (files.Count == 0)
@@ -163,6 +191,12 @@ public sealed class DiagnosticsSummaryService(
         long TotalBytes);
 
     private sealed record DiagnosticsExportSummary(
+        int Count,
+        string? LatestPath,
+        DateTimeOffset? LatestCreatedAt,
+        long TotalBytes);
+
+    private sealed record CrashReportSummary(
         int Count,
         string? LatestPath,
         DateTimeOffset? LatestCreatedAt,

@@ -23,6 +23,7 @@ All notable changes to WinAI Usage Bar are documented here.
 - Latest-release checks now persist observed zip package and checksum asset names for Refresh settings and health reports.
 - Latest-release checks now persist observed setup installer asset status for Refresh settings and health reports.
 - Added local redacted crash report files under app data with bounded catalog/pruning support for unexpected app failures.
+- Diagnostics summary, health reports, storage pressure guidance, and support artifact pruning now include local crash report metadata.
 - Real-version `--download-update` runs now persist downloaded package/checksum paths for Refresh settings and health reports without persisting dogfood version override paths.
 - Real-version `--install-latest-update` runs now persist install status, staged package/checksum paths, prepared script/result paths, and launched version details without overwriting real install state during dogfood version override runs.
 - Update checks now report setup installer and setup checksum asset availability alongside the zip package assets.

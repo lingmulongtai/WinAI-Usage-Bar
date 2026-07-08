@@ -42,7 +42,12 @@ public sealed class CommandLineHealthReportFormatterTests
             ConfigFile: FileSummary("config.json", true, 2048, latestSnapshot),
             SnapshotsFile: FileSummary("snapshots.json", true, 512, latestSnapshot),
             HistoryFile: FileSummary("history.ndjson", true, 1_048_576, latestSnapshot),
-            DiagnosticsLogFile: FileSummary("diagnostics.log", false, 0, null));
+            DiagnosticsLogFile: FileSummary("diagnostics.log", false, 0, null),
+            CrashReportsDirectory: @"C:\Users\test\AppData\Roaming\WinAiUsageBar\crash-reports",
+            CrashReportCount: 2,
+            LatestCrashReportPath: @"C:\Users\test\AppData\Roaming\WinAiUsageBar\crash-reports\crash-report-20260708-064000-11111111111111111111111111111111.json",
+            LatestCrashReportCreatedAt: latestSnapshot,
+            CrashReportTotalBytes: 2048);
         var history = new HistorySummary(
             TotalEntries: 3,
             InvalidLines: 1,
@@ -134,6 +139,10 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.Contains("Latest config backup time: 2026-07-08 06:40:00 +09:00", report, StringComparison.Ordinal);
         Assert.Contains("Diagnostics exports: 3 export(s), 8 KB total", report, StringComparison.Ordinal);
         Assert.Contains("Latest diagnostics export time: 2026-07-08 06:40:00 +09:00", report, StringComparison.Ordinal);
+        Assert.Contains(@"Crash reports: C:\Users\test\AppData\Roaming\WinAiUsageBar\crash-reports", report, StringComparison.Ordinal);
+        Assert.Contains("Crash reports: 2 report(s), 2 KB total", report, StringComparison.Ordinal);
+        Assert.Contains(@"Latest crash report: C:\Users\test\AppData\Roaming\WinAiUsageBar\crash-reports\crash-report-20260708-064000-11111111111111111111111111111111.json", report, StringComparison.Ordinal);
+        Assert.Contains("Latest crash report time: 2026-07-08 06:40:00 +09:00", report, StringComparison.Ordinal);
         Assert.Contains("Updates", report, StringComparison.Ordinal);
         Assert.Contains("Check on startup: On", report, StringComparison.Ordinal);
         Assert.Contains("Startup interval: at most every 6 hour(s)", report, StringComparison.Ordinal);
@@ -162,6 +171,7 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.Contains("Use Clear History soon", report, StringComparison.Ordinal);
         Assert.Contains("Config backups: Ok", report, StringComparison.Ordinal);
         Assert.Contains("Diagnostics exports: Ok", report, StringComparison.Ordinal);
+        Assert.Contains("Crash reports: Ok", report, StringComparison.Ordinal);
         Assert.Contains("Diagnostics log: Ok", report, StringComparison.Ordinal);
         Assert.Contains("Recovery guidance", report, StringComparison.Ordinal);
         Assert.Contains("Export a config backup: Available", report, StringComparison.Ordinal);

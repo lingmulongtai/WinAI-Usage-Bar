@@ -277,6 +277,27 @@ public sealed class AppHost : IAsyncDisposable
         }
     }
 
+    public async Task<DataPruneResult> PruneCrashReportsAsync(
+        int keepNewest,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await dataMaintenanceService.PruneCrashReportsAsync(keepNewest, cancellationToken)
+                .ConfigureAwait(false);
+            await DiagnosticsLog.InfoAsync(
+                $"Crash reports pruned: {result.DeletedCount} deleted, {result.KeptCount} kept.",
+                cancellationToken).ConfigureAwait(false);
+            return result;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await DiagnosticsLog.ErrorAsync("Crash report pruning failed.", ex, CancellationToken.None)
+                .ConfigureAwait(false);
+            throw;
+        }
+    }
+
     public async Task<ConfigBackupValidationResult> ValidateLatestConfigBackupAsync(CancellationToken cancellationToken)
     {
         var path = await GetLatestConfigBackupPathAsync(cancellationToken).ConfigureAwait(false);

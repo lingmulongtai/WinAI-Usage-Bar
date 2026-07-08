@@ -51,6 +51,21 @@ public sealed class DiagnosticsSummaryServiceTests
             await File.WriteAllTextAsync(latestExportPath, "latest export");
             File.SetLastWriteTime(latestExportPath, now.AddMinutes(1).DateTime);
             File.SetLastWriteTime(olderExportPath, now.AddMinutes(-29).DateTime);
+            var olderCrashReportPath = Path.Combine(
+                paths.CrashReportsDirectory,
+                "crash-report-20260708-150000-11111111111111111111111111111111.json");
+            var latestCrashReportPath = Path.Combine(
+                paths.CrashReportsDirectory,
+                "crash-report-20260708-160000-22222222222222222222222222222222.json");
+            var ignoredCrashReportPath = Path.Combine(
+                paths.CrashReportsDirectory,
+                "crash-report-20260708-170000-not-a-guid.json");
+            await File.WriteAllTextAsync(olderCrashReportPath, "old crash report");
+            await File.WriteAllTextAsync(latestCrashReportPath, "latest crash report");
+            await File.WriteAllTextAsync(ignoredCrashReportPath, "ignored");
+            File.SetLastWriteTime(latestCrashReportPath, now.AddMinutes(2).DateTime);
+            File.SetLastWriteTime(olderCrashReportPath, now.AddMinutes(-28).DateTime);
+            File.SetLastWriteTime(ignoredCrashReportPath, now.AddMinutes(3).DateTime);
 
             var summary = await service.GetSummaryAsync(CancellationToken.None);
             var viewModel = new DiagnosticsSummaryViewModel(summary);
@@ -75,6 +90,11 @@ public sealed class DiagnosticsSummaryServiceTests
             Assert.Equal(latestExportPath, summary.LatestDiagnosticsExportPath);
             Assert.NotNull(summary.LatestDiagnosticsExportCreatedAt);
             Assert.Equal("old export".Length + "latest export".Length, summary.DiagnosticsExportTotalBytes);
+            Assert.Equal(paths.CrashReportsDirectory, summary.CrashReportsDirectory);
+            Assert.Equal(2, summary.CrashReportCount);
+            Assert.Equal(latestCrashReportPath, summary.LatestCrashReportPath);
+            Assert.NotNull(summary.LatestCrashReportCreatedAt);
+            Assert.Equal("old crash report".Length + "latest crash report".Length, summary.CrashReportTotalBytes);
             Assert.True(summary.ConfigFile.Exists);
             Assert.True(summary.SnapshotsFile.Exists);
             Assert.True(summary.HistoryFile.Exists);
@@ -83,6 +103,10 @@ public sealed class DiagnosticsSummaryServiceTests
             Assert.Contains("2 cached snapshot", viewModel.SnapshotText);
             Assert.Contains("2 config backup", viewModel.ConfigBackupText);
             Assert.Contains("2 diagnostics export", viewModel.DiagnosticsExportText);
+            Assert.Contains("2 crash report", viewModel.CrashReportText);
+            Assert.Equal(latestCrashReportPath, viewModel.LatestCrashReportPath);
+            Assert.Contains(paths.CrashReportsDirectory, visibleText, StringComparison.Ordinal);
+            Assert.DoesNotContain(ignoredCrashReportPath, visibleText, StringComparison.Ordinal);
             Assert.DoesNotContain("gemini-secret-ref", visibleText, StringComparison.Ordinal);
             Assert.DoesNotContain("copilot-pat-secret", visibleText, StringComparison.Ordinal);
         }

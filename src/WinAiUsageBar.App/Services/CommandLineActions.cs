@@ -716,9 +716,11 @@ public static class CommandLineActions
             .ConfigureAwait(false);
         var diagnosticsExports = await service.PruneDiagnosticsExportsAsync(options.KeepNewest, cancellationToken)
             .ConfigureAwait(false);
+        var crashReports = await service.PruneCrashReportsAsync(options.KeepNewest, cancellationToken)
+            .ConfigureAwait(false);
 
         return new CommandLineActionResult(
-            CommandLineSupportArtifactPruneFormatter.Format(backups, diagnosticsExports),
+            CommandLineSupportArtifactPruneFormatter.Format(backups, diagnosticsExports, crashReports),
             0);
     }
 

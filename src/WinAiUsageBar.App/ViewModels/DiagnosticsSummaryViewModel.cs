@@ -12,6 +12,8 @@ public sealed class DiagnosticsSummaryViewModel
         HistoryPath = summary.HistoryPath;
         DiagnosticsLogPath = summary.DiagnosticsLogPath;
         DiagnosticsExportsDirectory = summary.DiagnosticsExportsDirectory;
+        CrashReportsDirectory = summary.CrashReportsDirectory
+            ?? Path.Combine(summary.RootDirectory, "crash-reports");
         ConfigBackupsDirectory = summary.ConfigBackupsDirectory;
         ConfigText = $"Config v{summary.ConfigVersion} / {summary.EnabledProviderCount} of {summary.ConfiguredProviderCount} providers enabled";
         RefreshText = $"Refresh: {summary.RefreshInterval} / Notifications: {(summary.NotificationsEnabled ? "On" : "Off")}";
@@ -26,6 +28,10 @@ public sealed class DiagnosticsSummaryViewModel
             ? $"{summary.DiagnosticsExportCount} diagnostics export(s)"
             : $"{summary.DiagnosticsExportCount} diagnostics export(s), {FormatBytes(summary.DiagnosticsExportTotalBytes)} total / latest {summary.LatestDiagnosticsExportCreatedAt:yyyy-MM-dd HH:mm:ss zzz}";
         LatestDiagnosticsExportPath = summary.LatestDiagnosticsExportPath;
+        CrashReportText = summary.LatestCrashReportCreatedAt is null
+            ? $"{summary.CrashReportCount} crash report(s)"
+            : $"{summary.CrashReportCount} crash report(s), {FormatBytes(summary.CrashReportTotalBytes)} total / latest {summary.LatestCrashReportCreatedAt:yyyy-MM-dd HH:mm:ss zzz}";
+        LatestCrashReportPath = summary.LatestCrashReportPath;
         HistoryText = $"History retention: {summary.HistoryRetentionMaxDays} day(s), {FormatBytes(summary.HistoryRetentionMaxBytes)} max";
         Files =
         [
@@ -48,6 +54,8 @@ public sealed class DiagnosticsSummaryViewModel
 
     public string DiagnosticsExportsDirectory { get; }
 
+    public string CrashReportsDirectory { get; }
+
     public string ConfigBackupsDirectory { get; }
 
     public string ConfigText { get; }
@@ -64,6 +72,10 @@ public sealed class DiagnosticsSummaryViewModel
 
     public string? LatestDiagnosticsExportPath { get; }
 
+    public string CrashReportText { get; }
+
+    public string? LatestCrashReportPath { get; }
+
     public string HistoryText { get; }
 
     public IReadOnlyList<DiagnosticsFileStatusViewModel> Files { get; }
@@ -75,15 +87,18 @@ public sealed class DiagnosticsSummaryViewModel
         SnapshotText,
         ConfigBackupText,
         DiagnosticsExportText,
+        CrashReportText,
         HistoryText,
         $"Config: {ConfigPath}",
         $"Snapshots: {SnapshotsPath}",
         $"History: {HistoryPath}",
         $"Diagnostics log: {DiagnosticsLogPath}",
         $"Exports: {DiagnosticsExportsDirectory}",
+        $"Crash reports: {CrashReportsDirectory}",
         $"Config backups: {ConfigBackupsDirectory}",
         LatestConfigBackupPath is null ? "Latest config backup: n/a" : $"Latest config backup: {LatestConfigBackupPath}",
-        LatestDiagnosticsExportPath is null ? "Latest diagnostics export: n/a" : $"Latest diagnostics export: {LatestDiagnosticsExportPath}"
+        LatestDiagnosticsExportPath is null ? "Latest diagnostics export: n/a" : $"Latest diagnostics export: {LatestDiagnosticsExportPath}",
+        LatestCrashReportPath is null ? "Latest crash report: n/a" : $"Latest crash report: {LatestCrashReportPath}"
     ];
 
     public static string FormatBytes(long bytes)

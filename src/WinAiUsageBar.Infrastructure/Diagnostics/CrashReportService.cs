@@ -51,7 +51,8 @@ public sealed class CrashReportService(
     Func<Guid>? idProvider = null,
     int maxTextLength = 20_000) : ICrashReportService
 {
-    private const string SearchPattern = "crash-report-*.json";
+    public const string GeneratedReportSearchPattern = "crash-report-*.json";
+
     private static readonly Regex CrashReportFileNameRegex = new(
         "^crash-report-[0-9]{8}-[0-9]{6}-[0-9a-fA-F]{32}\\.json$",
         RegexOptions.CultureInvariant | RegexOptions.Compiled);
@@ -186,10 +187,15 @@ public sealed class CrashReportService(
         }
 
         return Directory
-            .EnumerateFiles(paths.CrashReportsDirectory, SearchPattern, SearchOption.TopDirectoryOnly)
+            .EnumerateFiles(paths.CrashReportsDirectory, GeneratedReportSearchPattern, SearchOption.TopDirectoryOnly)
             .Select(path => new FileInfo(path))
-            .Where(file => file.Exists && CrashReportFileNameRegex.IsMatch(file.Name))
+            .Where(file => file.Exists && IsGeneratedCrashReportFileName(file.Name))
             .ToList();
+    }
+
+    public static bool IsGeneratedCrashReportFileName(string fileName)
+    {
+        return CrashReportFileNameRegex.IsMatch(fileName);
     }
 
     private IReadOnlyDictionary<string, string>? SafeContext(IReadOnlyDictionary<string, string?>? context)

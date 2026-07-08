@@ -173,7 +173,7 @@ public sealed class CommandLineActionsTests
     }
 
     [Fact]
-    public async Task PruneSupportArtifactsAsync_PrunesBackupsAndDiagnosticsExports()
+    public async Task PruneSupportArtifactsAsync_PrunesBackupsDiagnosticsExportsAndCrashReports()
     {
         var paths = TestPaths();
         paths.EnsureCreated();
@@ -211,6 +211,26 @@ public sealed class CommandLineActionsTests
             "diagnostics-export-20260708-120000.txt",
             "kept export b",
             new DateTime(2026, 7, 8, 12, 0, 0, DateTimeKind.Utc));
+        var oldCrashReport = await WriteTimestampedFileAsync(
+            paths.CrashReportsDirectory,
+            "crash-report-20260708-100000-11111111111111111111111111111111.json",
+            "old crash report",
+            new DateTime(2026, 7, 8, 10, 0, 0, DateTimeKind.Utc));
+        var keptCrashReportA = await WriteTimestampedFileAsync(
+            paths.CrashReportsDirectory,
+            "crash-report-20260708-110000-22222222222222222222222222222222.json",
+            "kept crash report a",
+            new DateTime(2026, 7, 8, 11, 0, 0, DateTimeKind.Utc));
+        var keptCrashReportB = await WriteTimestampedFileAsync(
+            paths.CrashReportsDirectory,
+            "crash-report-20260708-120000-33333333333333333333333333333333.json",
+            "kept crash report b",
+            new DateTime(2026, 7, 8, 12, 0, 0, DateTimeKind.Utc));
+        var ignoredCrashReport = await WriteTimestampedFileAsync(
+            paths.CrashReportsDirectory,
+            "crash-report-20260708-130000-not-a-guid.json",
+            "ignored crash report",
+            new DateTime(2026, 7, 8, 13, 0, 0, DateTimeKind.Utc));
 
         try
         {
@@ -224,13 +244,18 @@ public sealed class CommandLineActionsTests
             Assert.Contains("Keep newest: 2", result.Output, StringComparison.Ordinal);
             Assert.Contains("Config backups", result.Output, StringComparison.Ordinal);
             Assert.Contains("Diagnostics exports", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Crash reports", result.Output, StringComparison.Ordinal);
             Assert.Contains("Deleted: 1", result.Output, StringComparison.Ordinal);
             Assert.False(File.Exists(oldBackup));
             Assert.False(File.Exists(oldExport));
+            Assert.False(File.Exists(oldCrashReport));
             Assert.True(File.Exists(keptBackupA));
             Assert.True(File.Exists(keptBackupB));
             Assert.True(File.Exists(keptExportA));
             Assert.True(File.Exists(keptExportB));
+            Assert.True(File.Exists(keptCrashReportA));
+            Assert.True(File.Exists(keptCrashReportB));
+            Assert.True(File.Exists(ignoredCrashReport));
             Assert.True(File.Exists(unrelatedBackupPath));
             Assert.True(File.Exists(secretPath));
         }

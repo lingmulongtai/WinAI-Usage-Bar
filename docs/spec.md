@@ -115,11 +115,11 @@ The Privacy & Data page shows recovery guidance derived from the non-secret diag
 
 The Privacy & Data page can clear `snapshots.json` and `history.ndjson` as local maintenance actions. These actions must not delete `config.json`, diagnostics exports, or files under `secrets/`.
 
-The Privacy & Data page can prune old retained support artifacts for config backups and diagnostics exports while keeping the newest 5 matched files. Pruning must only match app-owned top-level filename patterns under `config-backups/` and `diagnostics-exports/`. It must not delete `config.json`, `snapshots.json`, `history.ndjson`, `diagnostics.log`, unrelated files, nested files, or files under `secrets/`.
+The Privacy & Data page can prune old retained support artifacts for config backups, diagnostics exports, and crash reports while keeping the newest 5 matched files. Pruning must only match app-owned top-level filename patterns under `config-backups/`, `diagnostics-exports/`, and `crash-reports/`. Crash report pruning must only match app-generated `crash-report-<timestamp>-<id>.json` names. It must not delete `config.json`, `snapshots.json`, `history.ndjson`, `diagnostics.log`, updates, unrelated files, nested files, or files under `secrets/`.
 
 Unexpected startup and WinUI failures should write a local structured crash report under `crash-reports/`. Crash reports must be JSON with timestamp, source, exception type, redacted message, redacted stack trace, app version when available, and optional redacted context. The writer must never read provider auth files or secret-store contents, must redact sensitive-looking context names and values, must use collision-resistant generated file names, and must prune to a bounded recent set when the app writes reports.
 
-The CLI can run the same support artifact pruning with `--prune-support-artifacts [--keep-newest <N>]`. The default keep count is 5. Invalid, missing, duplicate, or unknown prune options must exit with code 2 and print help. Successful output must include non-secret matched, kept, deleted, and freed-byte counts for config backups and diagnostics exports.
+The CLI can run the same support artifact pruning with `--prune-support-artifacts [--keep-newest <N>]`. The default keep count is 5. Invalid, missing, duplicate, or unknown prune options must exit with code 2 and print help. Successful output must include non-secret matched, kept, deleted, and freed-byte counts for config backups, diagnostics exports, and crash reports.
 
 The CLI can export a config-only backup with `--export-config-backup`. It must use the same config backup writer as Privacy & Data, include configuration settings only, leave `secrets/` untouched, and print the created path and timestamp without launching UI.
 
@@ -221,7 +221,7 @@ Diagnostics summary is separate from diagnostics export: the summary is for quic
 
 Crash reports are local support artifacts only. They must not be uploaded automatically, and catalog/pruning helpers must only match top-level app-generated `crash-report-<timestamp>-<id>.json` files under `crash-reports/`.
 
-The CLI health report includes a storage pressure section derived from the same non-secret guidance used by Privacy & Data. It should list retained history, config backups, diagnostics exports, and diagnostics log pressure with level, detail, and recommendation text. When `config.json` is already normalized, this read-only report should not rewrite the config file.
+The CLI health report includes a storage pressure section derived from the same non-secret guidance used by Privacy & Data. It should list retained history, config backups, diagnostics exports, crash reports, and diagnostics log pressure with level, detail, and recommendation text. When `config.json` is already normalized, this read-only report should not rewrite the config file.
 
 The CLI health report includes a recovery guidance section derived from the same non-secret recovery guidance used by Privacy & Data. It should list config backup export, latest-backup restore, reset-to-defaults, and diagnostics export actions with availability and recommendation text. The CLI report should not add raw safety notes that mention secret-store paths; it must not include secret names, secret values, tokens, cookies, or raw auth details.
 

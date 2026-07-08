@@ -1281,6 +1281,31 @@ public sealed class MainWindow : Window
             }
         };
         pruneActions.Children.Add(pruneDiagnosticsExportsButton);
+
+        var pruneCrashReportsButton = new Button { Content = "Prune Old Crash Reports" };
+        pruneCrashReportsButton.Click += async (_, _) =>
+        {
+            try
+            {
+                var result = await host.PruneCrashReportsAsync(
+                    SupportArtifactPruneKeepNewest,
+                    CancellationToken.None);
+                maintenanceInfo.Severity = InfoBarSeverity.Success;
+                maintenanceInfo.Title = result.DeletedCount > 0
+                    ? "Old crash reports pruned"
+                    : "No old crash reports pruned";
+                maintenanceInfo.Message = FormatPruneResult(result);
+                maintenanceInfo.IsOpen = true;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                maintenanceInfo.Severity = InfoBarSeverity.Error;
+                maintenanceInfo.Title = "Crash report pruning failed";
+                maintenanceInfo.Message = ex.Message;
+                maintenanceInfo.IsOpen = true;
+            }
+        };
+        pruneActions.Children.Add(pruneCrashReportsButton);
         panel.Children.Add(pruneActions);
 
         var backupActions = new StackPanel

@@ -30,6 +30,10 @@ public sealed class StoragePressureGuidanceService : IStoragePressureGuidanceSer
     private const long HighExportBytes = 200_000_000;
     private const int WatchExportCount = 20;
     private const int HighExportCount = 50;
+    private const long WatchCrashReportBytes = 25_000_000;
+    private const long HighCrashReportBytes = 100_000_000;
+    private const int WatchCrashReportCount = 20;
+    private const int HighCrashReportCount = 50;
 
     public IReadOnlyList<StoragePressureGuidanceItem> CreateGuidance(DiagnosticsSummary summary)
     {
@@ -38,6 +42,7 @@ public sealed class StoragePressureGuidanceService : IStoragePressureGuidanceSer
             HistoryGuidance(summary),
             BackupGuidance(summary),
             DiagnosticsExportGuidance(summary),
+            CrashReportGuidance(summary),
             DiagnosticsLogGuidance(summary)
         ];
     }
@@ -131,6 +136,28 @@ public sealed class StoragePressureGuidanceService : IStoragePressureGuidanceSer
             "Diagnostics exports",
             level,
             $"{summary.DiagnosticsExportCount} export file(s) use {FormatBytes(summary.DiagnosticsExportTotalBytes)}.",
+            recommendation);
+    }
+
+    private static StoragePressureGuidanceItem CrashReportGuidance(DiagnosticsSummary summary)
+    {
+        var level = summary.CrashReportTotalBytes >= HighCrashReportBytes || summary.CrashReportCount >= HighCrashReportCount
+            ? StoragePressureLevel.High
+            : summary.CrashReportTotalBytes >= WatchCrashReportBytes || summary.CrashReportCount >= WatchCrashReportCount
+                ? StoragePressureLevel.Watch
+                : StoragePressureLevel.Ok;
+
+        var recommendation = level switch
+        {
+            StoragePressureLevel.High => "Use --prune-support-artifacts after exporting diagnostics if these crash reports are tied to an active investigation.",
+            StoragePressureLevel.Watch => "Review crash-reports/ during maintenance and prune older reports after you no longer need them.",
+            _ => "No action needed. Crash report storage is within the normal MVP range."
+        };
+
+        return new StoragePressureGuidanceItem(
+            "Crash reports",
+            level,
+            $"{summary.CrashReportCount} crash report file(s) use {FormatBytes(summary.CrashReportTotalBytes)}.",
             recommendation);
     }
 

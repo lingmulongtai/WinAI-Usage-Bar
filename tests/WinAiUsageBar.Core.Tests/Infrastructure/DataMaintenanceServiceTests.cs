@@ -272,6 +272,59 @@ public sealed class DataMaintenanceServiceTests
     }
 
     [Fact]
+    public async Task PruneCrashReportsAsync_DeletesOnlyOldGeneratedCrashReports()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        paths.EnsureCreated();
+        var unrelatedPath = Path.Combine(paths.CrashReportsDirectory, "crash-report-note.json");
+        await File.WriteAllTextAsync(unrelatedPath, "keep me");
+        var malformedNamePath = Path.Combine(paths.CrashReportsDirectory, "crash-report-20260708-090000-not-a-guid.json");
+        await File.WriteAllTextAsync(malformedNamePath, "keep me too");
+        var oldReport = await WriteTimestampedFileAsync(
+            paths.CrashReportsDirectory,
+            "crash-report-20260708-100000-11111111111111111111111111111111.json",
+            "old crash report",
+            new DateTime(2026, 7, 8, 10, 0, 0, DateTimeKind.Utc));
+        var newestReport = await WriteTimestampedFileAsync(
+            paths.CrashReportsDirectory,
+            "crash-report-20260708-110000-22222222222222222222222222222222.json",
+            "new crash report",
+            new DateTime(2026, 7, 8, 11, 0, 0, DateTimeKind.Utc));
+        var nestedDirectory = Path.Combine(paths.CrashReportsDirectory, "nested");
+        Directory.CreateDirectory(nestedDirectory);
+        var nestedReport = Path.Combine(nestedDirectory, "crash-report-20260708-120000-33333333333333333333333333333333.json");
+        await File.WriteAllTextAsync(nestedReport, "nested");
+        var deletedBytes = new FileInfo(oldReport).Length;
+        var service = new DataMaintenanceService(paths, new JsonAppConfigStore(paths));
+
+        try
+        {
+            var result = await service.PruneCrashReportsAsync(1, CancellationToken.None);
+
+            Assert.Equal(paths.CrashReportsDirectory, result.DirectoryPath);
+            Assert.Equal("crash-report-*.json", result.SearchPattern);
+            Assert.Equal(2, result.MatchedCount);
+            Assert.Equal(1, result.KeptCount);
+            Assert.Equal(1, result.DeletedCount);
+            Assert.Equal(deletedBytes, result.DeletedBytes);
+            Assert.False(File.Exists(oldReport));
+            Assert.True(File.Exists(newestReport));
+            Assert.True(File.Exists(unrelatedPath));
+            Assert.True(File.Exists(malformedNamePath));
+            Assert.True(File.Exists(nestedReport));
+            Assert.True(Directory.Exists(paths.SecretsDirectory));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task PruneConfigBackupsAsync_RequiresAtLeastOneKeptFile()
     {
         var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));

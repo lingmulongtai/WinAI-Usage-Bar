@@ -30,6 +30,7 @@ public static class CommandLineHealthReportFormatter
         builder.AppendLine($"  History: {diagnostics.HistoryPath}");
         builder.AppendLine($"  Diagnostics log: {diagnostics.DiagnosticsLogPath}");
         builder.AppendLine($"  Diagnostics exports: {diagnostics.DiagnosticsExportsDirectory}");
+        builder.AppendLine($"  Crash reports: {CrashReportsDirectory(diagnostics)}");
         builder.AppendLine($"  Config backups: {diagnostics.ConfigBackupsDirectory}");
         builder.AppendLine();
         builder.AppendLine("Configuration");
@@ -44,6 +45,9 @@ public static class CommandLineHealthReportFormatter
         builder.AppendLine($"  Diagnostics exports: {diagnostics.DiagnosticsExportCount} export(s), {FormatBytes(diagnostics.DiagnosticsExportTotalBytes)} total");
         builder.AppendLine($"  Latest diagnostics export: {diagnostics.LatestDiagnosticsExportPath ?? "n/a"}");
         builder.AppendLine($"  Latest diagnostics export time: {FormatDate(diagnostics.LatestDiagnosticsExportCreatedAt)}");
+        builder.AppendLine($"  Crash reports: {diagnostics.CrashReportCount} report(s), {FormatBytes(diagnostics.CrashReportTotalBytes)} total");
+        builder.AppendLine($"  Latest crash report: {diagnostics.LatestCrashReportPath ?? "n/a"}");
+        builder.AppendLine($"  Latest crash report time: {FormatDate(diagnostics.LatestCrashReportCreatedAt)}");
 
         if (updates is not null)
         {
@@ -216,6 +220,12 @@ public static class CommandLineHealthReportFormatter
     private static string FormatDate(DateTimeOffset? value)
     {
         return value?.ToString("yyyy-MM-dd HH:mm:ss zzz", CultureInfo.InvariantCulture) ?? "n/a";
+    }
+
+    private static string CrashReportsDirectory(DiagnosticsSummary diagnostics)
+    {
+        return diagnostics.CrashReportsDirectory
+            ?? Path.Combine(diagnostics.RootDirectory, "crash-reports");
     }
 
     private static string FormatPercent(double? value)

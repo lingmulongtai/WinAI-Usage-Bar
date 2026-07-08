@@ -16,6 +16,8 @@ public sealed class StoragePressureGuidanceServiceTests
             backupBytes: 2_048,
             exportCount: 1,
             exportBytes: 4_096,
+            crashReportCount: 1,
+            crashReportBytes: 1_024,
             logBytes: 4_096);
 
         var guidance = service.CreateGuidance(summary);
@@ -36,6 +38,8 @@ public sealed class StoragePressureGuidanceServiceTests
             backupBytes: 2_048,
             exportCount: 1,
             exportBytes: 4_096,
+            crashReportCount: 1,
+            crashReportBytes: 1_024,
             logBytes: 4_096);
 
         var history = service.CreateGuidance(summary).Single(item => item.Title == "Retained history");
@@ -56,6 +60,8 @@ public sealed class StoragePressureGuidanceServiceTests
             backupBytes: 2_048,
             exportCount: 1,
             exportBytes: 4_096,
+            crashReportCount: 1,
+            crashReportBytes: 1_024,
             logBytes: 4_096);
 
         var history = service.CreateGuidance(summary).Single(item => item.Title == "Retained history");
@@ -75,11 +81,14 @@ public sealed class StoragePressureGuidanceServiceTests
             backupBytes: 120_000_000,
             exportCount: 51,
             exportBytes: 240_000_000,
+            crashReportCount: 51,
+            crashReportBytes: 120_000_000,
             logBytes: 30_000_000);
 
         var guidance = service.CreateGuidance(summary);
         var backups = guidance.Single(item => item.Title == "Config backups");
         var exports = guidance.Single(item => item.Title == "Diagnostics exports");
+        var crashReports = guidance.Single(item => item.Title == "Crash reports");
         var log = guidance.Single(item => item.Title == "Diagnostics log");
         var visibleText = string.Join(
             Environment.NewLine,
@@ -87,9 +96,11 @@ public sealed class StoragePressureGuidanceServiceTests
 
         Assert.Equal(StoragePressureLevel.High, backups.Level);
         Assert.Equal(StoragePressureLevel.High, exports.Level);
+        Assert.Equal(StoragePressureLevel.High, crashReports.Level);
         Assert.Equal(StoragePressureLevel.High, log.Level);
         Assert.Contains("--prune-support-artifacts", backups.Recommendation, StringComparison.Ordinal);
         Assert.Contains("--prune-support-artifacts", exports.Recommendation, StringComparison.Ordinal);
+        Assert.Contains("--prune-support-artifacts", crashReports.Recommendation, StringComparison.Ordinal);
         Assert.Contains("prune the old diagnostics log", log.Recommendation, StringComparison.Ordinal);
         Assert.DoesNotContain("secrets", visibleText, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("token", visibleText, StringComparison.OrdinalIgnoreCase);
@@ -102,6 +113,8 @@ public sealed class StoragePressureGuidanceServiceTests
         long backupBytes,
         int exportCount,
         long exportBytes,
+        int crashReportCount,
+        long crashReportBytes,
         long logBytes)
     {
         var root = @"C:\Users\test\AppData\Roaming\WinAiUsageBar";
@@ -150,6 +163,11 @@ public sealed class StoragePressureGuidanceServiceTests
                 Path.Combine(root, "diagnostics.log"),
                 Exists: logBytes > 0,
                 SizeBytes: logBytes,
-                LastWriteTime: logBytes > 0 ? now : null));
+                LastWriteTime: logBytes > 0 ? now : null),
+            CrashReportsDirectory: Path.Combine(root, "crash-reports"),
+            CrashReportCount: crashReportCount,
+            LatestCrashReportPath: crashReportCount == 0 ? null : Path.Combine(root, "crash-reports", "crash-report.json"),
+            LatestCrashReportCreatedAt: crashReportCount == 0 ? null : now,
+            CrashReportTotalBytes: crashReportBytes);
     }
 }

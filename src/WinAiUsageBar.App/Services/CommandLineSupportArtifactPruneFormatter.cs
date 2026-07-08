@@ -8,7 +8,8 @@ public static class CommandLineSupportArtifactPruneFormatter
 {
     public static string Format(
         DataPruneResult configBackups,
-        DataPruneResult diagnosticsExports)
+        DataPruneResult diagnosticsExports,
+        DataPruneResult crashReports)
     {
         var builder = new StringBuilder();
         builder.AppendLine("Support artifact pruning");
@@ -17,6 +18,8 @@ public static class CommandLineSupportArtifactPruneFormatter
         AppendResult(builder, "Config backups", configBackups);
         builder.AppendLine();
         AppendResult(builder, "Diagnostics exports", diagnosticsExports);
+        builder.AppendLine();
+        AppendResult(builder, "Crash reports", crashReports);
         return builder.ToString().TrimEnd();
     }
 

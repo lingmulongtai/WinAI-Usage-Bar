@@ -392,17 +392,20 @@ public sealed class AppHostTests
         var backupResult = await host.ExportConfigBackupAsync(CancellationToken.None);
         var pruneBackupsResult = await host.PruneConfigBackupsAsync(5, CancellationToken.None);
         var pruneExportsResult = await host.PruneDiagnosticsExportsAsync(5, CancellationToken.None);
+        var pruneCrashReportsResult = await host.PruneCrashReportsAsync(5, CancellationToken.None);
 
         Assert.Equal(1, maintenance.ClearSnapshotsCount);
         Assert.Equal(1, maintenance.ClearHistoryCount);
         Assert.Equal(1, maintenance.ExportConfigBackupCount);
         Assert.Equal(1, maintenance.PruneConfigBackupsCount);
         Assert.Equal(1, maintenance.PruneDiagnosticsExportsCount);
+        Assert.Equal(1, maintenance.PruneCrashReportsCount);
         Assert.Equal(paths.SnapshotsPath, snapshotsResult.Path);
         Assert.Equal(paths.HistoryPath, historyResult.Path);
         Assert.Equal(Path.Combine(paths.ConfigBackupsDirectory, "config-backup.json"), backupResult.Path);
         Assert.Equal(paths.ConfigBackupsDirectory, pruneBackupsResult.DirectoryPath);
         Assert.Equal(paths.DiagnosticsExportsDirectory, pruneExportsResult.DirectoryPath);
+        Assert.Equal(paths.CrashReportsDirectory, pruneCrashReportsResult.DirectoryPath);
         Assert.Contains("Snapshot cache cleared.", diagnostics.InfoMessages);
         Assert.Contains("History file cleared.", diagnostics.InfoMessages);
         Assert.Contains(diagnostics.InfoMessages, message => message.StartsWith("Config backup exported to ", StringComparison.Ordinal));
@@ -1078,6 +1081,8 @@ public sealed class AppHostTests
 
         public int PruneDiagnosticsExportsCount { get; private set; }
 
+        public int PruneCrashReportsCount { get; private set; }
+
         public Task<DataMaintenanceResult> ClearSnapshotsAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -1134,6 +1139,21 @@ public sealed class AppHostTests
                 KeptCount: keepNewest,
                 DeletedCount: 1,
                 DeletedBytes: 2048,
+                PrunedAt: DateTimeOffset.Now));
+        }
+
+        public Task<DataPruneResult> PruneCrashReportsAsync(int keepNewest, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            PruneCrashReportsCount++;
+            return Task.FromResult(new DataPruneResult(
+                paths.CrashReportsDirectory,
+                "crash-report-*.json",
+                keepNewest,
+                MatchedCount: 6,
+                KeptCount: keepNewest,
+                DeletedCount: 1,
+                DeletedBytes: 4096,
                 PrunedAt: DateTimeOffset.Now));
         }
     }
