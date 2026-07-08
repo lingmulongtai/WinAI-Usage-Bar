@@ -89,6 +89,15 @@ By default, the package script reads the app version from `WinAiUsageBar.App.csp
 
 Pushes to `main` upload both the publish directory and a `WinAIUsageBar-win-x64-package` artifact containing the versioned zip and `.sha256` file.
 
+Create a local Windows setup executable with Inno Setup 6 installed:
+
+```powershell
+.\scripts\verify-installer-script.ps1
+.\scripts\build-installer.ps1
+```
+
+The installer script is `installer\WinAIUsageBar.iss`, and the default setup output goes under `artifacts\installer`. The build script publishes the app first unless `-SkipPublish` is passed. If `ISCC.exe` is not on `PATH`, pass `-InnoSetupCompiler <path>` or install Inno Setup 6 locally.
+
 Run the published-app smoke test without opening UI:
 
 ```powershell
