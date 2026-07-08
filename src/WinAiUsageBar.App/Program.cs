@@ -22,7 +22,8 @@ public static class Program
             CommandLineActions.RestoreConfigBackupAsync,
             AppInfoProvider.Get,
             CancellationToken.None,
-            refreshOnce: CommandLineActions.RefreshOnceAsync)
+            refreshOnce: CommandLineActions.RefreshOnceAsync,
+            pruneSupportArtifacts: CommandLineActions.PruneSupportArtifactsAsync)
             .GetAwaiter()
             .GetResult();
 

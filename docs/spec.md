@@ -104,6 +104,8 @@ The Privacy & Data page can clear `snapshots.json` and `history.ndjson` as local
 
 The Privacy & Data page can prune old retained support artifacts for config backups and diagnostics exports while keeping the newest 5 matched files. Pruning must only match app-owned top-level filename patterns under `config-backups/` and `diagnostics-exports/`. It must not delete `config.json`, `snapshots.json`, `history.ndjson`, `diagnostics.log`, unrelated files, nested files, or files under `secrets/`.
 
+The CLI can run the same support artifact pruning with `--prune-support-artifacts [--keep-newest <N>]`. The default keep count is 5. Invalid, missing, duplicate, or unknown prune options must exit with code 2 and print help. Successful output must include non-secret matched, kept, deleted, and freed-byte counts for config backups and diagnostics exports.
+
 The Privacy & Data page can export a timestamped `config.json` backup under `config-backups/`. Backups contain configuration settings only. They must not copy secret store files or secret values; configured secret names may remain as non-secret references so users can reconnect existing local secrets after restore. Backup export and rollback writes should use per-write unique temp files and add a numeric filename suffix when the timestamp-based backup name already exists.
 
 The CLI can validate a config backup with `--validate-config-backup <path>`. Validation parses the file, runs current config migrations, and reports non-secret counts and warnings without applying the backup or modifying app data.

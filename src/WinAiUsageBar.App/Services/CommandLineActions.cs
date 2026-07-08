@@ -53,6 +53,32 @@ public static class CommandLineActions
         return CommandLineProviderCatalogFormatter.Format(ProviderDescriptors.All);
     }
 
+    public static async Task<CommandLineActionResult> PruneSupportArtifactsAsync(
+        CommandLinePruneSupportArtifactsOptions options,
+        CancellationToken cancellationToken)
+    {
+        return await PruneSupportArtifactsAsync(
+            options,
+            cancellationToken,
+            AppDataPaths.CreateDefault()).ConfigureAwait(false);
+    }
+
+    public static async Task<CommandLineActionResult> PruneSupportArtifactsAsync(
+        CommandLinePruneSupportArtifactsOptions options,
+        CancellationToken cancellationToken,
+        AppDataPaths paths)
+    {
+        var service = new DataMaintenanceService(paths, new JsonAppConfigStore(paths));
+        var backups = await service.PruneConfigBackupsAsync(options.KeepNewest, cancellationToken)
+            .ConfigureAwait(false);
+        var diagnosticsExports = await service.PruneDiagnosticsExportsAsync(options.KeepNewest, cancellationToken)
+            .ConfigureAwait(false);
+
+        return new CommandLineActionResult(
+            CommandLineSupportArtifactPruneFormatter.Format(backups, diagnosticsExports),
+            0);
+    }
+
     public static async Task<CommandLineActionResult> RefreshOnceAsync(
         CommandLineRefreshOnceOptions options,
         CancellationToken cancellationToken)

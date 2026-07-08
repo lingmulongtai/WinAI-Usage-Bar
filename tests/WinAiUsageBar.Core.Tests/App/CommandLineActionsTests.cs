@@ -64,8 +64,91 @@ public sealed class CommandLineActionsTests
         Assert.Contains("does not support source", result.Output, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task PruneSupportArtifactsAsync_PrunesBackupsAndDiagnosticsExports()
+    {
+        var paths = TestPaths();
+        paths.EnsureCreated();
+        var secretPath = Path.Combine(paths.SecretsDirectory, "diagnostics-export-20260708-090000.txt");
+        await File.WriteAllTextAsync(secretPath, "secret");
+        var unrelatedBackupPath = Path.Combine(paths.ConfigBackupsDirectory, "manual-note.json");
+        await File.WriteAllTextAsync(unrelatedBackupPath, "keep");
+        var oldBackup = await WriteTimestampedFileAsync(
+            paths.ConfigBackupsDirectory,
+            "config-backup-20260708-100000.json",
+            "old backup",
+            new DateTime(2026, 7, 8, 10, 0, 0, DateTimeKind.Utc));
+        var keptBackupA = await WriteTimestampedFileAsync(
+            paths.ConfigBackupsDirectory,
+            "config-backup-20260708-110000.json",
+            "kept backup a",
+            new DateTime(2026, 7, 8, 11, 0, 0, DateTimeKind.Utc));
+        var keptBackupB = await WriteTimestampedFileAsync(
+            paths.ConfigBackupsDirectory,
+            "config-backup-before-reset-20260708-120000.json",
+            "kept backup b",
+            new DateTime(2026, 7, 8, 12, 0, 0, DateTimeKind.Utc));
+        var oldExport = await WriteTimestampedFileAsync(
+            paths.DiagnosticsExportsDirectory,
+            "diagnostics-export-20260708-100000.txt",
+            "old export",
+            new DateTime(2026, 7, 8, 10, 0, 0, DateTimeKind.Utc));
+        var keptExportA = await WriteTimestampedFileAsync(
+            paths.DiagnosticsExportsDirectory,
+            "diagnostics-export-20260708-110000.txt",
+            "kept export a",
+            new DateTime(2026, 7, 8, 11, 0, 0, DateTimeKind.Utc));
+        var keptExportB = await WriteTimestampedFileAsync(
+            paths.DiagnosticsExportsDirectory,
+            "diagnostics-export-20260708-120000.txt",
+            "kept export b",
+            new DateTime(2026, 7, 8, 12, 0, 0, DateTimeKind.Utc));
+
+        try
+        {
+            var result = await CommandLineActions.PruneSupportArtifactsAsync(
+                new CommandLinePruneSupportArtifactsOptions(2),
+                CancellationToken.None,
+                paths);
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("Support artifact pruning", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Keep newest: 2", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Config backups", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Diagnostics exports", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Deleted: 1", result.Output, StringComparison.Ordinal);
+            Assert.False(File.Exists(oldBackup));
+            Assert.False(File.Exists(oldExport));
+            Assert.True(File.Exists(keptBackupA));
+            Assert.True(File.Exists(keptBackupB));
+            Assert.True(File.Exists(keptExportA));
+            Assert.True(File.Exists(keptExportB));
+            Assert.True(File.Exists(unrelatedBackupPath));
+            Assert.True(File.Exists(secretPath));
+        }
+        finally
+        {
+            if (Directory.Exists(paths.RootDirectory))
+            {
+                Directory.Delete(paths.RootDirectory, recursive: true);
+            }
+        }
+    }
+
     private static AppDataPaths TestPaths()
     {
         return new AppDataPaths(Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N")));
+    }
+
+    private static async Task<string> WriteTimestampedFileAsync(
+        string directory,
+        string fileName,
+        string content,
+        DateTime lastWriteTimeUtc)
+    {
+        var path = Path.Combine(directory, fileName);
+        await File.WriteAllTextAsync(path, content);
+        File.SetLastWriteTimeUtc(path, lastWriteTimeUtc);
+        return path;
     }
 }

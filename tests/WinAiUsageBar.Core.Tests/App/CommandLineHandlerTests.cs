@@ -53,6 +53,8 @@ public sealed class CommandLineHandlerTests
         Assert.Contains("--provider <ProviderId>", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--source <DataSourceKind>", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--provider-catalog", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--prune-support-artifacts", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--keep-newest <N>", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--validate-config-backup", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--restore-config-backup", output.ToString(), StringComparison.Ordinal);
         Assert.Equal(string.Empty, error.ToString());
@@ -316,6 +318,126 @@ public sealed class CommandLineHandlerTests
         Assert.Equal(0, result.ExitCode);
         Assert.Equal(1, providerCatalogCount);
         Assert.Contains("provider catalog body", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_PrunesSupportArtifactsWithDefaultKeepNewest()
+    {
+        using var output = new StringWriter();
+        CommandLinePruneSupportArtifactsOptions? capturedOptions = null;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--prune-support-artifacts"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            pruneSupportArtifacts: (options, cancellationToken) =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                capturedOptions = options;
+                return Task.FromResult(new CommandLineActionResult("prune report body", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(5, capturedOptions?.KeepNewest);
+        Assert.Contains("prune report body", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_PrunesSupportArtifactsWithKeepNewestOption()
+    {
+        using var output = new StringWriter();
+        CommandLinePruneSupportArtifactsOptions? capturedOptions = null;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--prune-support-artifacts", "--keep-newest", "12"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            pruneSupportArtifacts: (options, cancellationToken) =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                capturedOptions = options;
+                return Task.FromResult(new CommandLineActionResult("kept twelve", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(12, capturedOptions?.KeepNewest);
+        Assert.Contains("kept twelve", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("--prune-support-artifacts", "--keep-newest")]
+    [InlineData("--prune-support-artifacts", "--keep-newest", "0")]
+    [InlineData("--prune-support-artifacts", "--keep-newest", "nope")]
+    [InlineData("--prune-support-artifacts", "--keep-newest", "5", "--keep-newest", "6")]
+    [InlineData("--prune-support-artifacts", "--unknown")]
+    public async Task TryHandleAsync_ReturnsErrorForInvalidPruneSupportArtifactOptions(params string[] args)
+    {
+        using var error = new StringWriter();
+        var pruneCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            args,
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            pruneSupportArtifacts: (_, _) =>
+            {
+                pruneCount++;
+                return Task.FromResult(new CommandLineActionResult("should not run", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Equal(0, pruneCount);
+        Assert.Contains("--prune-support-artifacts", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ReturnsErrorWhenPruneSupportArtifactsIsUnavailable()
+    {
+        using var error = new StringWriter();
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--prune-support-artifacts"],
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains("unavailable", error.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]

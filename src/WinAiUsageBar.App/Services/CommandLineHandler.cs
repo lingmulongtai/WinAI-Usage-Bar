@@ -8,8 +8,13 @@ public sealed record CommandLineRefreshOnceOptions(
     string? ProviderId,
     string? SourceKind);
 
+public sealed record CommandLinePruneSupportArtifactsOptions(
+    int KeepNewest);
+
 public static class CommandLineHandler
 {
+    private const int DefaultPruneKeepNewest = 5;
+
     public static async Task<CommandLineHandleResult> TryHandleAsync(
         IReadOnlyList<string> args,
         TextWriter output,
@@ -22,7 +27,8 @@ public static class CommandLineHandler
         Func<string, CancellationToken, Task<CommandLineActionResult>> restoreConfigBackup,
         Func<AppInfo> appInfoProvider,
         CancellationToken cancellationToken,
-        Func<CommandLineRefreshOnceOptions, CancellationToken, Task<CommandLineActionResult>>? refreshOnce = null)
+        Func<CommandLineRefreshOnceOptions, CancellationToken, Task<CommandLineActionResult>>? refreshOnce = null,
+        Func<CommandLinePruneSupportArtifactsOptions, CancellationToken, Task<CommandLineActionResult>>? pruneSupportArtifacts = null)
     {
         if (args.Count == 0)
         {
@@ -76,6 +82,30 @@ public static class CommandLineHandler
             }
 
             var result = await refreshOnce(parseResult.Options, cancellationToken).ConfigureAwait(false);
+            await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, result.ExitCode);
+        }
+
+        if (args.Count >= 1
+            && string.Equals(args[0].Trim(), "--prune-support-artifacts", StringComparison.OrdinalIgnoreCase))
+        {
+            if (pruneSupportArtifacts is null)
+            {
+                await error.WriteLineAsync(
+                    "--prune-support-artifacts is unavailable in this host.".AsMemory(),
+                    cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var parseResult = ParsePruneSupportArtifactsOptions(args);
+            if (!parseResult.IsValid || parseResult.Options is null)
+            {
+                await error.WriteLineAsync(parseResult.ErrorMessage.AsMemory(), cancellationToken).ConfigureAwait(false);
+                await error.WriteLineAsync(CreateHelpText().AsMemory(), cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var result = await pruneSupportArtifacts(parseResult.Options, cancellationToken).ConfigureAwait(false);
             await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
             return new CommandLineHandleResult(Handled: true, result.ExitCode);
         }
@@ -151,6 +181,7 @@ public static class CommandLineHandler
         Usage:
           WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--health-report|--refresh-once|--provider-catalog]
           WinAiUsageBar.App.exe --refresh-once --provider <ProviderId> [--source <DataSourceKind>]
+          WinAiUsageBar.App.exe --prune-support-artifacts [--keep-newest <N>]
           WinAiUsageBar.App.exe --validate-config-backup <path>
           WinAiUsageBar.App.exe --restore-config-backup <path> --confirm
 
@@ -166,6 +197,9 @@ public static class CommandLineHandler
           --source <DataSourceKind>
                                 Temporarily override the selected provider source for --refresh-once.
           --provider-catalog    Print supported provider descriptors without launching UI.
+          --prune-support-artifacts
+                                Prune old config backups and diagnostics exports without launching UI.
+          --keep-newest <N>     Keep the newest N matched support artifact files when pruning.
           --validate-config-backup <path>
                                 Validate a config backup without applying it.
           --restore-config-backup <path> --confirm
@@ -231,6 +265,42 @@ public static class CommandLineHandler
         return CommandLineRefreshOnceParseResult.Valid(new CommandLineRefreshOnceOptions(providerId, sourceKind));
     }
 
+    private static CommandLinePruneSupportArtifactsParseResult ParsePruneSupportArtifactsOptions(
+        IReadOnlyList<string> args)
+    {
+        int? keepNewest = null;
+
+        for (var index = 1; index < args.Count; index++)
+        {
+            var option = args[index].Trim();
+            if (string.Equals(option, "--keep-newest", StringComparison.OrdinalIgnoreCase))
+            {
+                if (keepNewest is not null)
+                {
+                    return CommandLinePruneSupportArtifactsParseResult.Invalid("Duplicate --keep-newest option.");
+                }
+
+                if (++index >= args.Count || string.IsNullOrWhiteSpace(args[index]))
+                {
+                    return CommandLinePruneSupportArtifactsParseResult.Invalid("Missing value for --keep-newest.");
+                }
+
+                if (!int.TryParse(args[index].Trim(), out var parsedKeepNewest) || parsedKeepNewest < 1)
+                {
+                    return CommandLinePruneSupportArtifactsParseResult.Invalid("--keep-newest must be a positive whole number.");
+                }
+
+                keepNewest = parsedKeepNewest;
+                continue;
+            }
+
+            return CommandLinePruneSupportArtifactsParseResult.Invalid($"Unknown --prune-support-artifacts option: {option}");
+        }
+
+        return CommandLinePruneSupportArtifactsParseResult.Valid(
+            new CommandLinePruneSupportArtifactsOptions(keepNewest ?? DefaultPruneKeepNewest));
+    }
+
     private static async Task WriteUnknownArgumentsAsync(
         IReadOnlyList<string> args,
         TextWriter error,
@@ -256,5 +326,22 @@ internal sealed record CommandLineRefreshOnceParseResult(
     public static CommandLineRefreshOnceParseResult Invalid(string errorMessage)
     {
         return new CommandLineRefreshOnceParseResult(false, null, errorMessage);
+    }
+}
+
+internal sealed record CommandLinePruneSupportArtifactsParseResult(
+    bool IsValid,
+    CommandLinePruneSupportArtifactsOptions? Options,
+    string ErrorMessage)
+{
+    public static CommandLinePruneSupportArtifactsParseResult Valid(
+        CommandLinePruneSupportArtifactsOptions options)
+    {
+        return new CommandLinePruneSupportArtifactsParseResult(true, options, string.Empty);
+    }
+
+    public static CommandLinePruneSupportArtifactsParseResult Invalid(string errorMessage)
+    {
+        return new CommandLinePruneSupportArtifactsParseResult(false, null, errorMessage);
     }
 }
