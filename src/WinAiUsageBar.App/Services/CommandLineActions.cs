@@ -27,6 +27,25 @@ public static class CommandLineActions
         return result.Path;
     }
 
+    public static async Task<CommandLineActionResult> ExportConfigBackupAsync(
+        CancellationToken cancellationToken)
+    {
+        return await ExportConfigBackupAsync(
+            cancellationToken,
+            AppDataPaths.CreateDefault()).ConfigureAwait(false);
+    }
+
+    public static async Task<CommandLineActionResult> ExportConfigBackupAsync(
+        CancellationToken cancellationToken,
+        AppDataPaths paths)
+    {
+        var service = new DataMaintenanceService(paths, new JsonAppConfigStore(paths));
+        var result = await service.ExportConfigBackupAsync(cancellationToken).ConfigureAwait(false);
+        return new CommandLineActionResult(
+            CommandLineConfigBackupExportFormatter.Format(result),
+            0);
+    }
+
     public static async Task<string> CreateHealthReportAsync(CancellationToken cancellationToken)
     {
         var paths = AppDataPaths.CreateDefault();

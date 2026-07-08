@@ -28,7 +28,8 @@ public static class Program
             downloadUpdate: CommandLineActions.DownloadUpdateAsync,
             prepareUpdateInstall: CommandLineActions.PrepareUpdateInstallAsync,
             launchPreparedUpdate: CommandLineActions.LaunchPreparedUpdateAsync,
-            installLatestUpdate: CommandLineActions.InstallLatestUpdateAsync)
+            installLatestUpdate: CommandLineActions.InstallLatestUpdateAsync,
+            exportConfigBackup: CommandLineActions.ExportConfigBackupAsync)
             .GetAwaiter()
             .GetResult();
 

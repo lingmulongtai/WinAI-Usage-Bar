@@ -44,7 +44,8 @@ public static class CommandLineHandler
         Func<CancellationToken, Task<CommandLineActionResult>>? downloadUpdate = null,
         Func<CommandLinePrepareUpdateInstallOptions, CancellationToken, Task<CommandLineActionResult>>? prepareUpdateInstall = null,
         Func<CommandLineLaunchPreparedUpdateOptions, CancellationToken, Task<CommandLineActionResult>>? launchPreparedUpdate = null,
-        Func<CommandLineInstallLatestUpdateOptions, CancellationToken, Task<CommandLineActionResult>>? installLatestUpdate = null)
+        Func<CommandLineInstallLatestUpdateOptions, CancellationToken, Task<CommandLineActionResult>>? installLatestUpdate = null,
+        Func<CancellationToken, Task<CommandLineActionResult>>? exportConfigBackup = null)
     {
         if (args.Count == 0)
         {
@@ -235,6 +236,21 @@ public static class CommandLineHandler
             return new CommandLineHandleResult(Handled: true, ExitCode: 0);
         }
 
+        if (string.Equals(command, "--export-config-backup", StringComparison.OrdinalIgnoreCase))
+        {
+            if (exportConfigBackup is null)
+            {
+                await error.WriteLineAsync(
+                    "--export-config-backup is unavailable in this host.".AsMemory(),
+                    cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var result = await exportConfigBackup(cancellationToken).ConfigureAwait(false);
+            await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, result.ExitCode);
+        }
+
         if (string.Equals(command, "--health-report", StringComparison.OrdinalIgnoreCase))
         {
             var report = await healthReport(cancellationToken).ConfigureAwait(false);
@@ -297,7 +313,7 @@ public static class CommandLineHandler
         WinAI Usage Bar
 
         Usage:
-          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--health-report|--refresh-once|--provider-catalog|--check-for-updates|--download-update|--launch-prepared-update|--install-latest-update]
+          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--export-config-backup|--health-report|--refresh-once|--provider-catalog|--check-for-updates|--download-update|--launch-prepared-update|--install-latest-update]
           WinAiUsageBar.App.exe --refresh-once --provider <ProviderId> [--source <DataSourceKind>]
           WinAiUsageBar.App.exe --prune-support-artifacts [--keep-newest <N>]
           WinAiUsageBar.App.exe --prepare-update-install --package <path> [--install-dir <path>] [--restart-after-install]
@@ -311,6 +327,8 @@ public static class CommandLineHandler
           --version             Print the app version without launching the app.
           --smoke-test          Run packaged-app startup checks without launching UI.
           --export-diagnostics  Write a redacted diagnostics export without launching UI.
+          --export-config-backup
+                                Write a config-only backup without launching UI.
           --health-report       Print local config, cache, and history health without launching UI.
           --refresh-once        Refresh enabled providers once and print a safe snapshot report without launching UI.
           --provider <ProviderId>

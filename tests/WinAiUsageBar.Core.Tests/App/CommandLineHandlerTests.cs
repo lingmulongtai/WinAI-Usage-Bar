@@ -60,6 +60,7 @@ public sealed class CommandLineHandlerTests
         Assert.Contains("--install-latest-update", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--prune-support-artifacts", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--keep-newest <N>", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--export-config-backup", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--validate-config-backup", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--restore-config-backup", output.ToString(), StringComparison.Ordinal);
         Assert.Equal(string.Empty, error.ToString());
@@ -142,6 +143,60 @@ public sealed class CommandLineHandlerTests
         Assert.Equal(0, result.ExitCode);
         Assert.Equal(1, exportCount);
         Assert.Contains("Diagnostics exported to C:\\Temp\\diagnostics-export.txt", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ExportsConfigBackup()
+    {
+        using var output = new StringWriter();
+        var exportCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--export-config-backup"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            exportConfigBackup: cancellationToken =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                exportCount++;
+                return Task.FromResult(new CommandLineActionResult("backup exported", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(1, exportCount);
+        Assert.Contains("backup exported", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ReturnsErrorWhenExportConfigBackupIsUnavailable()
+    {
+        using var error = new StringWriter();
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--export-config-backup"],
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains("unavailable", error.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]

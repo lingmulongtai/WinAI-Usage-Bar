@@ -1,6 +1,7 @@
 using WinAiUsageBar.App.Services;
 using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Core.Models;
+using WinAiUsageBar.Core.Providers;
 using WinAiUsageBar.Infrastructure.Process;
 using WinAiUsageBar.Infrastructure.Storage;
 using WinAiUsageBar.Infrastructure.Updates;
@@ -127,6 +128,44 @@ public sealed class CommandLineActionsTests
             Assert.True(File.Exists(keptExportB));
             Assert.True(File.Exists(unrelatedBackupPath));
             Assert.True(File.Exists(secretPath));
+        }
+        finally
+        {
+            if (Directory.Exists(paths.RootDirectory))
+            {
+                Directory.Delete(paths.RootDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ExportConfigBackupAsync_WritesConfigOnlyBackup()
+    {
+        var paths = TestPaths();
+        var configStore = new JsonAppConfigStore(paths);
+        var config = AppConfig.CreateDefault();
+        config.Appearance.Theme = "Dark";
+        var gemini = config.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.Gemini));
+        gemini.ApiKey.SecretName = "gemini-secret-ref";
+
+        try
+        {
+            await configStore.SaveAsync(config, CancellationToken.None);
+
+            var result = await CommandLineActions.ExportConfigBackupAsync(
+                CancellationToken.None,
+                paths);
+
+            var backupPath = Directory.GetFiles(paths.ConfigBackupsDirectory, "config-backup-*.json")
+                .Single();
+            var backupText = await File.ReadAllTextAsync(backupPath);
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("Config backup export", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Path:", result.Output, StringComparison.Ordinal);
+            Assert.Contains(backupPath, result.Output, StringComparison.Ordinal);
+            Assert.Contains("\"theme\": \"Dark\"", backupText, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("gemini-secret-ref", backupText, StringComparison.Ordinal);
+            Assert.DoesNotContain("actual-secret-value", backupText, StringComparison.Ordinal);
         }
         finally
         {
