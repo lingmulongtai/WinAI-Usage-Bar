@@ -4,7 +4,7 @@ Date: 2026-07-08
 
 This audit is intentionally strict. The repository has moved past a throwaway scaffold, but it is still an MVP. The design foundation is much stronger than the product completeness.
 
-Release target: `v0.1.4`. The previous published release is `v0.1.3`; this release target adds English release-note generation from the changelog, safer update CLI version override dogfooding, published-release discovery dogfooding, and a full disposable update download/prepare/apply dogfood path.
+Latest published release: `v0.1.4`. It adds English release-note generation from the changelog, safer update CLI version override dogfooding, published-release discovery dogfooding, and published `v0.1.3 -> v0.1.4` disposable update download/prepare/apply dogfooding.
 
 ## Scorecard
 
@@ -15,14 +15,14 @@ Release target: `v0.1.4`. The previous published release is `v0.1.3`; this relea
 | Security posture | 8/10 | Good defaults around DPAPI, redaction, no cookie scraping, checksum verification, guarded update launch, rollback, unsafe update zip rejection, and disposable update-apply dogfooding. Needs more adversarial review before wider distribution. |
 | Windows shell integration | 6/10 | Tray, windows, placement, startup registration, and notifications exist, with duplicate notification suppression plus a manual verification checklist and report scaffold. Actual shell behavior still needs hands-on runs. |
 | Product usability | 6/10 | The app now has guided first-run checklist state, provider details, backup export/restore, and recovery checks, but it is still mostly useful with Mock/Manual data today. |
-| Packaging and release | 9/10 | Self-contained publish, zip packaging, checksums, readiness gates, artifacts, release workflow, English release notes generated from the changelog, published setup assets, update-check, verified download, install-script preparation, rollback-capable guarded script launch, explicit latest-update install orchestration, setup installer artifact/release paths, throttled startup update policy, current-version update dogfooding, and disposable prepared-apply dogfooding exist. No signing yet. |
+| Packaging and release | 9/10 | Self-contained publish, zip packaging, checksums, readiness gates, artifacts, release workflow, English release notes generated from the changelog, published setup assets, update-check, verified download, install-script preparation, rollback-capable guarded script launch, explicit latest-update install orchestration, setup installer artifact/release paths, throttled startup update policy, current-version update dogfooding, and published disposable release-to-release update dogfooding exist. No signing yet. |
 | Test confidence | 8/10 | Core, infrastructure, view model, CLI, storage, parser, refresh, app-composition smoke, and packaging smoke paths are covered without external CLIs. UI runtime coverage remains limited. |
 | Observability and support | 8/10 | Diagnostics summary, provider repair guidance, recovery guidance, redacted export, health report, isolated app-data dogfooding, provider dogfooding notes, release dogfooding notes, and logs are solid for an MVP. No structured crash reports yet. |
 
 Overall:
 
 - Design foundation: about 85-90% of the intended MVP foundation.
-- Personal dogfooding readiness: about 80-84%.
+- Personal dogfooding readiness: about 82-86%.
 - Public release readiness: about 55-60%.
 
 ## What Is Strong
@@ -38,13 +38,13 @@ Overall:
 - The CLI surface gives useful non-UI checks: help, version, smoke test with app service composition and refresh pipeline coverage, diagnostics export, config backup export, health report with storage pressure guidance, recovery guidance, launch targets, and repair hints, provider catalog, provider CLI override setting, support artifact pruning, update checks, verified update downloads, staged install script preparation, guarded prepared-script launch, explicit latest-update install orchestration, and headless refresh-once.
 - Release readiness checks now cover version metadata, changelog, audit date, published-app smoke test, package presence, installer presence, and checksum validity.
 - The repo now has an Inno Setup build path, checksum generation, CI artifact upload, and release asset wiring for setup executables.
-- `v0.1.3` is published with English release notes plus zip, zip checksum, setup executable, and setup checksum assets, and the latest-release endpoint resolves it correctly. `v0.1.4` is prepared to carry the release-note automation and update dogfooding reliability work.
+- `v0.1.4` is published as the latest release with English release notes plus zip, zip checksum, setup executable, and setup checksum assets, and the latest-release endpoint resolves it correctly.
 - Refresh settings can run a manual latest-release check or explicitly launch the confirmation-gated safe latest-update install flow, while startup update policy checks releases on a conservative interval, can download verified packages, can launch guarded install scripts, and avoids repeatedly launching the same release version.
 - Generated update apply scripts now back up by copying, restore from backup if the install copy phase fails, reject unsafe archive entries before an install script is prepared, and are written with a UTF-8 BOM so Windows PowerShell 5.1 can read non-ASCII package, staging, backup, and install paths.
 - `WINAIUSAGEBAR_APPDATA` lets CLI dogfooding run against isolated app data instead of the user's normal `%AppData%\WinAiUsageBar` tree.
 - Update CLI commands now support `--current-version <version>` for headless dogfooding of older-version update paths without changing assembly metadata or normal startup/UI behavior.
 - Release notes for future releases are generated explicitly from `CHANGELOG.md`, checked for English text, and passed to `gh release create` as a notes file instead of relying on generated GitHub notes.
-- Release dogfooding now includes a disposable prepared-update apply script that refuses to apply outside its work directory, a published-release discovery helper with legacy app-data guards, and a current-updater full-flow helper that can simulate an older current version, download the latest package, prepare an update script, and apply it only to a disposable install directory.
+- Release dogfooding now includes a disposable prepared-update apply script that refuses to apply outside its work directory, a published-release discovery helper with legacy app-data guards, a current-updater full-flow helper that can simulate an older current version, and a real published `v0.1.3 -> v0.1.4` disposable update run that detected latest, downloaded, SHA256-verified, prepared, and applied the update.
 - Provider notifications now suppress repeated alerts for the same provider/reason during periodic refresh while still notifying when severity changes or after recovery.
 - Guided first-run checklist state, Provider Details, config backup export, backup validation, confirmed CLI restore, latest-backup in-app restore, and confirmed reset-to-default recovery are implemented.
 - Providers now includes non-secret setup guidance for source choices, Manual fallback, API references, Copilot metrics requirements, and CLI/app-server caveats.
@@ -68,7 +68,7 @@ Overall:
 - GitHub Copilot support targets organization or enterprise metrics and is not a complete personal usage experience.
 - The UI is functional but still not visually or ergonomically proven with extended daily use.
 - Tray behavior, taskbar-near placement, topmost widget behavior, and notification delivery need real Windows manual testing.
-- There is no MSIX, code signing, or installer trust story yet. Startup auto-update policy exists, disposable prepared-apply dogfooding has passed, and the current updater can now simulate older-version full update flows, but real same-install release-to-release update installs still need careful repetition before automatic install should be treated as safe-by-default.
+- There is no MSIX, code signing, or installer trust story yet. Startup auto-update policy exists, disposable prepared-apply dogfooding has passed, the current updater can simulate older-version full update flows, and a published `v0.1.3 -> v0.1.4` disposable update has passed, but real same-install release-to-release update installs still need careful repetition before automatic install should be treated as safe-by-default.
 - The latest release line is still moving quickly; v0.1.4 should be treated as a dogfood patch, not a polished public utility.
 - First-run setup has a basic checklist with action targets and Providers has setup guidance, but it is not yet a full guided wizard with inline provider-specific decisions.
 - Config backup and reset recovery now exist with basic decision guidance, but they still need repeated dogfooding before they can be treated as comfort features.
@@ -86,7 +86,7 @@ Overall:
 | CI restore flakiness blocks progress | Medium | Retry script and NuGet audit disabled by default | Keep restore helper simple and inspect future failures quickly. |
 | App feels like a demo because provider data is manual | High | Mock, Manual, broader Codex reset parser tests, provider details, and headless refresh-once are stable | Prioritize one reliable real provider path end to end. |
 | Public binaries are not trusted by Windows | High | Zip, checksum, release workflow, published setup assets, update check, checksum-verified download path, install-script preparation, rollback-capable guarded script launch, explicit latest-update install orchestration, throttled startup update policy, and disposable update-apply dogfooding exist | Add signing or at least documented install warnings before public release. |
-| Self-update can damage an install | High | SHA256 verification, app-owned update staging, guarded script launch, same-version relaunch suppression, rollback on copy failure, unsafe zip-entry rejection, UTF-8 BOM generated scripts for non-ASCII paths, current-version update dogfooding, and disposable prepared-apply dogfooding | Dogfood same-install release-to-release update flows repeatedly before recommending automatic install. |
+| Self-update can damage an install | High | SHA256 verification, app-owned update staging, guarded script launch, same-version relaunch suppression, rollback on copy failure, unsafe zip-entry rejection, UTF-8 BOM generated scripts for non-ASCII paths, current-version update dogfooding, and published disposable release-to-release update dogfooding | Dogfood same-install release-to-release update flows repeatedly before recommending automatic install. |
 | Local data files grow too much | Medium | History retention by days and bytes; Privacy & Data storage pressure guidance includes history, backups, diagnostics exports, and diagnostics logs; backups and diagnostics exports can be pruned from UI or CLI while keeping newest matched files | Dogfood pressure thresholds and add richer compaction or per-folder controls if needed. |
 | Config corruption causes user confusion | Medium | Corrupt config backup, default migration, unique temp files for config and backup saves, collision-resistant backup/export names, config export, validation, confirmed CLI restore, latest-backup in-app restore, reset-to-default recovery, and recovery guidance | Dogfood restore and reset repeatedly, then tighten recovery copy and guidance based on real failures. |
 | CLI availability is ambiguous on Windows | Medium | Safe health report checks command discovery, selected launch targets, repair hints, and short startup; command launch prefers resolved `.exe`/shim paths; Codex provider classifies startup failures; Provider Details gives generic CLI repair guidance | Extend provider-specific repair checks to every future CLI-backed provider. |
@@ -108,7 +108,7 @@ The weak point is value density. A usage bar is only as useful as the data it ca
 ## Next Work, In Priority Order
 
 1. Dogfood release-to-release update flows.
-   `v0.1.1` seeing `v0.1.2`, `v0.1.2` seeing `v0.1.3` with a legacy app-data guard, and current-updater simulated `0.1.2 -> v0.1.3` download/prepare/apply against a disposable install have passed. Next, repeat real same-install release-to-release update checks and startup update policy checks before trusting automatic install by default.
+   `v0.1.1` seeing `v0.1.2`, `v0.1.2` seeing `v0.1.3` with a legacy app-data guard, current-updater simulated `0.1.2 -> v0.1.3`, current-updater simulated `0.1.3 -> v0.1.4`, and published `v0.1.3 -> v0.1.4` download/prepare/apply against a disposable install have passed. Next, repeat real same-install release-to-release update checks and startup update policy checks before trusting automatic install by default.
 
 2. Run the manual Windows verification checklist.
    Cover tray click, context menu, widget placement, topmost behavior, notifications, startup registration, DPI, taskbar position, and multi-monitor.
