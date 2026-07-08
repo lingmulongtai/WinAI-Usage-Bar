@@ -43,6 +43,7 @@ public static class AppConfigMigrations
             var provider = config.GetOrCreateProvider(descriptor);
             provider.Manual ??= ManualUsageSettings.CreateDefault(descriptor);
             provider.ApiKey ??= new ApiKeySettings();
+            provider.Cli ??= new CliCommandSettings();
             provider.GitHubCopilot ??= new GitHubCopilotSettings();
 
             if (!descriptor.SupportedSources.Contains(provider.SourceKind))

@@ -140,6 +140,53 @@ public sealed class ProviderAdapterTests
     }
 
     [Fact]
+    public async Task CodexAppServerProviderAdapter_UsesConfiguredCommandOverrideBeforePathProbe()
+    {
+        var descriptor = ProviderDescriptors.Get(ProviderId.Codex);
+        var commandProbe = new CountingCommandProbe(CommandProbeResult.Missing("codex"));
+        var client = new RecordingCodexClient(new UnauthorizedAccessException("auth required"));
+        var config = ProviderConfig.CreateDefault(descriptor);
+        config.SourceKind = DataSourceKind.LocalAppServer;
+        config.Cli.CommandPathOverride = @" C:\Tools\codex.cmd ";
+        var adapter = new CodexAppServerProviderAdapter(
+            descriptor,
+            commandProbe,
+            client);
+
+        var result = await adapter.FetchAsync(
+            new ProviderFetchContext(config, DateTimeOffset.UtcNow, "test"),
+            CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(ProviderHealth.AuthRequired, result.Snapshot?.Health);
+        Assert.Equal(0, commandProbe.InspectCount);
+        Assert.Equal("codex", client.LastProbe?.CommandName);
+        Assert.Equal(@"C:\Tools\codex.cmd", Assert.Single(client.LastProbe?.Paths ?? []));
+        Assert.Contains("override", client.LastProbe?.StatusMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CodexAppServerProviderAdapter_FallsBackToPathProbeWithoutCommandOverride()
+    {
+        var descriptor = ProviderDescriptors.Get(ProviderId.Codex);
+        var commandProbe = new CountingCommandProbe(CommandProbeResult.Found("codex", [@"C:\Tools\codex.exe"]));
+        var client = new RecordingCodexClient(new UnauthorizedAccessException("auth required"));
+        var config = ProviderConfig.CreateDefault(descriptor);
+        config.SourceKind = DataSourceKind.LocalAppServer;
+        var adapter = new CodexAppServerProviderAdapter(
+            descriptor,
+            commandProbe,
+            client);
+
+        await adapter.FetchAsync(
+            new ProviderFetchContext(config, DateTimeOffset.UtcNow, "test"),
+            CancellationToken.None);
+
+        Assert.Equal(1, commandProbe.InspectCount);
+        Assert.Equal(@"C:\Tools\codex.exe", Assert.Single(client.LastProbe?.Paths ?? []));
+    }
+
+    [Fact]
     public async Task CodexAppServerProviderAdapter_ReturnsUnsupportedWhenCodexCliCannotStart()
     {
         var descriptor = ProviderDescriptors.Get(ProviderId.Codex);
@@ -240,12 +287,44 @@ public sealed class ProviderAdapterTests
         }
     }
 
+    private sealed class CountingCommandProbe(CommandProbeResult result) : ICommandProbe
+    {
+        public int InspectCount { get; private set; }
+
+        public Task<bool> ExistsAsync(string commandName, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(result.IsFound);
+        }
+
+        public Task<CommandProbeResult> InspectAsync(string commandName, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            InspectCount++;
+            return Task.FromResult(result);
+        }
+    }
+
     private sealed class ThrowingCodexClient(Exception exception) : ICodexAppServerClient
     {
         public Task<CodexAppServerData> FetchAccountUsageAsync(
             CommandProbeResult commandProbe,
             CancellationToken cancellationToken)
         {
+            throw exception;
+        }
+    }
+
+    private sealed class RecordingCodexClient(Exception exception) : ICodexAppServerClient
+    {
+        public CommandProbeResult? LastProbe { get; private set; }
+
+        public Task<CodexAppServerData> FetchAccountUsageAsync(
+            CommandProbeResult commandProbe,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            LastProbe = commandProbe;
             throw exception;
         }
     }

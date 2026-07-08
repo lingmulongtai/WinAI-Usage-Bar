@@ -18,6 +18,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - Settings window uses WinUI `NavigationView`.
 - Overview includes a first-run setup checklist with action buttons until setup is marked complete.
 - Providers shows per-provider setup guidance for source choices, Manual fallback, CLI/app-server caveats, and API reference requirements without echoing configured secret or scope values.
+- CLI-backed provider settings can store a non-secret command override so refresh can use a known launchable CLI path when PATH discovery finds a broken WindowsApps alias.
 - Desktop widget window shows up to three selected providers, remembers placement, and has settings for startup/topmost/provider selection.
 - Provider cards show health, usage percentage, reset text, status messages, credits/costs, source, update time, and errors.
 - Provider Details shows non-secret snapshot details for identity, usage windows, credits, status, errors, and repair guidance.
@@ -45,7 +46,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - CLI `--install-latest-update` can explicitly check, download, verify, prepare, and launch the latest update install script.
 - Startup update checks record the latest release status at most once every 24 hours by default and, when enabled in Refresh settings, can automatically download verified packages or launch the prepared install script without relaunching the same release version repeatedly. Refresh settings can also explicitly run the same safe latest-update install flow on demand after in-app confirmation.
 - Codex/ChatGPT app-server probing is isolated behind safe abstractions, and `--health-report` shows storage pressure guidance, recovery guidance, and the resolved CLI launch target used for startup checks.
-- Codex CLI startup uses resolved Windows command paths, including `.cmd` shims and `.exe` paths, and startup failures are classified separately from auth and JSON-RPC errors with repair-oriented messages for WindowsApps/App Execution Alias or permission problems.
+- Codex CLI startup uses provider command overrides when configured, otherwise resolved Windows command paths, including `.cmd` shims and `.exe` paths. Startup failures are classified separately from auth and JSON-RPC errors with repair-oriented messages for WindowsApps/App Execution Alias or permission problems.
 - Claude, Claude Code, Gemini, OpenCode Zen, and GitHub Copilot have MVP-safe descriptors and manual mode support.
 - Gemini and OpenCode Zen expose API key secret-name fields without storing API key values in config.
 - JSON config, snapshot cache, and history are stored under `%AppData%\WinAiUsageBar`; config saves use unique temporary files so parallel CLI commands do not collide on a fixed temp file.
@@ -189,7 +190,7 @@ The release workflow builds, tests, publishes, smoke-tests, packages the app, bu
 
 - Mock: implemented for UI development.
 - Manual: implemented for every provider.
-- Codex / ChatGPT: safe best-effort `codex app-server` JSON-RPC client and parser are implemented; Windows command resolution prefers launchable `.exe`, `.cmd`, or `.bat` paths returned by `where.exe`; optional account/rate-limit/usage method failures or timeouts can return partial data, reset timestamps support ISO strings, Unix seconds, Unix milliseconds, and relative reset seconds, and missing CLI/startup/auth failures return visible provider errors.
+- Codex / ChatGPT: safe best-effort `codex app-server` JSON-RPC client and parser are implemented; provider settings can override the CLI command path; Windows command resolution prefers launchable `.exe`, `.cmd`, or `.bat` paths returned by `where.exe`; optional account/rate-limit/usage method failures or timeouts can return partial data, reset timestamps support ISO strings, Unix seconds, Unix milliseconds, and relative reset seconds, and missing CLI/startup/auth failures return visible provider errors.
 - Claude / Claude Code: CLI presence probe only; no private file scraping.
 - Gemini: API key secret-name setting; no unofficial usage endpoint.
 - OpenCode Zen: API key secret-name setting, manual balance mode, and documented TODO for future official balance API.

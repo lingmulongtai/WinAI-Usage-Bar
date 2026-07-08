@@ -431,11 +431,30 @@ public sealed class MainWindow : Window
         stack.Children.Add(manualGrid);
 
         TextBox? apiKeySecretNameBox = null;
+        TextBox? cliCommandPathOverrideBox = null;
         TextBox? gitHubOrganizationBox = null;
         TextBox? gitHubEnterpriseBox = null;
         TextBox? gitHubPatSecretNameBox = null;
         InfoBar? apiKeyInfo = null;
+        InfoBar? cliCommandInfo = null;
         InfoBar? gitHubCopilotInfo = null;
+
+        if (provider.HasCliCommandSettings)
+        {
+            cliCommandPathOverrideBox = TextBox(
+                "CLI command override",
+                provider.CliCommandPathOverrideText);
+            stack.Children.Add(cliCommandPathOverrideBox);
+
+            cliCommandInfo = new InfoBar
+            {
+                Severity = InfoBarSeverity.Informational,
+                IsOpen = true,
+                IsClosable = false,
+                Message = provider.CliCommandStatusText
+            };
+            stack.Children.Add(cliCommandInfo);
+        }
 
         if (provider.HasApiKeySettings)
         {
@@ -492,6 +511,7 @@ public sealed class MainWindow : Window
             provider.IsEnabled = toggle.IsOn;
             provider.SourceKindText = sourceCombo.SelectedItem?.ToString() ?? string.Empty;
             provider.ApiKeySecretNameText = apiKeySecretNameBox?.Text ?? string.Empty;
+            provider.CliCommandPathOverrideText = cliCommandPathOverrideBox?.Text ?? string.Empty;
             provider.GitHubOrganizationText = gitHubOrganizationBox?.Text ?? string.Empty;
             provider.GitHubEnterpriseSlugText = gitHubEnterpriseBox?.Text ?? string.Empty;
             provider.GitHubPatSecretNameText = gitHubPatSecretNameBox?.Text ?? string.Empty;
@@ -500,6 +520,11 @@ public sealed class MainWindow : Window
             if (apiKeyInfo is not null)
             {
                 apiKeyInfo.Message = provider.ApiKeyStatusText;
+            }
+
+            if (cliCommandInfo is not null)
+            {
+                cliCommandInfo.Message = provider.CliCommandStatusText;
             }
 
             if (gitHubCopilotInfo is not null)
@@ -513,6 +538,11 @@ public sealed class MainWindow : Window
         if (apiKeySecretNameBox is not null)
         {
             apiKeySecretNameBox.TextChanged += (_, _) => RefreshGuidanceFromControls();
+        }
+
+        if (cliCommandPathOverrideBox is not null)
+        {
+            cliCommandPathOverrideBox.TextChanged += (_, _) => RefreshGuidanceFromControls();
         }
 
         if (gitHubOrganizationBox is not null)
@@ -545,6 +575,7 @@ public sealed class MainWindow : Window
             tokensBox,
             notesBox,
             apiKeySecretNameBox,
+            cliCommandPathOverrideBox,
             gitHubOrganizationBox,
             gitHubEnterpriseBox,
             gitHubPatSecretNameBox);
@@ -1571,6 +1602,7 @@ public sealed class MainWindow : Window
         TextBox TokensBox,
         TextBox NotesBox,
         TextBox? ApiKeySecretNameBox,
+        TextBox? CliCommandPathOverrideBox,
         TextBox? GitHubOrganizationBox,
         TextBox? GitHubEnterpriseBox,
         TextBox? GitHubPatSecretNameBox)
@@ -1589,6 +1621,7 @@ public sealed class MainWindow : Window
             ViewModel.TokensLast31DaysText = TokensBox.Text;
             ViewModel.NotesText = NotesBox.Text;
             ViewModel.ApiKeySecretNameText = ApiKeySecretNameBox?.Text ?? string.Empty;
+            ViewModel.CliCommandPathOverrideText = CliCommandPathOverrideBox?.Text ?? string.Empty;
             ViewModel.GitHubOrganizationText = GitHubOrganizationBox?.Text ?? string.Empty;
             ViewModel.GitHubEnterpriseSlugText = GitHubEnterpriseBox?.Text ?? string.Empty;
             ViewModel.GitHubPatSecretNameText = GitHubPatSecretNameBox?.Text ?? string.Empty;

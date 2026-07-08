@@ -53,6 +53,7 @@ public sealed class JsonConfigStoreTests
               "providerId": "Codex",
               "isEnabled": true,
               "sourceKind": "Manual",
+              "cli": null,
               "manual": {
                 "remainingPercent": 42,
                 "notes": "keep me"
@@ -81,6 +82,7 @@ public sealed class JsonConfigStoreTests
             Assert.Equal(DataSourceKind.Manual, codex.SourceKind);
             Assert.Equal(42, codex.Manual.RemainingPercent);
             Assert.Equal("keep me", codex.Manual.Notes);
+            Assert.NotNull(codex.Cli);
             Assert.NotNull(config.Refresh);
             Assert.NotNull(config.Appearance);
             Assert.NotNull(config.Notifications);

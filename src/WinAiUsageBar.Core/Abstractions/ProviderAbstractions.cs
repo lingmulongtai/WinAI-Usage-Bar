@@ -33,6 +33,15 @@ public sealed record CommandProbeResult(
             paths,
             StatusMessage: $"{commandName} command was found on PATH ({pathCount}).");
     }
+
+    public static CommandProbeResult Configured(string commandName, string path)
+    {
+        return new CommandProbeResult(
+            commandName,
+            IsFound: true,
+            [path],
+            StatusMessage: $"{commandName} command override is configured.");
+    }
 }
 
 public interface ICodexAppServerClient

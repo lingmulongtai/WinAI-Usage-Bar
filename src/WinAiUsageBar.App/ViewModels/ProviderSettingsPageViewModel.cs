@@ -65,6 +65,7 @@ public sealed class ProviderSettingsEditorViewModel(
     private string tokensLast31DaysText = provider.Manual.TokensLast31Days?.ToString() ?? string.Empty;
     private string notesText = provider.Manual.Notes ?? string.Empty;
     private string apiKeySecretNameText = provider.ApiKey.SecretName ?? string.Empty;
+    private string cliCommandPathOverrideText = provider.Cli.CommandPathOverride ?? string.Empty;
     private string gitHubOrganizationText = provider.GitHubCopilot.Organization ?? string.Empty;
     private string gitHubEnterpriseSlugText = provider.GitHubCopilot.EnterpriseSlug ?? string.Empty;
     private string gitHubPatSecretNameText = provider.GitHubCopilot.PatSecretName ?? string.Empty;
@@ -85,6 +86,9 @@ public sealed class ProviderSettingsEditorViewModel(
 
     public bool HasApiKeySettings => descriptor.Id is ProviderId.Gemini or ProviderId.OpenCodeZen;
 
+    public bool HasCliCommandSettings => descriptor.SupportedSources.Any(source =>
+        source is DataSourceKind.Cli or DataSourceKind.LocalAppServer);
+
     public string ApiKeyStatusText
     {
         get
@@ -97,6 +101,21 @@ public sealed class ProviderSettingsEditorViewModel(
             return SourceKindText == DataSourceKind.OfficialApi.ToString()
                 ? "Store the API key through the secret store and enter only its secret name here. Usage retrieval remains a provider TODO until an official endpoint is selected."
                 : "Manual mode can track balance and reset details without storing an API key reference.";
+        }
+    }
+
+    public string CliCommandStatusText
+    {
+        get
+        {
+            if (!HasCliCommandSettings)
+            {
+                return string.Empty;
+            }
+
+            return TrimToNull(CliCommandPathOverrideText) is null
+                ? "Provider refresh will use normal PATH discovery for CLI or local app-server sources."
+                : "Provider refresh will try the configured CLI command override before normal PATH discovery; this guidance does not echo the value.";
         }
     }
 
@@ -207,6 +226,19 @@ public sealed class ProviderSettingsEditorViewModel(
         }
     }
 
+    public string CliCommandPathOverrideText
+    {
+        get => cliCommandPathOverrideText;
+        set
+        {
+            if (SetProperty(ref cliCommandPathOverrideText, value))
+            {
+                OnPropertyChanged(nameof(CliCommandStatusText));
+                OnPropertyChanged(nameof(SetupGuidanceLines));
+            }
+        }
+    }
+
     public string GitHubOrganizationText
     {
         get => gitHubOrganizationText;
@@ -260,6 +292,7 @@ public sealed class ProviderSettingsEditorViewModel(
         var errors = manualResult.Errors.ToList();
 
         var sourceKind = ParseSourceKind(errors);
+        ValidateCliCommandSettings(errors);
         ValidateApiKeySettings(sourceKind, errors);
         ValidateGitHubCopilotSettings(sourceKind, errors);
         return new ProviderSettingsEditorValidationResult(
@@ -281,6 +314,7 @@ public sealed class ProviderSettingsEditorViewModel(
         provider.SourceKind = validation.SourceKind.Value;
         provider.Manual = validation.ManualSettings;
         provider.ApiKey.SecretName = TrimToNull(ApiKeySecretNameText);
+        provider.Cli.CommandPathOverride = TrimToNull(CliCommandPathOverrideText);
         provider.GitHubCopilot.Organization = TrimToNull(GitHubOrganizationText);
         provider.GitHubCopilot.EnterpriseSlug = TrimToNull(GitHubEnterpriseSlugText);
         provider.GitHubCopilot.PatSecretName = TrimToNull(GitHubPatSecretNameText);
@@ -326,8 +360,59 @@ public sealed class ProviderSettingsEditorViewModel(
         }
 
         AddApiKeyGuidance(lines, sourceKind);
+        AddCliCommandGuidance(lines, sourceKind);
         AddGitHubCopilotGuidance(lines, sourceKind);
         return lines;
+    }
+
+    private void AddCliCommandGuidance(
+        ICollection<string> lines,
+        DataSourceKind sourceKind)
+    {
+        if (!HasCliCommandSettings)
+        {
+            return;
+        }
+
+        if (sourceKind is not (DataSourceKind.Cli or DataSourceKind.LocalAppServer))
+        {
+            lines.Add("CLI command overrides are only used by CLI or local app-server sources.");
+            return;
+        }
+
+        lines.Add(TrimToNull(CliCommandPathOverrideText) is null
+            ? "CLI or local app-server refresh will use PATH discovery unless a command override is configured."
+            : "CLI command override is configured; guidance does not echo the command path.");
+    }
+
+    private void ValidateCliCommandSettings(ICollection<string> errors)
+    {
+        var overrideText = TrimToNull(CliCommandPathOverrideText);
+        if (overrideText is null)
+        {
+            return;
+        }
+
+        if (!HasCliCommandSettings)
+        {
+            errors.Add("CLI command override is not supported by this provider.");
+            return;
+        }
+
+        if (overrideText.Length > 512)
+        {
+            errors.Add("CLI command override must be 512 characters or fewer.");
+        }
+
+        if (overrideText.Contains('\r') || overrideText.Contains('\n'))
+        {
+            errors.Add("CLI command override must be a single path or command.");
+        }
+
+        if (LooksSensitive(overrideText))
+        {
+            errors.Add("CLI command override must not contain tokens, cookies, or auth values.");
+        }
     }
 
     private static string GetSourceGuidance(DataSourceKind sourceKind)
@@ -431,6 +516,23 @@ public sealed class ProviderSettingsEditorViewModel(
     private static string? TrimToNull(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static bool LooksSensitive(string value)
+    {
+        var markers = new[]
+        {
+            "token=",
+            "access_token",
+            "authorization:",
+            "bearer ",
+            "cookie=",
+            "api_key",
+            "apikey",
+            "secret="
+        };
+
+        return markers.Any(marker => value.Contains(marker, StringComparison.OrdinalIgnoreCase));
     }
 }
 

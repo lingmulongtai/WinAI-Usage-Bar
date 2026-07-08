@@ -63,6 +63,8 @@ public sealed class ProviderConfig
 
     public ApiKeySettings ApiKey { get; set; } = new();
 
+    public CliCommandSettings Cli { get; set; } = new();
+
     public GitHubCopilotSettings GitHubCopilot { get; set; } = new();
 
     public static ProviderConfig CreateDefault(ProviderDescriptor descriptor)
@@ -116,6 +118,11 @@ public sealed class ApiKeySettings
     public string? SecretName { get; set; }
 
     public string? LastConnectionStatus { get; set; }
+}
+
+public sealed class CliCommandSettings
+{
+    public string? CommandPathOverride { get; set; }
 }
 
 public sealed class GitHubCopilotSettings

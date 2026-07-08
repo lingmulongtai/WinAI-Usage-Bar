@@ -15,7 +15,8 @@ public sealed class CodexAppServerProviderAdapter(
         ProviderFetchContext context,
         CancellationToken cancellationToken)
     {
-        var probe = await commandProbe.InspectAsync("codex", cancellationToken).ConfigureAwait(false);
+        var probe = CreateProbeFromOverride(context.ProviderConfig.Cli.CommandPathOverride)
+            ?? await commandProbe.InspectAsync("codex", cancellationToken).ConfigureAwait(false);
         if (!probe.IsFound)
         {
             return ProviderFetchResult.Failure(
@@ -74,5 +75,12 @@ public sealed class CodexAppServerProviderAdapter(
                 probe.StatusMessage,
                 ex.Message);
         }
+    }
+
+    private static CommandProbeResult? CreateProbeFromOverride(string? commandPathOverride)
+    {
+        return string.IsNullOrWhiteSpace(commandPathOverride)
+            ? null
+            : CommandProbeResult.Configured("codex", commandPathOverride.Trim());
     }
 }
