@@ -1,5 +1,7 @@
 using WinAiUsageBar.Core.Configuration;
+using WinAiUsageBar.Core.Models;
 using WinAiUsageBar.Core.Providers;
+using WinAiUsageBar.Infrastructure.Notifications;
 using WinAiUsageBar.Infrastructure.Security;
 using WinAiUsageBar.Infrastructure.Storage;
 
@@ -14,6 +16,7 @@ public static class SmokeTestRunner
             "WinAiUsageBarSmokeTest",
             Guid.NewGuid().ToString("N"));
         var paths = new AppDataPaths(root);
+        AppHostServices? services = null;
 
         try
         {
@@ -53,6 +56,24 @@ public static class SmokeTestRunner
                 throw new InvalidOperationException("Provider registry descriptor count mismatch.");
             }
 
+            services = AppCompositionRoot.CreateServices(
+                paths,
+                new NoOpAppNotificationService(),
+                configStoreOverride: configStore);
+            await services.RefreshService.InitializeAsync(cancellationToken).ConfigureAwait(false);
+            await services.RefreshService.RefreshNowAsync(cancellationToken).ConfigureAwait(false);
+
+            var snapshots = services.RefreshService.CurrentSnapshots;
+            if (snapshots.Count == 0)
+            {
+                throw new InvalidOperationException("App composition refresh produced no snapshots.");
+            }
+
+            if (!snapshots.Any(snapshot => snapshot.ProviderId == ProviderId.Codex))
+            {
+                throw new InvalidOperationException("App composition refresh did not include Codex.");
+            }
+
             return 0;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -62,6 +83,11 @@ public static class SmokeTestRunner
         }
         finally
         {
+            if (services is not null)
+            {
+                await services.RefreshService.DisposeAsync().ConfigureAwait(false);
+            }
+
             if (Directory.Exists(root))
             {
                 Directory.Delete(root, recursive: true);

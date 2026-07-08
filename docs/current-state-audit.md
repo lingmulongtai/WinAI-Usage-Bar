@@ -14,7 +14,7 @@ This audit is intentionally strict. The repository has moved past a throwaway sc
 | Windows shell integration | 5/10 | Tray, windows, placement, startup registration, and notifications exist, with a manual verification checklist and report scaffold now available. Actual shell behavior still needs hands-on runs. |
 | Product usability | 6/10 | The app now has guided first-run checklist state, provider details, backup export/restore, and recovery checks, but it is still mostly useful with Mock/Manual data today. |
 | Packaging and release | 7/10 | Self-contained publish, zip packaging, checksums, readiness gates, artifacts, and draft release workflow exist. No installer, signing, or update path yet. |
-| Test confidence | 8/10 | Core, infrastructure, view model, CLI, storage, parser, refresh, and packaging smoke paths are covered without external CLIs. UI runtime coverage remains limited. |
+| Test confidence | 8/10 | Core, infrastructure, view model, CLI, storage, parser, refresh, app-composition smoke, and packaging smoke paths are covered without external CLIs. UI runtime coverage remains limited. |
 | Observability and support | 7/10 | Diagnostics summary, provider repair guidance, recovery guidance, redacted export, health report, and logs are solid for an MVP. No structured crash reports yet. |
 
 Overall:
@@ -32,8 +32,8 @@ Overall:
 - Secrets are stored through an abstraction and DPAPI implementation, not plain config fields.
 - Diagnostics exports redact common secret shapes and exclude `secrets/`.
 - Config, snapshots, history, diagnostics, and maintenance flows are all represented in code and tests.
-- CI now builds, tests, publishes, smoke-tests, packages, and uploads artifacts on `main`.
-- The CLI surface gives useful non-UI checks: help, version, smoke test, diagnostics export, health report with launch targets and repair hints, provider catalog, and headless refresh-once.
+- CI now builds, tests, publishes, smoke-tests app service composition, packages, and uploads artifacts on `main`.
+- The CLI surface gives useful non-UI checks: help, version, smoke test with app service composition and refresh pipeline coverage, diagnostics export, health report with launch targets and repair hints, provider catalog, and headless refresh-once.
 - Release readiness checks now cover version metadata, changelog, audit date, published-app smoke test, package presence, and checksum validity.
 - Guided first-run checklist state, Provider Details, config backup export, backup validation, confirmed CLI restore, latest-backup in-app restore, and confirmed reset-to-default recovery are implemented.
 - Providers now includes non-secret setup guidance for source choices, Manual fallback, API references, Copilot metrics requirements, and CLI/app-server caveats.
