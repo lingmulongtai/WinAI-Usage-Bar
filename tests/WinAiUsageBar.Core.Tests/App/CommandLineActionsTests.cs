@@ -369,6 +369,49 @@ public sealed class CommandLineActionsTests
         Assert.Contains("bad package", result.Output, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task LaunchPreparedUpdateAsync_FormatsLaunchResult()
+    {
+        var service = new FakeUpdateInstallLaunchService(new UpdateInstallLaunchResult(
+            UpdateInstallLaunchStatus.Launched,
+            "launched",
+            ScriptPath: @"C:\Updates\install-1\apply-update.ps1",
+            Command: @"powershell -NoProfile -ExecutionPolicy Bypass -File C:\Updates\install-1\apply-update.ps1",
+            ProcessId: 4321));
+
+        var result = await CommandLineActions.LaunchPreparedUpdateAsync(
+            new CommandLineLaunchPreparedUpdateOptions(@"C:\Updates\install-1\apply-update.ps1"),
+            service,
+            CancellationToken.None);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(1, service.LaunchCount);
+        Assert.Equal(@"C:\Updates\install-1\apply-update.ps1", service.LastRequest?.ScriptPath);
+        Assert.Contains("Update install launch", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Status: Launched", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Process ID: 4321", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task LaunchPreparedUpdateAsync_ReturnsNonZeroWhenLaunchFails()
+    {
+        var service = new FakeUpdateInstallLaunchService(new UpdateInstallLaunchResult(
+            UpdateInstallLaunchStatus.InvalidScript,
+            "bad script",
+            ScriptPath: null,
+            Command: null,
+            ProcessId: null));
+
+        var result = await CommandLineActions.LaunchPreparedUpdateAsync(
+            new CommandLineLaunchPreparedUpdateOptions(@"C:\Updates\not-update.ps1"),
+            service,
+            CancellationToken.None);
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Status: InvalidScript", result.Output, StringComparison.Ordinal);
+        Assert.Contains("bad script", result.Output, StringComparison.Ordinal);
+    }
+
     private static AppDataPaths TestPaths()
     {
         return new AppDataPaths(Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N")));
@@ -459,6 +502,24 @@ public sealed class CommandLineActionsTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             PrepareCount++;
+            LastRequest = request;
+            return Task.FromResult(result);
+        }
+    }
+
+    private sealed class FakeUpdateInstallLaunchService(
+        UpdateInstallLaunchResult result) : IUpdateInstallLaunchService
+    {
+        public int LaunchCount { get; private set; }
+
+        public UpdateInstallLaunchRequest? LastRequest { get; private set; }
+
+        public Task<UpdateInstallLaunchResult> LaunchAsync(
+            UpdateInstallLaunchRequest request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            LaunchCount++;
             LastRequest = request;
             return Task.FromResult(result);
         }

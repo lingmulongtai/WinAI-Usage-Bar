@@ -26,7 +26,8 @@ public static class Program
             pruneSupportArtifacts: CommandLineActions.PruneSupportArtifactsAsync,
             checkForUpdates: CommandLineActions.CheckForUpdatesAsync,
             downloadUpdate: CommandLineActions.DownloadUpdateAsync,
-            prepareUpdateInstall: CommandLineActions.PrepareUpdateInstallAsync)
+            prepareUpdateInstall: CommandLineActions.PrepareUpdateInstallAsync,
+            launchPreparedUpdate: CommandLineActions.LaunchPreparedUpdateAsync)
             .GetAwaiter()
             .GetResult();
 

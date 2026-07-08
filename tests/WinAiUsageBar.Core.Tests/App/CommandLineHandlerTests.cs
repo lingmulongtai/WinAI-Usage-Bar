@@ -56,6 +56,7 @@ public sealed class CommandLineHandlerTests
         Assert.Contains("--check-for-updates", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--download-update", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--prepare-update-install", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--launch-prepared-update", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--prune-support-artifacts", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--keep-newest <N>", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--validate-config-backup", output.ToString(), StringComparison.Ordinal);
@@ -509,6 +510,95 @@ public sealed class CommandLineHandlerTests
 
         var result = await CommandLineHandler.TryHandleAsync(
             ["--prepare-update-install", "--package", @"C:\Temp\update.zip"],
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains("unavailable", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_LaunchesPreparedUpdate()
+    {
+        using var output = new StringWriter();
+        CommandLineLaunchPreparedUpdateOptions? capturedOptions = null;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--launch-prepared-update", "--script", @"C:\Updates\install-1\apply-update.ps1"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            launchPreparedUpdate: (options, cancellationToken) =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                capturedOptions = options;
+                return Task.FromResult(new CommandLineActionResult("launch body", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(@"C:\Updates\install-1\apply-update.ps1", capturedOptions?.ScriptPath);
+        Assert.Contains("launch body", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("--launch-prepared-update")]
+    [InlineData("--launch-prepared-update", "--script")]
+    [InlineData("--launch-prepared-update", "--script", "")]
+    [InlineData("--launch-prepared-update", "--script", "a.ps1", "--script", "b.ps1")]
+    [InlineData("--launch-prepared-update", "--script", "a.ps1", "--unknown")]
+    public async Task TryHandleAsync_ReturnsErrorForInvalidLaunchPreparedUpdateOptions(params string[] args)
+    {
+        using var error = new StringWriter();
+        var launchCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            args,
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            launchPreparedUpdate: (_, _) =>
+            {
+                launchCount++;
+                return Task.FromResult(new CommandLineActionResult("should not run", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Equal(0, launchCount);
+        Assert.Contains("--launch-prepared-update", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ReturnsErrorWhenLaunchPreparedUpdateIsUnavailable()
+    {
+        using var error = new StringWriter();
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--launch-prepared-update", "--script", @"C:\Updates\install-1\apply-update.ps1"],
             new StringWriter(),
             error,
             _ => Task.FromResult(1),

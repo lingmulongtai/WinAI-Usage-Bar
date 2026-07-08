@@ -16,6 +16,9 @@ public sealed record CommandLinePrepareUpdateInstallOptions(
     string? InstallDirectory,
     bool RestartAfterInstall);
 
+public sealed record CommandLineLaunchPreparedUpdateOptions(
+    string ScriptPath);
+
 public static class CommandLineHandler
 {
     private const int DefaultPruneKeepNewest = 5;
@@ -36,7 +39,8 @@ public static class CommandLineHandler
         Func<CommandLinePruneSupportArtifactsOptions, CancellationToken, Task<CommandLineActionResult>>? pruneSupportArtifacts = null,
         Func<CancellationToken, Task<CommandLineActionResult>>? checkForUpdates = null,
         Func<CancellationToken, Task<CommandLineActionResult>>? downloadUpdate = null,
-        Func<CommandLinePrepareUpdateInstallOptions, CancellationToken, Task<CommandLineActionResult>>? prepareUpdateInstall = null)
+        Func<CommandLinePrepareUpdateInstallOptions, CancellationToken, Task<CommandLineActionResult>>? prepareUpdateInstall = null,
+        Func<CommandLineLaunchPreparedUpdateOptions, CancellationToken, Task<CommandLineActionResult>>? launchPreparedUpdate = null)
     {
         if (args.Count == 0)
         {
@@ -142,6 +146,30 @@ public static class CommandLineHandler
             return new CommandLineHandleResult(Handled: true, result.ExitCode);
         }
 
+        if (args.Count >= 1
+            && string.Equals(args[0].Trim(), "--launch-prepared-update", StringComparison.OrdinalIgnoreCase))
+        {
+            if (launchPreparedUpdate is null)
+            {
+                await error.WriteLineAsync(
+                    "--launch-prepared-update is unavailable in this host.".AsMemory(),
+                    cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var parseResult = ParseLaunchPreparedUpdateOptions(args);
+            if (!parseResult.IsValid || parseResult.Options is null)
+            {
+                await error.WriteLineAsync(parseResult.ErrorMessage.AsMemory(), cancellationToken).ConfigureAwait(false);
+                await error.WriteLineAsync(CreateHelpText().AsMemory(), cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var result = await launchPreparedUpdate(parseResult.Options, cancellationToken).ConfigureAwait(false);
+            await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, result.ExitCode);
+        }
+
         if (args.Count != 1)
         {
             await WriteUnknownArgumentsAsync(args, error, cancellationToken).ConfigureAwait(false);
@@ -241,10 +269,11 @@ public static class CommandLineHandler
         WinAI Usage Bar
 
         Usage:
-          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--health-report|--refresh-once|--provider-catalog|--check-for-updates|--download-update]
+          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--health-report|--refresh-once|--provider-catalog|--check-for-updates|--download-update|--launch-prepared-update]
           WinAiUsageBar.App.exe --refresh-once --provider <ProviderId> [--source <DataSourceKind>]
           WinAiUsageBar.App.exe --prune-support-artifacts [--keep-newest <N>]
           WinAiUsageBar.App.exe --prepare-update-install --package <path> [--install-dir <path>] [--restart-after-install]
+          WinAiUsageBar.App.exe --launch-prepared-update --script <path>
           WinAiUsageBar.App.exe --validate-config-backup <path>
           WinAiUsageBar.App.exe --restore-config-backup <path> --confirm
 
@@ -271,6 +300,9 @@ public static class CommandLineHandler
           --install-dir <path>  Install directory to replace. Defaults to the running app directory.
           --restart-after-install
                                 Restart WinAI Usage Bar after the generated install script applies the update.
+          --launch-prepared-update
+                                Launch an app-owned apply-update.ps1 script created by --prepare-update-install.
+          --script <path>       Prepared update install script to launch.
           --validate-config-backup <path>
                                 Validate a config backup without applying it.
           --restore-config-backup <path> --confirm
@@ -437,6 +469,42 @@ public static class CommandLineHandler
             new CommandLinePrepareUpdateInstallOptions(packagePath, installDirectory, restartAfterInstall));
     }
 
+    private static CommandLineLaunchPreparedUpdateParseResult ParseLaunchPreparedUpdateOptions(
+        IReadOnlyList<string> args)
+    {
+        string? scriptPath = null;
+
+        for (var index = 1; index < args.Count; index++)
+        {
+            var option = args[index].Trim();
+            if (string.Equals(option, "--script", StringComparison.OrdinalIgnoreCase))
+            {
+                if (scriptPath is not null)
+                {
+                    return CommandLineLaunchPreparedUpdateParseResult.Invalid("Duplicate --script option.");
+                }
+
+                if (++index >= args.Count || string.IsNullOrWhiteSpace(args[index]))
+                {
+                    return CommandLineLaunchPreparedUpdateParseResult.Invalid("Missing value for --script.");
+                }
+
+                scriptPath = args[index].Trim();
+                continue;
+            }
+
+            return CommandLineLaunchPreparedUpdateParseResult.Invalid($"Unknown --launch-prepared-update option: {option}");
+        }
+
+        if (string.IsNullOrWhiteSpace(scriptPath))
+        {
+            return CommandLineLaunchPreparedUpdateParseResult.Invalid("--launch-prepared-update requires --script <path>.");
+        }
+
+        return CommandLineLaunchPreparedUpdateParseResult.Valid(
+            new CommandLineLaunchPreparedUpdateOptions(scriptPath));
+    }
+
     private static async Task WriteUnknownArgumentsAsync(
         IReadOnlyList<string> args,
         TextWriter error,
@@ -496,5 +564,22 @@ internal sealed record CommandLinePrepareUpdateInstallParseResult(
     public static CommandLinePrepareUpdateInstallParseResult Invalid(string errorMessage)
     {
         return new CommandLinePrepareUpdateInstallParseResult(false, null, errorMessage);
+    }
+}
+
+internal sealed record CommandLineLaunchPreparedUpdateParseResult(
+    bool IsValid,
+    CommandLineLaunchPreparedUpdateOptions? Options,
+    string ErrorMessage)
+{
+    public static CommandLineLaunchPreparedUpdateParseResult Valid(
+        CommandLineLaunchPreparedUpdateOptions options)
+    {
+        return new CommandLineLaunchPreparedUpdateParseResult(true, options, string.Empty);
+    }
+
+    public static CommandLineLaunchPreparedUpdateParseResult Invalid(string errorMessage)
+    {
+        return new CommandLineLaunchPreparedUpdateParseResult(false, null, errorMessage);
     }
 }

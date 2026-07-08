@@ -165,6 +165,29 @@ public static class CommandLineActions
             isFailure ? 1 : 0);
     }
 
+    public static async Task<CommandLineActionResult> LaunchPreparedUpdateAsync(
+        CommandLineLaunchPreparedUpdateOptions options,
+        CancellationToken cancellationToken)
+    {
+        var paths = AppDataPaths.CreateDefault();
+        var service = new UpdateInstallLaunchService(paths);
+        return await LaunchPreparedUpdateAsync(options, service, cancellationToken).ConfigureAwait(false);
+    }
+
+    public static async Task<CommandLineActionResult> LaunchPreparedUpdateAsync(
+        CommandLineLaunchPreparedUpdateOptions options,
+        IUpdateInstallLaunchService service,
+        CancellationToken cancellationToken)
+    {
+        var result = await service.LaunchAsync(
+            new UpdateInstallLaunchRequest(options.ScriptPath),
+            cancellationToken).ConfigureAwait(false);
+        var isFailure = result.Status is not UpdateInstallLaunchStatus.Launched;
+        return new CommandLineActionResult(
+            CommandLineUpdateInstallLaunchFormatter.Format(result),
+            isFailure ? 1 : 0);
+    }
+
     public static async Task<CommandLineActionResult> PruneSupportArtifactsAsync(
         CommandLinePruneSupportArtifactsOptions options,
         CancellationToken cancellationToken)
