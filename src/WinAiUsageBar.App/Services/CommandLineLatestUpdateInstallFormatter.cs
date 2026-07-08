@@ -37,6 +37,7 @@ public static class CommandLineLatestUpdateInstallFormatter
         {
             lines.Add($"Preparation status: {result.Preparation.Status}");
             lines.Add($"Script: {CommandLineDisplayText.Safe(result.Preparation.ScriptPath)}");
+            lines.Add($"Result: {CommandLineDisplayText.Safe(result.Preparation.ResultPath)}");
         }
         else
         {

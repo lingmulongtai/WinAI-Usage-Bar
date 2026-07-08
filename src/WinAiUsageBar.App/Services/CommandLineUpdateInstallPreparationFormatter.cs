@@ -16,6 +16,7 @@ public static class CommandLineUpdateInstallPreparationFormatter
             $"Staging directory: {CommandLineDisplayText.Safe(result.StagingDirectory)}",
             $"Backup directory: {CommandLineDisplayText.Safe(result.BackupDirectory)}",
             $"Script: {CommandLineDisplayText.Safe(result.ScriptPath)}",
+            $"Result: {CommandLineDisplayText.Safe(result.ResultPath)}",
             $"Command: {CommandLineDisplayText.Safe(result.Command)}"
         };
 

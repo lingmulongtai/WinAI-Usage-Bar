@@ -589,7 +589,10 @@ public sealed class CommandLineActionsTests
             PackagePath: @"C:\Updates\update.zip",
             InstallDirectory: @"C:\App",
             StagingDirectory: @"C:\Updates\staging",
-            BackupDirectory: @"C:\Updates\backup"));
+            BackupDirectory: @"C:\Updates\backup")
+        {
+            ResultPath = @"C:\Updates\install-result.json"
+        });
 
         var result = await CommandLineActions.PrepareUpdateInstallAsync(
             new CommandLinePrepareUpdateInstallOptions(
@@ -609,6 +612,7 @@ public sealed class CommandLineActionsTests
         Assert.True(service.LastRequest?.RestartAfterInstall);
         Assert.Contains("Status: Prepared", result.Output, StringComparison.Ordinal);
         Assert.Contains("Script: C:\\Updates\\apply-update.ps1", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Result: C:\\Updates\\install-result.json", result.Output, StringComparison.Ordinal);
     }
 
     [Fact]

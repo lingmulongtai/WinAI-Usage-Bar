@@ -459,13 +459,13 @@ public static class CommandLineHandler
                                 Prune old config backups and diagnostics exports without launching UI.
           --keep-newest <N>     Keep the newest N matched support artifact files when pruning.
           --prepare-update-install
-                                Generate a PowerShell script that applies a staged update after the app exits.
+                                Generate a PowerShell script that applies a staged update and writes install-result.json.
           --package <path>      Staged update zip package to install.
           --install-dir <path>  Install directory to replace. Defaults to the running app directory.
           --restart-after-install
                                 Restart WinAI Usage Bar after the generated install script applies the update.
           --launch-prepared-update
-                                Launch an app-owned apply-update.ps1 script created by --prepare-update-install.
+                                Launch an app-owned generated apply-update.ps1 script created by --prepare-update-install.
           --script <path>       Prepared update install script to launch.
           --install-latest-update
                                 Check, download, verify, prepare, and launch the latest update install script.

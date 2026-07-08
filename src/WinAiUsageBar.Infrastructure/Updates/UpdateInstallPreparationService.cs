@@ -25,7 +25,10 @@ public sealed record UpdateInstallPreparationResult(
     string? PackagePath,
     string? InstallDirectory,
     string? StagingDirectory,
-    string? BackupDirectory);
+    string? BackupDirectory)
+{
+    public string? ResultPath { get; init; }
+}
 
 public enum UpdateInstallPreparationStatus
 {
@@ -92,11 +95,13 @@ public sealed class UpdateInstallPreparationService(
             Directory.CreateDirectory(root);
 
             var scriptPath = Path.Combine(root, "apply-update.ps1");
+            var resultPath = Path.Combine(root, "install-result.json");
             var script = CreateScript(
                 packagePath,
                 installDirectory,
                 stagingDirectory,
                 backupDirectory,
+                resultPath,
                 Math.Max(request.ProcessIdToWait, 0),
                 request.RestartAfterInstall);
             await File.WriteAllTextAsync(scriptPath, script, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), cancellationToken)
@@ -111,7 +116,10 @@ public sealed class UpdateInstallPreparationService(
                 packagePath,
                 installDirectory,
                 stagingDirectory,
-                backupDirectory);
+                backupDirectory)
+            {
+                ResultPath = resultPath
+            };
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -176,6 +184,7 @@ public sealed class UpdateInstallPreparationService(
         string installDirectory,
         string stagingDirectory,
         string backupDirectory,
+        string resultPath,
         int processIdToWait,
         bool restartAfterInstall)
     {
@@ -188,8 +197,28 @@ public sealed class UpdateInstallPreparationService(
         $InstallDirectory = {{PowerShellLiteral(installDirectory)}}
         $StagingDirectory = {{PowerShellLiteral(stagingDirectory)}}
         $BackupDirectory = {{PowerShellLiteral(backupDirectory)}}
+        $ResultPath = {{PowerShellLiteral(resultPath)}}
         $ProcessIdToWait = {{processIdToWait}}
         $RestartAfterInstall = ${{restartAfterInstall.ToString().ToLowerInvariant()}}
+
+        function Write-InstallResult {
+            param(
+                [Parameter(Mandatory = $true)]
+                [string]$Status,
+                [Parameter(Mandatory = $true)]
+                [string]$Message
+            )
+
+            $Result = [ordered]@{
+                status = $Status
+                message = $Message
+                completedAtUtc = (Get-Date).ToUniversalTime().ToString('o')
+                packageFileName = [System.IO.Path]::GetFileName($PackagePath)
+                installDirectory = $InstallDirectory
+            }
+
+            $Result | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $ResultPath -Encoding UTF8
+        }
 
         function Restore-Backup {
             if (-not (Test-Path -LiteralPath $BackupDirectory -PathType Container)) {
@@ -205,66 +234,81 @@ public sealed class UpdateInstallPreparationService(
             }
         }
 
-        if ($ProcessIdToWait -gt 0) {
+        try {
+            if ($ProcessIdToWait -gt 0) {
+                try {
+                    Wait-Process -Id $ProcessIdToWait -ErrorAction SilentlyContinue
+                }
+                catch {
+                }
+            }
+
+            if (-not (Test-Path -LiteralPath $PackagePath -PathType Leaf)) {
+                throw "Update package was not found: $PackagePath"
+            }
+
+            if (-not (Test-Path -LiteralPath $InstallDirectory -PathType Container)) {
+                throw "Install directory was not found: $InstallDirectory"
+            }
+
+            Remove-Item -LiteralPath $StagingDirectory -Recurse -Force -ErrorAction SilentlyContinue
+            New-Item -ItemType Directory -Force -Path $StagingDirectory | Out-Null
+            Expand-Archive -LiteralPath $PackagePath -DestinationPath $StagingDirectory -Force
+
+            $StagedExe = Join-Path $StagingDirectory 'WinAiUsageBar.App.exe'
+            if (-not (Test-Path -LiteralPath $StagedExe -PathType Leaf)) {
+                throw "Staged update does not contain WinAiUsageBar.App.exe."
+            }
+
+            Remove-Item -LiteralPath $BackupDirectory -Recurse -Force -ErrorAction SilentlyContinue
+            New-Item -ItemType Directory -Force -Path $BackupDirectory | Out-Null
+
+            Get-ChildItem -LiteralPath $InstallDirectory -Force | ForEach-Object {
+                Copy-Item -LiteralPath $_.FullName -Destination $BackupDirectory -Recurse -Force
+            }
+
             try {
-                Wait-Process -Id $ProcessIdToWait -ErrorAction SilentlyContinue
+                Get-ChildItem -LiteralPath $InstallDirectory -Force | ForEach-Object {
+                    Remove-Item -LiteralPath $_.FullName -Recurse -Force
+                }
+
+                Get-ChildItem -LiteralPath $StagingDirectory -Force | ForEach-Object {
+                    Copy-Item -LiteralPath $_.FullName -Destination $InstallDirectory -Recurse -Force
+                }
+
+                $InstalledExe = Join-Path $InstallDirectory 'WinAiUsageBar.App.exe'
+                if (-not (Test-Path -LiteralPath $InstalledExe -PathType Leaf)) {
+                    throw "Installed update does not contain WinAiUsageBar.App.exe."
+                }
             }
             catch {
-            }
-        }
+                try {
+                    Restore-Backup
+                }
+                catch {
+                    Write-Warning "Update install failed and rollback also failed: $($_.Exception.Message)"
+                }
 
-        if (-not (Test-Path -LiteralPath $PackagePath -PathType Leaf)) {
-            throw "Update package was not found: $PackagePath"
-        }
-
-        if (-not (Test-Path -LiteralPath $InstallDirectory -PathType Container)) {
-            throw "Install directory was not found: $InstallDirectory"
-        }
-
-        Remove-Item -LiteralPath $StagingDirectory -Recurse -Force -ErrorAction SilentlyContinue
-        New-Item -ItemType Directory -Force -Path $StagingDirectory | Out-Null
-        Expand-Archive -LiteralPath $PackagePath -DestinationPath $StagingDirectory -Force
-
-        $StagedExe = Join-Path $StagingDirectory 'WinAiUsageBar.App.exe'
-        if (-not (Test-Path -LiteralPath $StagedExe -PathType Leaf)) {
-            throw "Staged update does not contain WinAiUsageBar.App.exe."
-        }
-
-        Remove-Item -LiteralPath $BackupDirectory -Recurse -Force -ErrorAction SilentlyContinue
-        New-Item -ItemType Directory -Force -Path $BackupDirectory | Out-Null
-
-        Get-ChildItem -LiteralPath $InstallDirectory -Force | ForEach-Object {
-            Copy-Item -LiteralPath $_.FullName -Destination $BackupDirectory -Recurse -Force
-        }
-
-        try {
-            Get-ChildItem -LiteralPath $InstallDirectory -Force | ForEach-Object {
-                Remove-Item -LiteralPath $_.FullName -Recurse -Force
+                throw
             }
 
-            Get-ChildItem -LiteralPath $StagingDirectory -Force | ForEach-Object {
-                Copy-Item -LiteralPath $_.FullName -Destination $InstallDirectory -Recurse -Force
-            }
+            Write-InstallResult -Status 'Succeeded' -Message 'Update installed successfully.'
 
-            $InstalledExe = Join-Path $InstallDirectory 'WinAiUsageBar.App.exe'
-            if (-not (Test-Path -LiteralPath $InstalledExe -PathType Leaf)) {
-                throw "Installed update does not contain WinAiUsageBar.App.exe."
+            $RestartExe = Join-Path $InstallDirectory 'WinAiUsageBar.App.exe'
+            if ($RestartAfterInstall -and (Test-Path -LiteralPath $RestartExe -PathType Leaf)) {
+                Start-Process -FilePath $RestartExe -WorkingDirectory $InstallDirectory
             }
         }
         catch {
+            $FailureMessage = $_.Exception.Message
             try {
-                Restore-Backup
+                Write-InstallResult -Status 'Failed' -Message $FailureMessage
             }
             catch {
-                Write-Warning "Update install failed and rollback also failed: $($_.Exception.Message)"
+                Write-Warning "Update install failed and writing install-result.json also failed: $($_.Exception.Message)"
             }
 
             throw
-        }
-
-        $RestartExe = Join-Path $InstallDirectory 'WinAiUsageBar.App.exe'
-        if ($RestartAfterInstall -and (Test-Path -LiteralPath $RestartExe -PathType Leaf)) {
-            Start-Process -FilePath $RestartExe -WorkingDirectory $InstallDirectory
         }
         """;
     }
@@ -286,7 +330,10 @@ public sealed class UpdateInstallPreparationService(
             PackagePath: null,
             InstallDirectory: null,
             StagingDirectory: null,
-            BackupDirectory: null);
+            BackupDirectory: null)
+        {
+            ResultPath = null
+        };
     }
 
     private sealed record PackageValidationResult(bool IsValid, string ErrorMessage)

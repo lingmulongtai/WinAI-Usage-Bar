@@ -1,4 +1,6 @@
 using System.IO.Compression;
+using System.Diagnostics;
+using System.Text.Json;
 using WinAiUsageBar.Infrastructure.Storage;
 using WinAiUsageBar.Infrastructure.Updates;
 
@@ -37,10 +39,17 @@ public sealed class UpdateInstallPreparationServiceTests
             Assert.StartsWith(paths.UpdatesDirectory, result.ScriptPath, StringComparison.OrdinalIgnoreCase);
             Assert.EndsWith("staging", result.StagingDirectory, StringComparison.OrdinalIgnoreCase);
             Assert.EndsWith("backup", result.BackupDirectory, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(Path.Combine(Path.GetDirectoryName(result.ScriptPath!)!, "install-result.json"), result.ResultPath);
 
             var script = await File.ReadAllTextAsync(result.ScriptPath!);
             Assert.Contains("# WinAI Usage Bar generated update script", script, StringComparison.Ordinal);
             Assert.Contains("$WinAiUsageBarGeneratedUpdateScriptVersion = 1", script, StringComparison.Ordinal);
+            Assert.Contains("$ResultPath = ", script, StringComparison.Ordinal);
+            Assert.Contains("function Write-InstallResult", script, StringComparison.Ordinal);
+            Assert.Contains("status = $Status", script, StringComparison.Ordinal);
+            Assert.Contains("completedAtUtc = (Get-Date).ToUniversalTime().ToString('o')", script, StringComparison.Ordinal);
+            Assert.Contains("packageFileName = [System.IO.Path]::GetFileName($PackagePath)", script, StringComparison.Ordinal);
+            Assert.Contains("installDirectory = $InstallDirectory", script, StringComparison.Ordinal);
             Assert.Contains("Wait-Process -Id $ProcessIdToWait", script, StringComparison.Ordinal);
             Assert.Contains("$ProcessIdToWait = 1234", script, StringComparison.Ordinal);
             Assert.Contains("$RestartAfterInstall = $true", script, StringComparison.Ordinal);
@@ -50,7 +59,97 @@ public sealed class UpdateInstallPreparationServiceTests
             Assert.Contains("Remove-Item -LiteralPath $_.FullName -Recurse -Force", script, StringComparison.Ordinal);
             Assert.Contains("Copy-Item -LiteralPath $_.FullName", script, StringComparison.Ordinal);
             Assert.Contains("Restore-Backup", script, StringComparison.Ordinal);
+            Assert.Contains("Write-InstallResult -Status 'Succeeded'", script, StringComparison.Ordinal);
+            Assert.Contains("Write-InstallResult -Status 'Failed'", script, StringComparison.Ordinal);
             Assert.Contains("Start-Process -FilePath $RestartExe", script, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task PreparedScript_WritesSucceededResultFileWhenApplied()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(Path.Combine(root, "appdata"));
+        var installDirectory = Path.Combine(root, "install");
+        Directory.CreateDirectory(installDirectory);
+        await File.WriteAllTextAsync(Path.Combine(installDirectory, "WinAiUsageBar.App.exe"), "old exe");
+        var packagePath = Path.Combine(root, "WinAIUsageBar-0.2.0-win-x64.zip");
+        CreatePackage(packagePath, includeAppExe: true);
+        var service = new UpdateInstallPreparationService(paths);
+
+        try
+        {
+            var result = await service.PrepareAsync(
+                new UpdateInstallPreparationRequest(
+                    packagePath,
+                    installDirectory,
+                    ProcessIdToWait: 0,
+                    RestartAfterInstall: false),
+                CancellationToken.None);
+
+            var scriptExitCode = await RunPowerShellScriptAsync(result.ScriptPath!);
+
+            Assert.Equal(0, scriptExitCode);
+            Assert.True(File.Exists(result.ResultPath));
+            using var resultDocument = JsonDocument.Parse(await File.ReadAllTextAsync(result.ResultPath!));
+            var rootElement = resultDocument.RootElement;
+            Assert.Equal("Succeeded", rootElement.GetProperty("status").GetString());
+            Assert.Equal("Update installed successfully.", rootElement.GetProperty("message").GetString());
+            Assert.Equal(Path.GetFileName(packagePath), rootElement.GetProperty("packageFileName").GetString());
+            Assert.Equal(Path.GetFullPath(installDirectory), rootElement.GetProperty("installDirectory").GetString());
+            Assert.False(string.IsNullOrWhiteSpace(rootElement.GetProperty("completedAtUtc").GetString()));
+            Assert.Equal("new exe", await File.ReadAllTextAsync(Path.Combine(installDirectory, "WinAiUsageBar.App.exe")));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task PreparedScript_WritesFailedResultFileWhenApplyFails()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(Path.Combine(root, "appdata"));
+        var installDirectory = Path.Combine(root, "install");
+        Directory.CreateDirectory(installDirectory);
+        await File.WriteAllTextAsync(Path.Combine(installDirectory, "WinAiUsageBar.App.exe"), "old exe");
+        var packagePath = Path.Combine(root, "WinAIUsageBar-0.2.0-win-x64.zip");
+        CreatePackage(packagePath, includeAppExe: true);
+        var service = new UpdateInstallPreparationService(paths);
+
+        try
+        {
+            var result = await service.PrepareAsync(
+                new UpdateInstallPreparationRequest(
+                    packagePath,
+                    installDirectory,
+                    ProcessIdToWait: 0,
+                    RestartAfterInstall: false),
+                CancellationToken.None);
+            File.Delete(packagePath);
+
+            var scriptExitCode = await RunPowerShellScriptAsync(result.ScriptPath!);
+
+            Assert.NotEqual(0, scriptExitCode);
+            Assert.True(File.Exists(result.ResultPath));
+            using var resultDocument = JsonDocument.Parse(await File.ReadAllTextAsync(result.ResultPath!));
+            var rootElement = resultDocument.RootElement;
+            Assert.Equal("Failed", rootElement.GetProperty("status").GetString());
+            Assert.Contains("Update package was not found", rootElement.GetProperty("message").GetString(), StringComparison.Ordinal);
+            Assert.Equal(Path.GetFileName(packagePath), rootElement.GetProperty("packageFileName").GetString());
+            Assert.Equal(Path.GetFullPath(installDirectory), rootElement.GetProperty("installDirectory").GetString());
+            Assert.Equal("old exe", await File.ReadAllTextAsync(Path.Combine(installDirectory, "WinAiUsageBar.App.exe")));
         }
         finally
         {
@@ -237,5 +336,28 @@ public sealed class UpdateInstallPreparationServiceTests
             using var writer = new StreamWriter(entry.Open());
             writer.Write("unsafe");
         }
+    }
+
+    private static async Task<int> RunPowerShellScriptAsync(string scriptPath)
+    {
+        using var process = Process.Start(new ProcessStartInfo
+        {
+            FileName = "powershell.exe",
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            ArgumentList =
+            {
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                scriptPath
+            }
+        });
+        Assert.NotNull(process);
+        await process.WaitForExitAsync();
+        return process.ExitCode;
     }
 }

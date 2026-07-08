@@ -38,7 +38,10 @@ public sealed class CommandLineUpdateFormatterRedactionTests
             @"C:\Updates\token=package-secret\package.zip",
             @"C:\App\cookie=install-cookie",
             @"C:\Updates\staging\secret=staging-secret",
-            @"C:\Updates\backup\secret=backup-secret");
+            @"C:\Updates\backup\secret=backup-secret")
+        {
+            ResultPath = @"C:\Updates\install-1\token=result-secret\install-result.json"
+        };
         var launch = new UpdateInstallLaunchResult(
             UpdateInstallLaunchStatus.Launched,
             "Launched with Authorization: Bearer launch-secret",
