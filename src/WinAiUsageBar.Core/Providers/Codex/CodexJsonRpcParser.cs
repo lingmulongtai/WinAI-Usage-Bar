@@ -139,9 +139,18 @@ public static class CodexJsonRpcParser
         "quota",
         "limit",
         "limits",
+        "limitsByWindow",
+        "limits_by_window",
         "rateLimit",
         "rate_limit",
+        "rateLimits",
+        "rate_limits",
         "window",
+        "windows",
+        "usageWindow",
+        "usage_window",
+        "usageWindows",
+        "usage_windows",
         "current",
         "data"
     ];
@@ -673,7 +682,9 @@ public static class CodexJsonRpcParser
     {
         yield return result;
 
-        foreach (var candidate in EnumerateNestedUsageWindowCandidates(result, includeObject: false))
+        foreach (var candidate in EnumerateNestedUsageWindowCandidates(
+            result,
+            includeObject: result.ValueKind == JsonValueKind.Array))
         {
             yield return candidate;
         }

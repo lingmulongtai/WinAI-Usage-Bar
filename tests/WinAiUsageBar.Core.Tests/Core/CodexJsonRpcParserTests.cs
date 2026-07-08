@@ -260,6 +260,92 @@ public sealed class CodexJsonRpcParserTests
     }
 
     [Fact]
+    public void ParseUsageWindow_ParsesFirstValidTopLevelArrayWindow()
+    {
+        const string json = """
+        {
+          "result": [
+            {
+              "label": "metadata"
+            },
+            {
+              "used": 30,
+              "limit": 100,
+              "unit": "messages"
+            },
+            {
+              "used": 80,
+              "limit": 100
+            }
+          ]
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json);
+
+        Assert.Equal(30, window?.Used);
+        Assert.Equal(100, window?.Limit);
+        Assert.Equal(30, window?.UsedPercent);
+        Assert.Equal(70, window?.RemainingPercent);
+        Assert.Equal("messages", window?.Unit);
+    }
+
+    [Fact]
+    public void ParseUsageWindow_ParsesPluralNestedArrayWindow()
+    {
+        const string json = """
+        {
+          "result": {
+            "data": {
+              "rateLimits": [
+                {
+                  "name": "daily"
+                },
+                {
+                  "remaining": 45,
+                  "limit": 100,
+                  "resetDescription": "daily"
+                }
+              ]
+            }
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json);
+
+        Assert.Equal(55, window?.Used);
+        Assert.Equal(100, window?.Limit);
+        Assert.Equal(45, window?.RemainingPercent);
+        Assert.Equal("daily", window?.ResetDescription);
+    }
+
+    [Fact]
+    public void ParseUsageWindow_PrefersTopLevelFieldsBeforeTopLevelArrayCandidate()
+    {
+        const string json = """
+        {
+          "result": {
+            "used": 10,
+            "limit": 100,
+            "usageWindows": [
+              {
+                "used": 90,
+                "limit": 100
+              }
+            ]
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json);
+
+        Assert.Equal(10, window?.Used);
+        Assert.Equal(100, window?.Limit);
+        Assert.Equal(90, window?.RemainingPercent);
+    }
+
+    [Fact]
     public void ParseUsageWindow_PrefersTopLevelWindowBeforeNestedCandidates()
     {
         const string json = """
@@ -296,6 +382,32 @@ public sealed class CodexJsonRpcParserTests
               "limit": 100,
               "remaining": 40
             }
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json);
+
+        Assert.Equal(20, window?.Used);
+        Assert.Null(window?.Limit);
+        Assert.Null(window?.RemainingPercent);
+    }
+
+    [Fact]
+    public void ParseUsageWindow_DoesNotMixSeparateArrayCandidates()
+    {
+        const string json = """
+        {
+          "result": {
+            "windows": [
+              {
+                "used": 20
+              },
+              {
+                "limit": 100,
+                "remaining": 40
+              }
+            ]
           }
         }
         """;
@@ -417,6 +529,32 @@ public sealed class CodexJsonRpcParserTests
         Assert.Equal(25, window?.UsedPercent);
         Assert.Equal(75, window?.RemainingPercent);
         Assert.Equal("requests", window?.Unit);
+        Assert.Null(window?.ResetsAt);
+    }
+
+    [Fact]
+    public void ParseUsageWindow_IgnoresSensitiveLookingArrayFields()
+    {
+        const string json = """
+        {
+          "result": {
+            "usage_windows": [
+              {
+                "tokenUsed": 99,
+                "used": 25,
+                "limit": 100,
+                "authResetAt": "2026-07-08T12:00:00Z"
+              }
+            ]
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json);
+
+        Assert.Equal(25, window?.Used);
+        Assert.Equal(25, window?.UsedPercent);
+        Assert.Equal(75, window?.RemainingPercent);
         Assert.Null(window?.ResetsAt);
     }
 
