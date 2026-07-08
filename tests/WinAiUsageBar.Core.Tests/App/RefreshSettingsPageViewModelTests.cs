@@ -12,7 +12,8 @@ public sealed class RefreshSettingsPageViewModelTests
         var viewModel = new RefreshSettingsPageViewModel(config)
         {
             HistoryMaxDaysText = "many",
-            HistoryMaxBytesText = "huge"
+            HistoryMaxBytesText = "huge",
+            UpdateCheckIntervalHoursText = "often"
         };
 
         var result = viewModel.TryApply();
@@ -20,6 +21,7 @@ public sealed class RefreshSettingsPageViewModelTests
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, error => error.Contains("History max days", StringComparison.Ordinal));
         Assert.Contains(result.Errors, error => error.Contains("History max bytes", StringComparison.Ordinal));
+        Assert.Contains(result.Errors, error => error.Contains("Startup update interval", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -33,6 +35,7 @@ public sealed class RefreshSettingsPageViewModelTests
             HistoryMaxDaysText = "99999",
             HistoryMaxBytesText = "1",
             CheckUpdatesOnStartup = false,
+            UpdateCheckIntervalHoursText = "999",
             DownloadUpdatesAutomatically = true,
             InstallUpdatesAutomatically = false
         };
@@ -45,9 +48,10 @@ public sealed class RefreshSettingsPageViewModelTests
         Assert.Equal(HistoryRetentionSettings.MaxDaysLimit, config.HistoryRetention.MaxDays);
         Assert.Equal(HistoryRetentionSettings.MinBytes, config.HistoryRetention.MaxBytes);
         Assert.False(config.Updates.CheckOnStartup);
+        Assert.Equal(UpdateSettings.MaxCheckIntervalHours, config.Updates.MinimumCheckIntervalHours);
         Assert.True(config.Updates.DownloadAutomatically);
         Assert.False(config.Updates.InstallAutomatically);
-        Assert.Equal(2, result.Warnings.Count);
+        Assert.Equal(3, result.Warnings.Count);
     }
 
     [Fact]
@@ -88,12 +92,14 @@ public sealed class RefreshSettingsPageViewModelTests
         config.Updates.LastStatus = "Downloaded";
         config.Updates.LastLatestVersion = "0.2.0";
         config.Updates.LastMessage = "Update package downloaded and verified.";
+        config.Updates.LastInstallLaunchedVersion = "0.1.9";
         config.Updates.LastCheckedAt = new DateTimeOffset(2026, 7, 8, 9, 30, 0, TimeSpan.FromHours(9));
 
         var viewModel = new RefreshSettingsPageViewModel(config);
 
         Assert.Contains("Downloaded", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("0.2.0", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.Contains("0.1.9", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("Update package downloaded", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("2026-07-08", viewModel.UpdateStatusText, StringComparison.Ordinal);
     }

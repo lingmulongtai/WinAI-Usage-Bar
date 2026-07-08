@@ -25,9 +25,11 @@ public sealed record StartupUpdateResult(
 public enum StartupUpdateStatus
 {
     Disabled,
+    SkippedRecentCheck,
     NoUpdate,
     UpdateAvailable,
     Downloaded,
+    InstallAlreadyLaunched,
     InstallLaunched,
     UpdateCheckFailed,
     DownloadFailed,
@@ -65,6 +67,23 @@ public sealed class StartupUpdateService(
                     latestVersion: null,
                     packagePath: null,
                     installScriptPath: null,
+                    updateCheckedAt: false,
+                    installLaunchedVersion: null,
+                    cancellationToken).ConfigureAwait(false);
+            }
+
+            if (ShouldSkipRecentCheck(config.Updates, out var skipMessage))
+            {
+                return await SaveResultAsync(
+                    config,
+                    StartupUpdateStatus.SkippedRecentCheck,
+                    skipMessage,
+                    request.CurrentVersion,
+                    config.Updates.LastLatestVersion,
+                    config.Updates.LastPackagePath,
+                    config.Updates.LastInstallScriptPath,
+                    updateCheckedAt: false,
+                    installLaunchedVersion: null,
                     cancellationToken).ConfigureAwait(false);
             }
 
@@ -81,6 +100,8 @@ public sealed class StartupUpdateService(
                     update.LatestVersion,
                     packagePath: null,
                     installScriptPath: null,
+                    updateCheckedAt: true,
+                    installLaunchedVersion: null,
                     cancellationToken).ConfigureAwait(false);
             }
 
@@ -94,6 +115,8 @@ public sealed class StartupUpdateService(
                     update.LatestVersion,
                     packagePath: null,
                     installScriptPath: null,
+                    updateCheckedAt: true,
+                    installLaunchedVersion: null,
                     cancellationToken).ConfigureAwait(false);
             }
 
@@ -107,6 +130,27 @@ public sealed class StartupUpdateService(
                     update.LatestVersion,
                     packagePath: null,
                     installScriptPath: null,
+                    updateCheckedAt: true,
+                    installLaunchedVersion: null,
+                    cancellationToken).ConfigureAwait(false);
+            }
+
+            if (config.Updates.InstallAutomatically
+                && string.Equals(
+                    config.Updates.LastInstallLaunchedVersion,
+                    update.LatestVersion,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return await SaveResultAsync(
+                    config,
+                    StartupUpdateStatus.InstallAlreadyLaunched,
+                    "Automatic install was already launched for this release version.",
+                    update.CurrentVersion,
+                    update.LatestVersion,
+                    config.Updates.LastPackagePath,
+                    config.Updates.LastInstallScriptPath,
+                    updateCheckedAt: true,
+                    installLaunchedVersion: null,
                     cancellationToken).ConfigureAwait(false);
             }
 
@@ -125,6 +169,8 @@ public sealed class StartupUpdateService(
                     update.LatestVersion,
                     packagePath: null,
                     installScriptPath: null,
+                    updateCheckedAt: true,
+                    installLaunchedVersion: null,
                     cancellationToken).ConfigureAwait(false);
             }
 
@@ -138,6 +184,8 @@ public sealed class StartupUpdateService(
                     update.LatestVersion,
                     download.PackagePath,
                     installScriptPath: null,
+                    updateCheckedAt: true,
+                    installLaunchedVersion: null,
                     cancellationToken).ConfigureAwait(false);
             }
 
@@ -159,6 +207,8 @@ public sealed class StartupUpdateService(
                     update.LatestVersion,
                     download.PackagePath,
                     installScriptPath: null,
+                    updateCheckedAt: true,
+                    installLaunchedVersion: null,
                     cancellationToken).ConfigureAwait(false);
             }
 
@@ -175,6 +225,8 @@ public sealed class StartupUpdateService(
                     update.LatestVersion,
                     download.PackagePath,
                     prepared.ScriptPath,
+                    updateCheckedAt: true,
+                    installLaunchedVersion: null,
                     cancellationToken).ConfigureAwait(false);
             }
 
@@ -186,6 +238,8 @@ public sealed class StartupUpdateService(
                 update.LatestVersion,
                 download.PackagePath,
                 prepared.ScriptPath,
+                updateCheckedAt: true,
+                installLaunchedVersion: update.LatestVersion,
                 cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -208,6 +262,8 @@ public sealed class StartupUpdateService(
                 latestVersion: null,
                 packagePath: null,
                 installScriptPath: null,
+                updateCheckedAt: true,
+                installLaunchedVersion: null,
                 CancellationToken.None).ConfigureAwait(false);
         }
     }
@@ -220,6 +276,8 @@ public sealed class StartupUpdateService(
         string? latestVersion,
         string? packagePath,
         string? installScriptPath,
+        bool updateCheckedAt,
+        string? installLaunchedVersion,
         CancellationToken cancellationToken)
     {
         config.Updates.LastStatus = status.ToString();
@@ -228,7 +286,15 @@ public sealed class StartupUpdateService(
         config.Updates.LastLatestVersion = latestVersion;
         config.Updates.LastPackagePath = packagePath;
         config.Updates.LastInstallScriptPath = installScriptPath;
-        config.Updates.LastCheckedAt = nowProvider();
+        if (!string.IsNullOrWhiteSpace(installLaunchedVersion))
+        {
+            config.Updates.LastInstallLaunchedVersion = installLaunchedVersion;
+        }
+
+        if (updateCheckedAt)
+        {
+            config.Updates.LastCheckedAt = nowProvider();
+        }
 
         await configStore.SaveAsync(config, cancellationToken).ConfigureAwait(false);
 
@@ -238,5 +304,41 @@ public sealed class StartupUpdateService(
             latestVersion,
             packagePath,
             installScriptPath);
+    }
+
+    private bool ShouldSkipRecentCheck(UpdateSettings updates, out string message)
+    {
+        if (updates.MinimumCheckIntervalHours <= 0 || updates.LastCheckedAt is null)
+        {
+            message = string.Empty;
+            return false;
+        }
+
+        var minimumInterval = TimeSpan.FromHours(updates.MinimumCheckIntervalHours);
+        var elapsed = nowProvider() - updates.LastCheckedAt.Value;
+        if (elapsed >= minimumInterval)
+        {
+            message = string.Empty;
+            return false;
+        }
+
+        var remaining = minimumInterval - elapsed;
+        message = $"Startup update check skipped. Last check is still fresh for about {FormatRemaining(remaining)}.";
+        return true;
+    }
+
+    private static string FormatRemaining(TimeSpan value)
+    {
+        if (value.TotalMinutes < 1)
+        {
+            return "less than 1 minute";
+        }
+
+        if (value.TotalHours < 1)
+        {
+            return $"{Math.Ceiling(value.TotalMinutes)} minutes";
+        }
+
+        return $"{Math.Ceiling(value.TotalHours)} hours";
     }
 }

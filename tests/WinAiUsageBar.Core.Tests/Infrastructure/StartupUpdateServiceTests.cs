@@ -22,7 +22,28 @@ public sealed class StartupUpdateServiceTests
         Assert.Equal(StartupUpdateStatus.Disabled, result.Status);
         Assert.Equal(0, updateCheck.CheckCount);
         Assert.Equal("Disabled", config.Updates.LastStatus);
-        Assert.Equal(Now, config.Updates.LastCheckedAt);
+        Assert.Null(config.Updates.LastCheckedAt);
+    }
+
+    [Fact]
+    public async Task RunAsync_SkipsRecentChecksWithoutCallingGitHub()
+    {
+        var lastChecked = Now.AddHours(-2);
+        var config = AppConfig.CreateDefault();
+        config.Updates.MinimumCheckIntervalHours = 24;
+        config.Updates.LastCheckedAt = lastChecked;
+        config.Updates.LastLatestVersion = "0.1.0";
+        var store = new InMemoryConfigStore(config);
+        var updateCheck = new FakeUpdateCheckService(UpdateAvailable());
+        var service = CreateService(store, updateCheck);
+
+        var result = await service.RunAsync(Request(), CancellationToken.None);
+
+        Assert.Equal(StartupUpdateStatus.SkippedRecentCheck, result.Status);
+        Assert.Equal(0, updateCheck.CheckCount);
+        Assert.Equal("SkippedRecentCheck", config.Updates.LastStatus);
+        Assert.Equal(lastChecked, config.Updates.LastCheckedAt);
+        Assert.Contains("still fresh", config.Updates.LastMessage, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -117,6 +138,42 @@ public sealed class StartupUpdateServiceTests
         Assert.True(preparation.LastRequest?.RestartAfterInstall);
         Assert.Equal(Path.Combine(paths.UpdatesDirectory, "install-1", "apply-update.ps1"), result.InstallScriptPath);
         Assert.Equal(result.InstallScriptPath, config.Updates.LastInstallScriptPath);
+        Assert.Equal("0.2.0", config.Updates.LastInstallLaunchedVersion);
+    }
+
+    [Fact]
+    public async Task RunAsync_DoesNotLaunchSameInstallVersionTwice()
+    {
+        var config = AppConfig.CreateDefault();
+        config.Updates.DownloadAutomatically = true;
+        config.Updates.InstallAutomatically = true;
+        config.Updates.LastInstallLaunchedVersion = "0.2.0";
+        config.Updates.LastPackagePath = @"C:\Updates\package.zip";
+        config.Updates.LastInstallScriptPath = @"C:\Updates\install\apply-update.ps1";
+        var store = new InMemoryConfigStore(config);
+        var updateCheck = new FakeUpdateCheckService(UpdateAvailable());
+        var downloader = new FakeUpdatePackageDownloader(Downloaded(TestPaths()));
+        var preparation = new FakeUpdateInstallPreparationService(Prepared(TestPaths()));
+        var launcher = new FakeUpdateInstallLaunchService(Launched(TestPaths()));
+        var service = CreateService(
+            store,
+            updateCheck,
+            downloader,
+            preparation,
+            launcher);
+
+        var result = await service.RunAsync(Request(), CancellationToken.None);
+
+        Assert.Equal(StartupUpdateStatus.InstallAlreadyLaunched, result.Status);
+        Assert.Equal(1, updateCheck.CheckCount);
+        Assert.Equal(0, downloader.DownloadCount);
+        Assert.Equal(0, preparation.PrepareCount);
+        Assert.Equal(0, launcher.LaunchCount);
+        Assert.Equal("InstallAlreadyLaunched", config.Updates.LastStatus);
+        Assert.Equal("0.2.0", config.Updates.LastInstallLaunchedVersion);
+        Assert.Equal(Now, config.Updates.LastCheckedAt);
+        Assert.Equal(@"C:\Updates\package.zip", result.PackagePath);
+        Assert.Equal(@"C:\Updates\install\apply-update.ps1", result.InstallScriptPath);
     }
 
     [Fact]

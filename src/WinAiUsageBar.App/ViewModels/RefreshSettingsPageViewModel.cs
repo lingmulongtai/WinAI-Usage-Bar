@@ -15,6 +15,9 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
 
     public bool CheckUpdatesOnStartup { get; set; } = config.Updates.CheckOnStartup;
 
+    public string UpdateCheckIntervalHoursText { get; set; } =
+        config.Updates.MinimumCheckIntervalHours.ToString(CultureInfo.InvariantCulture);
+
     public bool DownloadUpdatesAutomatically { get; set; } = config.Updates.DownloadAutomatically;
 
     public bool InstallUpdatesAutomatically { get; set; } = config.Updates.InstallAutomatically;
@@ -33,13 +36,14 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
 
         var maxDays = ParseInt(HistoryMaxDaysText, "History max days", errors);
         var maxBytes = ParseLong(HistoryMaxBytesText, "History max bytes", errors);
+        var updateIntervalHours = ParseInt(UpdateCheckIntervalHoursText, "Startup update interval hours", errors);
 
         if (InstallUpdatesAutomatically && !DownloadUpdatesAutomatically)
         {
             errors.Add("Automatic install requires automatic download.");
         }
 
-        if (errors.Count > 0 || maxDays is null || maxBytes is null)
+        if (errors.Count > 0 || maxDays is null || maxBytes is null || updateIntervalHours is null)
         {
             return new RefreshSettingsApplyResult(IsValid: false, errors, warnings);
         }
@@ -63,11 +67,21 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
             warnings.Add($"History max bytes was clamped to {clampedBytes}.");
         }
 
+        var clampedUpdateIntervalHours = Math.Clamp(
+            updateIntervalHours.Value,
+            UpdateSettings.MinCheckIntervalHours,
+            UpdateSettings.MaxCheckIntervalHours);
+        if (clampedUpdateIntervalHours != updateIntervalHours.Value)
+        {
+            warnings.Add($"Startup update interval hours was clamped to {clampedUpdateIntervalHours}.");
+        }
+
         config.Refresh.Interval = interval;
         config.Notifications.IsEnabled = NotificationsEnabled;
         config.HistoryRetention.MaxDays = clampedDays;
         config.HistoryRetention.MaxBytes = clampedBytes;
         config.Updates.CheckOnStartup = CheckUpdatesOnStartup;
+        config.Updates.MinimumCheckIntervalHours = clampedUpdateIntervalHours;
         config.Updates.DownloadAutomatically = DownloadUpdatesAutomatically;
         config.Updates.InstallAutomatically = InstallUpdatesAutomatically;
 
@@ -88,12 +102,20 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
         var message = string.IsNullOrWhiteSpace(updates.LastMessage)
             ? "No update status has been recorded yet."
             : updates.LastMessage;
+        var interval = updates.MinimumCheckIntervalHours <= 0
+            ? "Startup interval: every startup"
+            : $"Startup interval: at most every {updates.MinimumCheckIntervalHours} hour(s)";
+        var launchedVersion = string.IsNullOrWhiteSpace(updates.LastInstallLaunchedVersion)
+            ? "Last launched install: n/a"
+            : $"Last launched install: {updates.LastInstallLaunchedVersion}";
 
         return string.Join(
             Environment.NewLine,
             checkedText,
+            interval,
             $"Status: {status}",
             $"Latest version: {latest}",
+            launchedVersion,
             $"Message: {message}");
     }
 

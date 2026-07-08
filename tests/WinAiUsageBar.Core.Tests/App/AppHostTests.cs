@@ -214,6 +214,9 @@ public sealed class AppHostTests
 
         await host.StartAsync(CancellationToken.None);
         await startupUpdate.Observed.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await WaitForAsync(() => diagnostics.InfoMessages.Any(message => message.StartsWith(
+            "Startup update result: NoUpdate - ",
+            StringComparison.Ordinal)));
 
         Assert.Equal(1, startupUpdate.RunCount);
         Assert.False(string.IsNullOrWhiteSpace(startupUpdate.LastRequest?.CurrentVersion));
@@ -508,6 +511,15 @@ public sealed class AppHostTests
             DateTimeOffset.Now,
             "test snapshot",
             ErrorMessage: null);
+    }
+
+    private static async Task WaitForAsync(Func<bool> condition)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        while (!condition())
+        {
+            await Task.Delay(10, timeout.Token);
+        }
     }
 
     private sealed class ImmediateDispatcher : IAppDispatcher

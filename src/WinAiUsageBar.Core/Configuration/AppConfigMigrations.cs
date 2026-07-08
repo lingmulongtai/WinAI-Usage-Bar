@@ -95,12 +95,22 @@ public static class AppConfigMigrations
 
     private static void NormalizeUpdates(UpdateSettings updates)
     {
+        updates.MinimumCheckIntervalHours = Math.Clamp(
+            updates.MinimumCheckIntervalHours,
+            UpdateSettings.MinCheckIntervalHours,
+            UpdateSettings.MaxCheckIntervalHours);
+        if (!updates.DownloadAutomatically)
+        {
+            updates.InstallAutomatically = false;
+        }
+
         updates.LastStatus = NullIfWhiteSpace(updates.LastStatus);
         updates.LastMessage = NullIfWhiteSpace(updates.LastMessage);
         updates.LastCurrentVersion = NullIfWhiteSpace(updates.LastCurrentVersion);
         updates.LastLatestVersion = NullIfWhiteSpace(updates.LastLatestVersion);
         updates.LastPackagePath = NullIfWhiteSpace(updates.LastPackagePath);
         updates.LastInstallScriptPath = NullIfWhiteSpace(updates.LastInstallScriptPath);
+        updates.LastInstallLaunchedVersion = NullIfWhiteSpace(updates.LastInstallLaunchedVersion);
     }
 
     private static string? NullIfWhiteSpace(string? value)

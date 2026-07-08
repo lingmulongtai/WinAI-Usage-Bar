@@ -42,7 +42,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - CLI `--prepare-update-install` can generate a PowerShell script that applies a staged update after the app exits.
 - CLI `--launch-prepared-update` can launch an app-owned prepared update script without accepting arbitrary script paths.
 - CLI `--install-latest-update` can explicitly check, download, verify, prepare, and launch the latest update install script.
-- Startup update checks can record the latest release status and, when enabled in Refresh settings, automatically download verified packages or launch the prepared install script.
+- Startup update checks record the latest release status at most once every 24 hours by default and, when enabled in Refresh settings, can automatically download verified packages or launch the prepared install script without relaunching the same release version repeatedly.
 - Codex/ChatGPT app-server probing is isolated behind safe abstractions, and `--health-report` shows storage pressure guidance, recovery guidance, and the resolved CLI launch target used for startup checks.
 - Codex CLI startup uses resolved Windows command paths, including `.cmd` shims and `.exe` paths, and startup failures are classified separately from auth and JSON-RPC errors with repair-oriented messages for Windows app alias or permission problems.
 - Claude, Claude Code, Gemini, OpenCode Zen, and GitHub Copilot have MVP-safe descriptors and manual mode support.

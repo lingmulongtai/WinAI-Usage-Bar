@@ -672,6 +672,11 @@ public sealed class MainWindow : Window
         };
         panel.Children.Add(checkUpdatesOnStartup);
 
+        var updateCheckIntervalHoursBox = TextBox(
+            "Startup update interval hours",
+            viewModel.UpdateCheckIntervalHoursText);
+        panel.Children.Add(updateCheckIntervalHoursBox);
+
         var downloadUpdatesAutomatically = new ToggleSwitch
         {
             Header = "Download verified updates automatically",
@@ -712,6 +717,7 @@ public sealed class MainWindow : Window
             viewModel.HistoryMaxDaysText = maxDaysBox.Text;
             viewModel.HistoryMaxBytesText = maxBytesBox.Text;
             viewModel.CheckUpdatesOnStartup = checkUpdatesOnStartup.IsOn;
+            viewModel.UpdateCheckIntervalHoursText = updateCheckIntervalHoursBox.Text;
             viewModel.DownloadUpdatesAutomatically = downloadUpdatesAutomatically.IsOn;
             viewModel.InstallUpdatesAutomatically = installUpdatesAutomatically.IsOn;
 

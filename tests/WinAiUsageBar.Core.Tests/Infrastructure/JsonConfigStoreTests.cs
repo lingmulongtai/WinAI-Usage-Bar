@@ -93,6 +93,7 @@ public sealed class JsonConfigStoreTests
             Assert.Null(config.Onboarding.CompletedAt);
             Assert.NotNull(config.Updates);
             Assert.True(config.Updates.CheckOnStartup);
+            Assert.Equal(24, config.Updates.MinimumCheckIntervalHours);
             Assert.False(config.Updates.DownloadAutomatically);
             Assert.False(config.Updates.InstallAutomatically);
             Assert.Null(config.Updates.LastStatus);

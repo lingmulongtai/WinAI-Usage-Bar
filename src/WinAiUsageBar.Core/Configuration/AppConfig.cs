@@ -194,7 +194,13 @@ public sealed class OnboardingSettings
 
 public sealed class UpdateSettings
 {
+    public const int MinCheckIntervalHours = 0;
+
+    public const int MaxCheckIntervalHours = 168;
+
     public bool CheckOnStartup { get; set; } = true;
+
+    public int MinimumCheckIntervalHours { get; set; } = 24;
 
     public bool DownloadAutomatically { get; set; }
 
@@ -211,6 +217,8 @@ public sealed class UpdateSettings
     public string? LastPackagePath { get; set; }
 
     public string? LastInstallScriptPath { get; set; }
+
+    public string? LastInstallLaunchedVersion { get; set; }
 
     public DateTimeOffset? LastCheckedAt { get; set; }
 }
