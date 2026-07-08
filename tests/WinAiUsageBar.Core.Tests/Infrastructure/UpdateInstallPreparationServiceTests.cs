@@ -94,6 +94,46 @@ public sealed class UpdateInstallPreparationServiceTests
         }
     }
 
+    [Theory]
+    [InlineData("../outside.txt")]
+    [InlineData("/absolute.txt")]
+    [InlineData("C:/absolute.txt")]
+    [InlineData("folder/../outside.txt")]
+    public async Task PrepareAsync_RejectsPackageWithUnsafeArchiveEntry(string entryName)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(Path.Combine(root, "appdata"));
+        var installDirectory = Path.Combine(root, "install");
+        Directory.CreateDirectory(installDirectory);
+        await File.WriteAllTextAsync(Path.Combine(installDirectory, "WinAiUsageBar.App.exe"), "old exe");
+        var packagePath = Path.Combine(root, "WinAIUsageBar-0.2.0-win-x64.zip");
+        CreatePackage(packagePath, includeAppExe: true, entryName);
+        var service = new UpdateInstallPreparationService(paths);
+
+        try
+        {
+            var result = await service.PrepareAsync(
+                new UpdateInstallPreparationRequest(
+                    packagePath,
+                    installDirectory,
+                    ProcessIdToWait: 0,
+                    RestartAfterInstall: false),
+                CancellationToken.None);
+
+            Assert.Equal(UpdateInstallPreparationStatus.InvalidPackage, result.Status);
+            Assert.Contains("unsafe archive entry", result.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Null(result.ScriptPath);
+            Assert.False(Directory.Exists(paths.UpdatesDirectory));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
     [Fact]
     public async Task PrepareAsync_RejectsInstallDirectoryWithoutAppExecutable()
     {
@@ -127,7 +167,10 @@ public sealed class UpdateInstallPreparationServiceTests
         }
     }
 
-    private static void CreatePackage(string packagePath, bool includeAppExe)
+    private static void CreatePackage(
+        string packagePath,
+        bool includeAppExe,
+        params string[] extraEntryNames)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(packagePath)!);
         using var stream = File.Open(packagePath, FileMode.CreateNew);
@@ -140,7 +183,16 @@ public sealed class UpdateInstallPreparationServiceTests
         }
 
         var readme = archive.CreateEntry("README.txt");
-        using var readmeWriter = new StreamWriter(readme.Open());
-        readmeWriter.Write("package");
+        using (var readmeWriter = new StreamWriter(readme.Open()))
+        {
+            readmeWriter.Write("package");
+        }
+
+        foreach (var entryName in extraEntryNames)
+        {
+            var entry = archive.CreateEntry(entryName);
+            using var writer = new StreamWriter(entry.Open());
+            writer.Write("unsafe");
+        }
     }
 }

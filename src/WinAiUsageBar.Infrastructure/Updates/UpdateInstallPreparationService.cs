@@ -58,11 +58,12 @@ public sealed class UpdateInstallPreparationService(
                     "Update package must be an existing .zip file.");
             }
 
-            if (!PackageContainsAppExecutable(packagePath))
+            var packageValidation = ValidatePackage(packagePath);
+            if (!packageValidation.IsValid)
             {
                 return Failure(
                     UpdateInstallPreparationStatus.InvalidPackage,
-                    "Update package must contain WinAiUsageBar.App.exe at the archive root.");
+                    packageValidation.ErrorMessage);
             }
 
             var installDirectory = Path.GetFullPath(request.InstallDirectory);
@@ -120,14 +121,54 @@ public sealed class UpdateInstallPreparationService(
         }
     }
 
-    private static bool PackageContainsAppExecutable(string packagePath)
+    private static PackageValidationResult ValidatePackage(string packagePath)
     {
         using var archive = ZipFile.OpenRead(packagePath);
-        return archive.Entries.Any(entry =>
-            string.Equals(
-                entry.FullName.Replace('\\', '/'),
+        var containsAppExecutable = false;
+        foreach (var entry in archive.Entries)
+        {
+            var normalizedName = NormalizeArchiveEntryName(entry.FullName);
+            if (IsUnsafeArchiveEntryName(normalizedName))
+            {
+                return PackageValidationResult.Invalid(
+                    $"Update package contains an unsafe archive entry: {entry.FullName}");
+            }
+
+            if (string.Equals(
+                normalizedName,
                 "WinAiUsageBar.App.exe",
-                StringComparison.OrdinalIgnoreCase));
+                StringComparison.OrdinalIgnoreCase))
+            {
+                containsAppExecutable = true;
+            }
+        }
+
+        return containsAppExecutable
+            ? PackageValidationResult.Valid()
+            : PackageValidationResult.Invalid(
+                "Update package must contain WinAiUsageBar.App.exe at the archive root.");
+    }
+
+    private static string NormalizeArchiveEntryName(string entryName)
+    {
+        return entryName.Replace('\\', '/');
+    }
+
+    private static bool IsUnsafeArchiveEntryName(string normalizedName)
+    {
+        if (string.IsNullOrWhiteSpace(normalizedName)
+            || normalizedName.StartsWith("/", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        var invalidFileNameCharacters = Path.GetInvalidFileNameChars();
+        var segments = normalizedName.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return segments.Length == 0
+            || segments.Any(segment =>
+                string.Equals(segment, ".", StringComparison.Ordinal)
+                || string.Equals(segment, "..", StringComparison.Ordinal)
+                || segment.IndexOfAny(invalidFileNameCharacters) >= 0);
     }
 
     private static string CreateScript(
@@ -244,5 +285,18 @@ public sealed class UpdateInstallPreparationService(
             InstallDirectory: null,
             StagingDirectory: null,
             BackupDirectory: null);
+    }
+
+    private sealed record PackageValidationResult(bool IsValid, string ErrorMessage)
+    {
+        public static PackageValidationResult Valid()
+        {
+            return new PackageValidationResult(true, string.Empty);
+        }
+
+        public static PackageValidationResult Invalid(string errorMessage)
+        {
+            return new PackageValidationResult(false, errorMessage);
+        }
     }
 }
