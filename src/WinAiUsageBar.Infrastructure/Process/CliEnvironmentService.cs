@@ -14,7 +14,8 @@ public interface ICliEnvironmentService
 
 public sealed record CliCommandCheck(
     string CommandName,
-    string StartupArgument);
+    string StartupArgument,
+    string? CommandOverride = null);
 
 public sealed record CliEnvironmentReport(
     IReadOnlyList<CliCommandStatus> Commands);
@@ -28,7 +29,8 @@ public sealed record CliCommandStatus(
     bool TimedOut,
     string StatusMessage,
     string? LaunchTarget = null,
-    bool UsesCommandProcessor = false);
+    bool UsesCommandProcessor = false,
+    bool UsesConfiguredOverride = false);
 
 public sealed record CliCommandStartupResult(
     bool CanStart,
@@ -63,7 +65,13 @@ public sealed class CliEnvironmentService(
         CliCommandCheck command,
         CancellationToken cancellationToken)
     {
-        var paths = await pathResolver(command.CommandName, cancellationToken).ConfigureAwait(false);
+        var configuredOverride = string.IsNullOrWhiteSpace(command.CommandOverride)
+            ? null
+            : command.CommandOverride.Trim();
+        var usesConfiguredOverride = configuredOverride is not null;
+        IReadOnlyList<string> paths = usesConfiguredOverride
+            ? [configuredOverride!]
+            : await pathResolver(command.CommandName, cancellationToken).ConfigureAwait(false);
         if (paths.Count == 0)
         {
             return new CliCommandStatus(
@@ -89,39 +97,42 @@ public sealed class CliEnvironmentService(
             return new CliCommandStatus(
                 command.CommandName,
                 IsFound: true,
-                paths,
+                paths.Select(DiagnosticRedactor.Redact).ToList(),
                 result.CanStart,
                 result.ExitCode,
                 TimedOut: false,
                 FirstLine(DiagnosticRedactor.Redact(result.StatusMessage)),
-                launchPlan.TargetPath,
-                launchPlan.UsesCommandProcessor);
+                DiagnosticRedactor.Redact(launchPlan.TargetPath),
+                launchPlan.UsesCommandProcessor,
+                usesConfiguredOverride);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             return new CliCommandStatus(
                 command.CommandName,
                 IsFound: true,
-                paths,
+                paths.Select(DiagnosticRedactor.Redact).ToList(),
                 CanStart: false,
                 ExitCode: null,
                 TimedOut: true,
                 StatusMessage: "Startup check timed out.",
-                launchPlan.TargetPath,
-                launchPlan.UsesCommandProcessor);
+                DiagnosticRedactor.Redact(launchPlan.TargetPath),
+                launchPlan.UsesCommandProcessor,
+                usesConfiguredOverride);
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException or IOException or UnauthorizedAccessException)
         {
             return new CliCommandStatus(
                 command.CommandName,
                 IsFound: true,
-                paths,
+                paths.Select(DiagnosticRedactor.Redact).ToList(),
                 CanStart: false,
                 ExitCode: null,
                 TimedOut: false,
                 DiagnosticRedactor.Redact(ex.Message),
-                launchPlan.TargetPath,
-                launchPlan.UsesCommandProcessor);
+                DiagnosticRedactor.Redact(launchPlan.TargetPath),
+                launchPlan.UsesCommandProcessor,
+                usesConfiguredOverride);
         }
     }
 

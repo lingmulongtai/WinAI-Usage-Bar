@@ -11,14 +11,6 @@ namespace WinAiUsageBar.App.Services;
 
 public static class CommandLineActions
 {
-    private static readonly CliCommandCheck[] HealthReportCliChecks =
-    [
-        new("codex", "--version"),
-        new("claude", "--version"),
-        new("gh", "--version"),
-        new("git", "--version")
-    ];
-
     public static async Task<string> ExportDiagnosticsAsync(CancellationToken cancellationToken)
     {
         var paths = AppDataPaths.CreateDefault();
@@ -65,11 +57,13 @@ public static class CommandLineActions
         var recoveryGuidanceService = new RecoveryGuidanceService();
         cliEnvironmentService ??= new CliEnvironmentService();
 
+        var config = await configStore.LoadAsync(cancellationToken).ConfigureAwait(false);
+        var cliChecks = CreateHealthReportCliChecks(config);
         var diagnostics = await diagnosticsService.GetSummaryAsync(cancellationToken).ConfigureAwait(false);
         var history = await historyService.GetSummaryAsync(cancellationToken).ConfigureAwait(false);
         var storagePressure = storagePressureService.CreateGuidance(diagnostics);
         var recoveryGuidance = recoveryGuidanceService.CreateGuidance(diagnostics);
-        var cliEnvironment = await cliEnvironmentService.GetReportAsync(HealthReportCliChecks, cancellationToken)
+        var cliEnvironment = await cliEnvironmentService.GetReportAsync(cliChecks, cancellationToken)
             .ConfigureAwait(false);
 
         return CommandLineHealthReportFormatter.Format(
@@ -80,6 +74,40 @@ public static class CommandLineActions
             cliEnvironment,
             storagePressure,
             recoveryGuidance);
+    }
+
+    private static IReadOnlyList<CliCommandCheck> CreateHealthReportCliChecks(AppConfig config)
+    {
+        return
+        [
+            new(
+                "codex",
+                "--version",
+                FirstProviderCliOverride(config, ProviderId.Codex, ProviderId.ChatGPT)),
+            new(
+                "claude",
+                "--version",
+                FirstProviderCliOverride(config, ProviderId.Claude, ProviderId.ClaudeCode)),
+            new("gh", "--version"),
+            new("git", "--version")
+        ];
+    }
+
+    private static string? FirstProviderCliOverride(AppConfig config, params ProviderId[] providerIds)
+    {
+        foreach (var providerId in providerIds)
+        {
+            var value = config.Providers
+                .FirstOrDefault(provider => provider.ProviderId == providerId)
+                ?.Cli
+                ?.CommandPathOverride;
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value.Trim();
+            }
+        }
+
+        return null;
     }
 
     public static string CreateProviderCatalog()

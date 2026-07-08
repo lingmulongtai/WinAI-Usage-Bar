@@ -130,6 +130,11 @@ public static class CommandLineHealthReportFormatter
             : command.Paths.Count == 1
                 ? command.Paths[0]
                 : $"{command.Paths[0]} (+{command.Paths.Count - 1} more)";
+        if (command.UsesConfiguredOverride)
+        {
+            path = $"configured override {path}";
+        }
+
         var launch = string.IsNullOrWhiteSpace(command.LaunchTarget)
             ? string.Empty
             : $"; launch {FormatLaunchTarget(command)}";

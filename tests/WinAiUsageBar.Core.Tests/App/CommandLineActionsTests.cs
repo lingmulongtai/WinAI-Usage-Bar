@@ -350,6 +350,44 @@ public sealed class CommandLineActionsTests
     }
 
     [Fact]
+    public async Task CreateHealthReportAsync_PassesProviderCliOverridesToCliHealthChecks()
+    {
+        var paths = TestPaths();
+        var configStore = new JsonAppConfigStore(paths);
+        var config = AppConfig.CreateDefault();
+        var codex = config.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.Codex));
+        var claudeCode = config.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.ClaudeCode));
+        codex.Cli.CommandPathOverride = @" C:\Tools\codex.cmd ";
+        claudeCode.Cli.CommandPathOverride = @"C:\Tools\claude.cmd";
+        var cliEnvironmentService = new FakeCliEnvironmentService();
+
+        try
+        {
+            await configStore.SaveAsync(config, CancellationToken.None);
+
+            var report = await CommandLineActions.CreateHealthReportAsync(
+                CancellationToken.None,
+                paths,
+                cliEnvironmentService);
+
+            var commands = cliEnvironmentService.LastCommands;
+            Assert.Contains("CLI environment", report, StringComparison.Ordinal);
+            Assert.NotNull(commands);
+            Assert.Equal(@"C:\Tools\codex.cmd", commands.Single(command => command.CommandName == "codex").CommandOverride);
+            Assert.Equal(@"C:\Tools\claude.cmd", commands.Single(command => command.CommandName == "claude").CommandOverride);
+            Assert.Null(commands.Single(command => command.CommandName == "gh").CommandOverride);
+            Assert.Null(commands.Single(command => command.CommandName == "git").CommandOverride);
+        }
+        finally
+        {
+            if (Directory.Exists(paths.RootDirectory))
+            {
+                Directory.Delete(paths.RootDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task CheckForUpdatesAsync_FormatsUpdateCheckResult()
     {
         var updateCheck = new FakeUpdateCheckService(new ReleaseUpdateCheckResult(
@@ -728,12 +766,28 @@ public sealed class CommandLineActionsTests
 
     private sealed class FakeCliEnvironmentService : ICliEnvironmentService
     {
+        public IReadOnlyList<CliCommandCheck>? LastCommands { get; private set; }
+
         public Task<CliEnvironmentReport> GetReportAsync(
             IReadOnlyList<CliCommandCheck> commands,
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return Task.FromResult(new CliEnvironmentReport([]));
+            LastCommands = commands;
+            var statuses = commands
+                .Select(command => new CliCommandStatus(
+                    command.CommandName,
+                    IsFound: command.CommandOverride is not null,
+                    Paths: command.CommandOverride is null ? [] : [command.CommandOverride],
+                    CanStart: command.CommandOverride is null ? null : true,
+                    ExitCode: command.CommandOverride is null ? null : 0,
+                    TimedOut: false,
+                    StatusMessage: command.CommandOverride is null ? "Not found on PATH." : "ok",
+                    LaunchTarget: command.CommandOverride,
+                    UsesCommandProcessor: false,
+                    UsesConfiguredOverride: command.CommandOverride is not null))
+                .ToList();
+            return Task.FromResult(new CliEnvironmentReport(statuses));
         }
     }
 

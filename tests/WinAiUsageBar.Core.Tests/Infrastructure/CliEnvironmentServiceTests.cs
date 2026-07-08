@@ -63,6 +63,59 @@ public sealed class CliEnvironmentServiceTests
     }
 
     [Fact]
+    public async Task GetReportAsync_UsesConfiguredOverrideWithoutPathResolution()
+    {
+        var pathResolverCalled = false;
+        CliCommandCheck? checkedCommand = null;
+        var service = new CliEnvironmentService(
+            pathResolver: (_, _) =>
+            {
+                pathResolverCalled = true;
+                return Task.FromResult<IReadOnlyList<string>>([@"C:\WindowsApps\codex.exe"]);
+            },
+            startupRunner: (command, _) =>
+            {
+                checkedCommand = command;
+                return Task.FromResult(new CliCommandStartupResult(true, 0, "codex 1.2.3"));
+            });
+
+        var report = await service.GetReportAsync(
+            [new CliCommandCheck("codex", "--version", @" C:\Tools\codex.cmd ")],
+            CancellationToken.None);
+
+        var status = Assert.Single(report.Commands);
+        Assert.False(pathResolverCalled);
+        Assert.NotNull(checkedCommand);
+        Assert.Equal(@" C:\Tools\codex.cmd ", checkedCommand.CommandOverride);
+        Assert.True(status.IsFound);
+        Assert.True(status.CanStart);
+        Assert.Equal(@"C:\Tools\codex.cmd", Assert.Single(status.Paths));
+        Assert.Equal(@"C:\Tools\codex.cmd", status.LaunchTarget);
+        Assert.True(status.UsesCommandProcessor);
+        Assert.True(status.UsesConfiguredOverride);
+    }
+
+    [Fact]
+    public async Task GetReportAsync_RedactsConfiguredOverrideInStatus()
+    {
+        var service = new CliEnvironmentService(
+            pathResolver: (_, _) => Task.FromResult<IReadOnlyList<string>>([]),
+            startupRunner: (_, _) => Task.FromResult(new CliCommandStartupResult(true, 0, "codex 1.2.3")),
+            startupTimeout: TimeSpan.FromSeconds(1));
+
+        var report = await service.GetReportAsync(
+            [new CliCommandCheck("codex", "--version", @"C:\Tools\token=sk-secret-value\codex.exe")],
+            CancellationToken.None);
+
+        var status = Assert.Single(report.Commands);
+        Assert.True(status.UsesConfiguredOverride);
+        Assert.Contains("[REDACTED]", Assert.Single(status.Paths), StringComparison.Ordinal);
+        Assert.Contains("[REDACTED]", status.LaunchTarget, StringComparison.Ordinal);
+        Assert.DoesNotContain("sk-secret-value", status.Paths[0], StringComparison.Ordinal);
+        Assert.DoesNotContain("sk-secret-value", status.LaunchTarget, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task GetReportAsync_ReportsWindowsAppsAccessDeniedStartup()
     {
         var paths = new[]

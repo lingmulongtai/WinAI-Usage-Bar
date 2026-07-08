@@ -136,6 +136,38 @@ public sealed class CommandLineHealthReportFormatterTests
     }
 
     [Fact]
+    public void Format_LabelsConfiguredCliOverride()
+    {
+        var generatedAt = new DateTimeOffset(2026, 7, 8, 8, 30, 0, TimeSpan.FromHours(9));
+        var cliEnvironment = new CliEnvironmentReport(
+        [
+            new CliCommandStatus(
+                "codex",
+                IsFound: true,
+                Paths: [@"C:\Tools\codex.cmd"],
+                CanStart: true,
+                ExitCode: 0,
+                TimedOut: false,
+                StatusMessage: "codex 1.2.3",
+                LaunchTarget: @"C:\Tools\codex.cmd",
+                UsesCommandProcessor: true,
+                UsesConfiguredOverride: true)
+        ]);
+
+        var report = CommandLineHealthReportFormatter.Format(
+            new AppInfo("WinAI Usage Bar", "1.2.3.0", "1.2.3"),
+            EmptyDiagnostics(generatedAt),
+            EmptyHistory(generatedAt),
+            generatedAt,
+            cliEnvironment);
+
+        Assert.Contains(
+            @"codex: startup ok, exit 0; configured override C:\Tools\codex.cmd; launch C:\Tools\codex.cmd via command processor; codex 1.2.3",
+            report,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Format_IncludesWindowsAppsOverrideHintForCodexStartupDenial()
     {
         var generatedAt = new DateTimeOffset(2026, 7, 8, 8, 10, 0, TimeSpan.FromHours(9));
