@@ -2,6 +2,24 @@
 
 All notable changes to WinAI Usage Bar are documented here.
 
+## 0.1.2 - 2026-07-08
+
+### Added
+
+- Startup update policy for checking, downloading, and guarded install launching without repeatedly launching the same release.
+- Manual Refresh settings actions for checking the latest GitHub Release and explicitly launching the latest update install flow.
+- Provider CLI command path overrides, including a headless setter for Codex and other CLI-backed sources.
+- CLI config backup export for safer support and recovery workflows.
+
+### Fixed
+
+- Suppressed duplicate provider notifications until the alert reason changes or the provider recovers.
+- Tolerated optional Codex app-server method timeouts while continuing later usage calls.
+- Added Codex WindowsApps/app execution alias repair guidance.
+- Required explicit confirmation before manually launching update installs from the UI.
+- Added rollback to generated update apply scripts when the install copy phase fails.
+- Rejected unsafe update package archive entries before preparing an install script.
+
 ## 0.1.1 - 2026-07-08
 
 ### Added
