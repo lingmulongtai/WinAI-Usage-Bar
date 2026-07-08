@@ -601,6 +601,15 @@ public sealed class AppHost : IAsyncDisposable
         config.Updates.LastLatestVersion = result.UpdateCheck?.LatestVersion;
         config.Updates.LastPackagePath = result.Download?.PackagePath;
         config.Updates.LastInstallScriptPath = result.Preparation?.ScriptPath ?? result.Launch?.ScriptPath;
+        config.Updates.LastInstallResultPath = result.Preparation?.ResultPath
+            ?? GetInstallResultPath(config.Updates.LastInstallScriptPath);
+        if (string.IsNullOrWhiteSpace(config.Updates.LastInstallResultPath))
+        {
+            config.Updates.LastInstallResultStatus = null;
+            config.Updates.LastInstallResultMessage = null;
+            config.Updates.LastInstallResultCompletedAt = null;
+        }
+
         if (result.Status is LatestUpdateInstallStatus.Launched
             && !string.IsNullOrWhiteSpace(result.UpdateCheck?.LatestVersion))
         {
@@ -613,6 +622,26 @@ public sealed class AppHost : IAsyncDisposable
         }
 
         await ConfigStore.SaveAsync(config, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static string? GetInstallResultPath(string? installScriptPath)
+    {
+        if (string.IsNullOrWhiteSpace(installScriptPath))
+        {
+            return null;
+        }
+
+        try
+        {
+            var directory = Path.GetDirectoryName(Path.GetFullPath(installScriptPath));
+            return string.IsNullOrWhiteSpace(directory)
+                ? null
+                : Path.Combine(directory, "install-result.json");
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return null;
+        }
     }
 
     private static StartupUpdateStatus ToStartupUpdateStatus(LatestUpdateInstallStatus status)

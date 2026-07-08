@@ -138,6 +138,8 @@ public sealed class StartupUpdateServiceTests
         Assert.True(preparation.LastRequest?.RestartAfterInstall);
         Assert.Equal(Path.Combine(paths.UpdatesDirectory, "install-1", "apply-update.ps1"), result.InstallScriptPath);
         Assert.Equal(result.InstallScriptPath, config.Updates.LastInstallScriptPath);
+        Assert.Equal(Path.Combine(paths.UpdatesDirectory, "install-1", "install-result.json"), result.InstallResultPath);
+        Assert.Equal(result.InstallResultPath, config.Updates.LastInstallResultPath);
         Assert.Equal("0.2.0", config.Updates.LastInstallLaunchedVersion);
     }
 
@@ -174,6 +176,7 @@ public sealed class StartupUpdateServiceTests
         Assert.Equal(Now, config.Updates.LastCheckedAt);
         Assert.Equal(@"C:\Updates\package.zip", result.PackagePath);
         Assert.Equal(@"C:\Updates\install\apply-update.ps1", result.InstallScriptPath);
+        Assert.Equal(@"C:\Updates\install\install-result.json", result.InstallResultPath);
     }
 
     [Fact]

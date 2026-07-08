@@ -103,6 +103,10 @@ public sealed class CommandLineHealthReportFormatterTests
             LastInstallLaunchedVersion = "0.1.3",
             LastPackagePath = @"C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\WinAIUsageBar-0.1.5-win-x64.zip",
             LastInstallScriptPath = @"C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\install-1\apply-update.ps1",
+            LastInstallResultPath = @"C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\install-1\install-result.json",
+            LastInstallResultStatus = "Succeeded",
+            LastInstallResultMessage = "Update installed successfully with token=install-secret-value",
+            LastInstallResultCompletedAt = generatedAt.AddMinutes(-1),
             LastMessage = "Downloaded with token=sk-secret-value"
         };
 
@@ -136,6 +140,10 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.Contains("Last launched install: 0.1.3", report, StringComparison.Ordinal);
         Assert.Contains(@"Package path: C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\WinAIUsageBar-0.1.5-win-x64.zip", report, StringComparison.Ordinal);
         Assert.Contains(@"Install script: C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\install-1\apply-update.ps1", report, StringComparison.Ordinal);
+        Assert.Contains(@"Install result: C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\install-1\install-result.json", report, StringComparison.Ordinal);
+        Assert.Contains("Install result status: Succeeded", report, StringComparison.Ordinal);
+        Assert.Contains("Install result completed: 2026-07-08 06:44:00 +09:00", report, StringComparison.Ordinal);
+        Assert.Contains("Install result message: Update installed successfully with [REDACTED]", report, StringComparison.Ordinal);
         Assert.Contains("Message: Downloaded with [REDACTED]", report, StringComparison.Ordinal);
         Assert.Contains("Storage pressure", report, StringComparison.Ordinal);
         Assert.Contains("Retained history: High", report, StringComparison.Ordinal);
@@ -188,6 +196,10 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.Contains("Latest version: n/a", report, StringComparison.Ordinal);
         Assert.Contains("Package path: n/a", report, StringComparison.Ordinal);
         Assert.Contains("Install script: n/a", report, StringComparison.Ordinal);
+        Assert.Contains("Install result: n/a", report, StringComparison.Ordinal);
+        Assert.Contains("Install result status: n/a", report, StringComparison.Ordinal);
+        Assert.Contains("Install result completed: n/a", report, StringComparison.Ordinal);
+        Assert.Contains("Install result message: n/a", report, StringComparison.Ordinal);
         Assert.Contains("Message: n/a", report, StringComparison.Ordinal);
     }
 

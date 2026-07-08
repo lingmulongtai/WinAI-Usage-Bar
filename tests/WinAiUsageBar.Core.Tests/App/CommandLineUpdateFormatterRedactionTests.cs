@@ -60,7 +60,10 @@ public sealed class CommandLineUpdateFormatterRedactionTests
             "Startup update with refresh_token=startup-secret",
             "0.2.0 token=latest-secret",
             @"C:\Updates\token=package-secret\package.zip",
-            @"C:\Updates\install-1\secret=script-secret\apply-update.ps1");
+            @"C:\Updates\install-1\secret=script-secret\apply-update.ps1")
+        {
+            InstallResultPath = @"C:\Updates\install-1\secret=result-secret\install-result.json"
+        };
 
         var outputs = new[]
         {

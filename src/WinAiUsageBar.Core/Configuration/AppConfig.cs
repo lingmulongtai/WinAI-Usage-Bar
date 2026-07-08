@@ -280,6 +280,14 @@ public sealed class UpdateSettings
 
     public string? LastInstallScriptPath { get; set; }
 
+    public string? LastInstallResultPath { get; set; }
+
+    public string? LastInstallResultStatus { get; set; }
+
+    public string? LastInstallResultMessage { get; set; }
+
+    public DateTimeOffset? LastInstallResultCompletedAt { get; set; }
+
     public string? LastInstallLaunchedVersion { get; set; }
 
     public DateTimeOffset? LastCheckedAt { get; set; }

@@ -23,6 +23,10 @@ public sealed class JsonConfigStoreTests
         gemini.SourceKind = DataSourceKind.OfficialApi;
         gemini.ApiKey.SecretName = "gemini-api-key";
         config.Startup.LaunchOnLogin = true;
+        config.Updates.LastInstallResultPath = @"C:\Updates\install-1\install-result.json";
+        config.Updates.LastInstallResultStatus = "Succeeded";
+        config.Updates.LastInstallResultMessage = "Update installed successfully.";
+        config.Updates.LastInstallResultCompletedAt = new DateTimeOffset(2026, 7, 8, 9, 32, 0, TimeSpan.FromHours(9));
 
         await store.SaveAsync(config, CancellationToken.None);
         var reloaded = await store.LoadAsync(CancellationToken.None);
@@ -35,6 +39,10 @@ public sealed class JsonConfigStoreTests
         Assert.Equal(DataSourceKind.OfficialApi, reloadedGemini.SourceKind);
         Assert.Equal("gemini-api-key", reloadedGemini.ApiKey.SecretName);
         Assert.True(reloaded.Startup.LaunchOnLogin);
+        Assert.Equal(@"C:\Updates\install-1\install-result.json", reloaded.Updates.LastInstallResultPath);
+        Assert.Equal("Succeeded", reloaded.Updates.LastInstallResultStatus);
+        Assert.Equal("Update installed successfully.", reloaded.Updates.LastInstallResultMessage);
+        Assert.Equal(new DateTimeOffset(2026, 7, 8, 9, 32, 0, TimeSpan.FromHours(9)), reloaded.Updates.LastInstallResultCompletedAt);
 
         Directory.Delete(root, recursive: true);
     }

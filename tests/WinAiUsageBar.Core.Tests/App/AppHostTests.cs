@@ -309,6 +309,7 @@ public sealed class AppHostTests
         Assert.Equal("0.2.0", config.Updates.LastLatestVersion);
         Assert.Equal(Path.Combine(paths.UpdatesDirectory, "WinAIUsageBar-0.2.0-win-x64.zip"), config.Updates.LastPackagePath);
         Assert.Equal(Path.Combine(paths.UpdatesDirectory, "install-1", "apply-update.ps1"), config.Updates.LastInstallScriptPath);
+        Assert.Equal(Path.Combine(paths.UpdatesDirectory, "install-1", "install-result.json"), config.Updates.LastInstallResultPath);
         Assert.Equal("0.2.0", config.Updates.LastInstallLaunchedVersion);
         Assert.NotNull(config.Updates.LastCheckedAt);
         Assert.Contains(diagnostics.InfoMessages, message => message.StartsWith(
@@ -651,7 +652,10 @@ public sealed class AppHostTests
                 Path.Combine(paths.UpdatesDirectory, "WinAIUsageBar-0.2.0-win-x64.zip"),
                 AppContext.BaseDirectory,
                 Path.Combine(paths.UpdatesDirectory, "install-1", "staging"),
-                Path.Combine(paths.UpdatesDirectory, "install-1", "backup")),
+                Path.Combine(paths.UpdatesDirectory, "install-1", "backup"))
+            {
+                ResultPath = Path.Combine(paths.UpdatesDirectory, "install-1", "install-result.json")
+            },
             new UpdateInstallLaunchResult(
                 UpdateInstallLaunchStatus.Launched,
                 "launched",

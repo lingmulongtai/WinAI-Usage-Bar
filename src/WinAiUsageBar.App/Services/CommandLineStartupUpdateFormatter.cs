@@ -14,7 +14,8 @@ public static class CommandLineStartupUpdateFormatter
             $"Current version: {CommandLineDisplayText.Safe(currentVersion)}",
             $"Latest version: {CommandLineDisplayText.Safe(result.LatestVersion)}",
             $"Package path: {CommandLineDisplayText.Safe(result.PackagePath)}",
-            $"Install script: {CommandLineDisplayText.Safe(result.InstallScriptPath)}"
+            $"Install script: {CommandLineDisplayText.Safe(result.InstallScriptPath)}",
+            $"Install result: {CommandLineDisplayText.Safe(result.InstallResultPath)}"
         };
 
         return string.Join(Environment.NewLine, lines);

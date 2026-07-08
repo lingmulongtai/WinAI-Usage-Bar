@@ -138,6 +138,26 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
             lines.Add($"Install script: {SafeValue(updates.LastInstallScriptPath)}");
         }
 
+        if (!string.IsNullOrWhiteSpace(updates.LastInstallResultPath))
+        {
+            lines.Add($"Install result: {SafeValue(updates.LastInstallResultPath)}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(updates.LastInstallResultStatus))
+        {
+            lines.Add($"Install result status: {SafeValue(updates.LastInstallResultStatus)}");
+        }
+
+        if (updates.LastInstallResultCompletedAt is not null)
+        {
+            lines.Add($"Install result completed: {updates.LastInstallResultCompletedAt:yyyy-MM-dd HH:mm:ss zzz}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(updates.LastInstallResultMessage))
+        {
+            lines.Add($"Install result message: {SafeValue(updates.LastInstallResultMessage)}");
+        }
+
         lines.Add($"Message: {message}");
 
         return string.Join(

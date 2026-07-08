@@ -404,6 +404,10 @@ public sealed class CommandLineActionsTests
         config.Updates.LastInstallLaunchedVersion = "0.1.5";
         config.Updates.LastPackagePath = @"C:\Updates\WinAIUsageBar-0.1.5-win-x64.zip";
         config.Updates.LastInstallScriptPath = @"C:\Updates\install-1\apply-update.ps1";
+        config.Updates.LastInstallResultPath = @"C:\Updates\install-1\install-result.json";
+        config.Updates.LastInstallResultStatus = "Succeeded";
+        config.Updates.LastInstallResultMessage = "Update installed successfully.";
+        config.Updates.LastInstallResultCompletedAt = new DateTimeOffset(2026, 7, 8, 9, 32, 0, TimeSpan.FromHours(9));
         config.Updates.LastMessage = "Install script launched.";
 
         try
@@ -426,6 +430,10 @@ public sealed class CommandLineActionsTests
             Assert.Contains("Last launched install: 0.1.5", report, StringComparison.Ordinal);
             Assert.Contains(@"Package path: C:\Updates\WinAIUsageBar-0.1.5-win-x64.zip", report, StringComparison.Ordinal);
             Assert.Contains(@"Install script: C:\Updates\install-1\apply-update.ps1", report, StringComparison.Ordinal);
+            Assert.Contains(@"Install result: C:\Updates\install-1\install-result.json", report, StringComparison.Ordinal);
+            Assert.Contains("Install result status: Succeeded", report, StringComparison.Ordinal);
+            Assert.Contains("Install result completed: 2026-07-08 09:32:00 +09:00", report, StringComparison.Ordinal);
+            Assert.Contains("Install result message: Update installed successfully.", report, StringComparison.Ordinal);
             Assert.Contains("Message: Install script launched.", report, StringComparison.Ordinal);
         }
         finally
@@ -785,7 +793,10 @@ public sealed class CommandLineActionsTests
             "Update package downloaded, verified, prepared, and launched for install.",
             LatestVersion: "0.2.0",
             PackagePath: @"C:\Updates\WinAIUsageBar-0.2.0-win-x64.zip",
-            InstallScriptPath: @"C:\Updates\install-1\apply-update.ps1"));
+            InstallScriptPath: @"C:\Updates\install-1\apply-update.ps1")
+        {
+            InstallResultPath = @"C:\Updates\install-1\install-result.json"
+        });
 
         var result = await CommandLineActions.RunStartupUpdateAsync(
             service,
@@ -799,6 +810,7 @@ public sealed class CommandLineActionsTests
         Assert.Contains("Latest version: 0.2.0", result.Output, StringComparison.Ordinal);
         Assert.Contains(@"Package path: C:\Updates\WinAIUsageBar-0.2.0-win-x64.zip", result.Output, StringComparison.Ordinal);
         Assert.Contains(@"Install script: C:\Updates\install-1\apply-update.ps1", result.Output, StringComparison.Ordinal);
+        Assert.Contains(@"Install result: C:\Updates\install-1\install-result.json", result.Output, StringComparison.Ordinal);
     }
 
     private static AppDataPaths TestPaths()

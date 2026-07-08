@@ -25,7 +25,7 @@ public sealed class SecurityTests
     [Fact]
     public void RedactForDisplay_CollapsesSensitiveLabels()
     {
-        var text = "Authorization: Bearer abc123 token=secret secretName=secret-ref cookie=session --api-key api-secret -token cli-secret sk-1234567890 ghp_1234567890";
+        var text = "Authorization: Bearer abc123 token=secret secretName=secret-ref cookie=session --api-key api-secret -token cli-secret token-secret-123 sk-1234567890 ghp_1234567890";
 
         var redacted = DiagnosticRedactor.RedactForDisplay(text);
 
@@ -35,6 +35,7 @@ public sealed class SecurityTests
         Assert.DoesNotContain("session", redacted, StringComparison.Ordinal);
         Assert.DoesNotContain("api-secret", redacted, StringComparison.Ordinal);
         Assert.DoesNotContain("cli-secret", redacted, StringComparison.Ordinal);
+        Assert.DoesNotContain("token-secret-123", redacted, StringComparison.Ordinal);
         Assert.DoesNotContain("sk-1234567890", redacted, StringComparison.Ordinal);
         Assert.DoesNotContain("ghp_1234567890", redacted, StringComparison.Ordinal);
         Assert.DoesNotContain("authorization", redacted, StringComparison.OrdinalIgnoreCase);

@@ -20,7 +20,10 @@ public sealed record StartupUpdateResult(
     string Message,
     string? LatestVersion,
     string? PackagePath,
-    string? InstallScriptPath);
+    string? InstallScriptPath)
+{
+    public string? InstallResultPath { get; init; }
+}
 
 public enum StartupUpdateStatus
 {
@@ -286,6 +289,14 @@ public sealed class StartupUpdateService(
         config.Updates.LastLatestVersion = latestVersion;
         config.Updates.LastPackagePath = packagePath;
         config.Updates.LastInstallScriptPath = installScriptPath;
+        config.Updates.LastInstallResultPath = GetInstallResultPath(installScriptPath);
+        if (string.IsNullOrWhiteSpace(config.Updates.LastInstallResultPath))
+        {
+            config.Updates.LastInstallResultStatus = null;
+            config.Updates.LastInstallResultMessage = null;
+            config.Updates.LastInstallResultCompletedAt = null;
+        }
+
         if (!string.IsNullOrWhiteSpace(installLaunchedVersion))
         {
             config.Updates.LastInstallLaunchedVersion = installLaunchedVersion;
@@ -303,7 +314,30 @@ public sealed class StartupUpdateService(
             message,
             latestVersion,
             packagePath,
-            installScriptPath);
+            installScriptPath)
+        {
+            InstallResultPath = config.Updates.LastInstallResultPath
+        };
+    }
+
+    private static string? GetInstallResultPath(string? installScriptPath)
+    {
+        if (string.IsNullOrWhiteSpace(installScriptPath))
+        {
+            return null;
+        }
+
+        try
+        {
+            var directory = Path.GetDirectoryName(Path.GetFullPath(installScriptPath));
+            return string.IsNullOrWhiteSpace(directory)
+                ? null
+                : Path.Combine(directory, "install-result.json");
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return null;
+        }
     }
 
     private bool ShouldSkipRecentCheck(UpdateSettings updates, out string message)
