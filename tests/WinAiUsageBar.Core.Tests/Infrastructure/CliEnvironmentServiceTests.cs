@@ -38,7 +38,27 @@ public sealed class CliEnvironmentServiceTests
         Assert.True(status.CanStart);
         Assert.Equal(0, status.ExitCode);
         Assert.Equal(@"C:\Tools\git.exe", Assert.Single(status.Paths));
+        Assert.Equal(@"C:\Tools\git.exe", status.LaunchTarget);
+        Assert.False(status.UsesCommandProcessor);
         Assert.Equal("git version 2.50.0", status.StatusMessage);
+    }
+
+    [Fact]
+    public async Task GetReportAsync_ReportsCommandShimLaunchMetadata()
+    {
+        var service = new CliEnvironmentService(
+            pathResolver: (_, _) => Task.FromResult<IReadOnlyList<string>>([@"C:\Users\me\AppData\Roaming\npm\codex.cmd"]),
+            startupRunner: (_, _) => Task.FromResult(new CliCommandStartupResult(true, 0, "codex 1.2.3")));
+
+        var report = await service.GetReportAsync(
+            [new CliCommandCheck("codex", "--version")],
+            CancellationToken.None);
+
+        var status = Assert.Single(report.Commands);
+        Assert.True(status.IsFound);
+        Assert.True(status.CanStart);
+        Assert.Equal(@"C:\Users\me\AppData\Roaming\npm\codex.cmd", status.LaunchTarget);
+        Assert.True(status.UsesCommandProcessor);
     }
 
     [Fact]

@@ -26,7 +26,9 @@ public sealed record CliCommandStatus(
     bool? CanStart,
     int? ExitCode,
     bool TimedOut,
-    string StatusMessage);
+    string StatusMessage,
+    string? LaunchTarget = null,
+    bool UsesCommandProcessor = false);
 
 public sealed record CliCommandStartupResult(
     bool CanStart,
@@ -74,13 +76,15 @@ public sealed class CliEnvironmentService(
                 StatusMessage: "Not found on PATH.");
         }
 
+        var launchPlan = CliCommandLaunchPlanner.Create(command.CommandName, paths);
+
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(startupTimeout);
 
         try
         {
             var result = startupRunnerOverride is null
-                ? await RunStartupCheckAsync(command, paths, timeout.Token).ConfigureAwait(false)
+                ? await RunStartupCheckAsync(command, launchPlan, timeout.Token).ConfigureAwait(false)
                 : await startupRunnerOverride(command, timeout.Token).ConfigureAwait(false);
             return new CliCommandStatus(
                 command.CommandName,
@@ -89,7 +93,9 @@ public sealed class CliEnvironmentService(
                 result.CanStart,
                 result.ExitCode,
                 TimedOut: false,
-                FirstLine(DiagnosticRedactor.Redact(result.StatusMessage)));
+                FirstLine(DiagnosticRedactor.Redact(result.StatusMessage)),
+                launchPlan.TargetPath,
+                launchPlan.UsesCommandProcessor);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -100,7 +106,9 @@ public sealed class CliEnvironmentService(
                 CanStart: false,
                 ExitCode: null,
                 TimedOut: true,
-                StatusMessage: "Startup check timed out.");
+                StatusMessage: "Startup check timed out.",
+                launchPlan.TargetPath,
+                launchPlan.UsesCommandProcessor);
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException or IOException or UnauthorizedAccessException)
         {
@@ -111,7 +119,9 @@ public sealed class CliEnvironmentService(
                 CanStart: false,
                 ExitCode: null,
                 TimedOut: false,
-                DiagnosticRedactor.Redact(ex.Message));
+                DiagnosticRedactor.Redact(ex.Message),
+                launchPlan.TargetPath,
+                launchPlan.UsesCommandProcessor);
         }
     }
 
@@ -157,15 +167,13 @@ public sealed class CliEnvironmentService(
 
     private static async Task<CliCommandStartupResult> RunStartupCheckAsync(
         CliCommandCheck command,
-        IReadOnlyList<string> paths,
+        CliCommandLaunchPlan launchPlan,
         CancellationToken cancellationToken)
     {
         IReadOnlyList<string> arguments = string.IsNullOrWhiteSpace(command.StartupArgument)
             ? Array.Empty<string>()
             : [command.StartupArgument];
-        var startInfo = CliCommandLaunchPlanner
-            .Create(command.CommandName, paths)
-            .CreateStartInfo(arguments);
+        var startInfo = launchPlan.CreateStartInfo(arguments);
         using var process = new System.Diagnostics.Process { StartInfo = startInfo };
 
         try

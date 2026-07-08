@@ -101,8 +101,43 @@ public static class CommandLineHealthReportFormatter
             : command.Paths.Count == 1
                 ? command.Paths[0]
                 : $"{command.Paths[0]} (+{command.Paths.Count - 1} more)";
+        var launch = string.IsNullOrWhiteSpace(command.LaunchTarget)
+            ? string.Empty
+            : $"; launch {FormatLaunchTarget(command)}";
+        var repair = FormatCommandRepairHint(command);
 
-        return $"{start}{exit}; {path}; {command.StatusMessage}";
+        return $"{start}{exit}; {path}{launch}; {command.StatusMessage}{repair}";
+    }
+
+    private static string FormatLaunchTarget(CliCommandStatus command)
+    {
+        var mode = command.UsesCommandProcessor ? " via command processor" : string.Empty;
+        return $"{command.LaunchTarget}{mode}";
+    }
+
+    private static string FormatCommandRepairHint(CliCommandStatus command)
+    {
+        if (command.CanStart != false)
+        {
+            return string.Empty;
+        }
+
+        if (command.TimedOut)
+        {
+            return "; hint check whether the command opens an interactive prompt or is waiting for login";
+        }
+
+        if (command.StatusMessage.Contains("Access is denied", StringComparison.OrdinalIgnoreCase))
+        {
+            return "; hint check Windows App Execution Aliases, package permissions, or reinstall the CLI outside WindowsApps";
+        }
+
+        if (command.UsesCommandProcessor)
+        {
+            return "; hint verify the command shim works from a normal terminal";
+        }
+
+        return "; hint verify the command starts from this working directory and appears before stale PATH entries";
     }
 
     private static string FormatDate(DateTimeOffset? value)

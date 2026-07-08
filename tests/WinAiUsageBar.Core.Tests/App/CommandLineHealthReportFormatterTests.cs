@@ -64,7 +64,8 @@ public sealed class CommandLineHealthReportFormatterTests
                 CanStart: false,
                 ExitCode: null,
                 TimedOut: false,
-                StatusMessage: "Access is denied."),
+                StatusMessage: "Access is denied.",
+                LaunchTarget: @"C:\Tools\codex.exe"),
             new CliCommandStatus(
                 "git",
                 IsFound: true,
@@ -72,7 +73,8 @@ public sealed class CommandLineHealthReportFormatterTests
                 CanStart: true,
                 ExitCode: 0,
                 TimedOut: false,
-                StatusMessage: "git version 2.50.0"),
+                StatusMessage: "git version 2.50.0",
+                LaunchTarget: @"C:\Tools\git.exe"),
             new CliCommandStatus(
                 "claude",
                 IsFound: false,
@@ -100,8 +102,9 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.Contains("Entries: 3", report, StringComparison.Ordinal);
         Assert.Contains("Codex: 3 entries, latest Warning, remaining 42.5%, source LocalAppServer", report, StringComparison.Ordinal);
         Assert.Contains("CLI environment", report, StringComparison.Ordinal);
-        Assert.Contains(@"codex: startup failed; C:\Tools\codex.exe; Access is denied.", report, StringComparison.Ordinal);
-        Assert.Contains(@"git: startup ok, exit 0; C:\Tools\git.exe (+1 more); git version 2.50.0", report, StringComparison.Ordinal);
+        Assert.Contains(@"codex: startup failed; C:\Tools\codex.exe; launch C:\Tools\codex.exe; Access is denied.", report, StringComparison.Ordinal);
+        Assert.Contains("hint check Windows App Execution Aliases", report, StringComparison.Ordinal);
+        Assert.Contains(@"git: startup ok, exit 0; C:\Tools\git.exe (+1 more); launch C:\Tools\git.exe; git version 2.50.0", report, StringComparison.Ordinal);
         Assert.Contains("claude: not found on PATH", report, StringComparison.Ordinal);
         Assert.Contains("config.json: 2 KB", report, StringComparison.Ordinal);
         Assert.Contains("diagnostics.log: Missing", report, StringComparison.Ordinal);
