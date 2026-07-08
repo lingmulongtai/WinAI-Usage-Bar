@@ -31,6 +31,30 @@ public sealed class CodexAppServerClientTests
     }
 
     [Fact]
+    public async Task FetchAccountUsageAsync_ContinuesWhenOptionalMethodReturnsNonAuthError()
+    {
+        var transport = new FakeCodexTransport(
+            [
+                Response(1, """{"ok":true}"""),
+                Response(2, """{"email":"person@example.com"}"""),
+                Error(3, "Method not found token=rate-secret"),
+                Response(4, """{"used":20,"limit":100}""")
+            ],
+            []);
+        var client = new CodexAppServerClient(() => transport, TimeSpan.FromSeconds(1));
+
+        var data = await client.FetchAccountUsageAsync(CancellationToken.None);
+
+        Assert.Contains("person@example.com", data.AccountJson);
+        Assert.Null(data.RateLimitsJson);
+        Assert.Contains("\"id\":4", data.UsageJson);
+        Assert.Contains(data.Diagnostics, line => line.Contains("account/rateLimits/read failed", StringComparison.Ordinal));
+        Assert.DoesNotContain("rate-secret", string.Join('\n', data.Diagnostics), StringComparison.Ordinal);
+        Assert.Equal(4, transport.Requests.Count);
+        Assert.True(transport.Stopped);
+    }
+
+    [Fact]
     public async Task FetchAccountUsageAsync_ThrowsUnauthorizedAccessExceptionForAuthError()
     {
         var transport = new FakeCodexTransport(

@@ -156,7 +156,7 @@ The release workflow builds, tests, publishes, smoke-tests, packages the app, an
 
 - Mock: implemented for UI development.
 - Manual: implemented for every provider.
-- Codex / ChatGPT: safe best-effort `codex app-server` JSON-RPC client and parser are implemented; reset timestamps support ISO strings, Unix seconds, Unix milliseconds, and relative reset seconds; missing CLI, startup failure, auth failure, and JSON-RPC failure return visible provider errors.
+- Codex / ChatGPT: safe best-effort `codex app-server` JSON-RPC client and parser are implemented; optional account/rate-limit/usage method failures can return partial data, reset timestamps support ISO strings, Unix seconds, Unix milliseconds, and relative reset seconds, and missing CLI/startup/auth failures return visible provider errors.
 - Claude / Claude Code: CLI presence probe only; no private file scraping.
 - Gemini: API key secret-name setting; no unofficial usage endpoint.
 - OpenCode Zen: API key secret-name setting, manual balance mode, and documented TODO for future official balance API.

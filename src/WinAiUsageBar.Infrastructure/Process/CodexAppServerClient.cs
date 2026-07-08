@@ -53,34 +53,40 @@ public sealed class CodexAppServerClient : ICodexAppServerClient
                 CodexJsonRpcParser.CreateInitializeRequest(InitializeRequestId),
                 cancellationToken).ConfigureAwait(false);
 
-            var account = await SendAndReadAsync(
+            var account = await TrySendOptionalAsync(
                 transport,
                 pendingResponses,
                 AccountRequestId,
+                "account/read",
                 CodexJsonRpcParser.CreateRequest(AccountRequestId, "account/read"),
+                diagnostics,
                 cancellationToken).ConfigureAwait(false);
 
-            var rateLimits = await SendAndReadAsync(
+            var rateLimits = await TrySendOptionalAsync(
                 transport,
                 pendingResponses,
                 RateLimitsRequestId,
+                "account/rateLimits/read",
                 CodexJsonRpcParser.CreateRequest(RateLimitsRequestId, "account/rateLimits/read"),
+                diagnostics,
                 cancellationToken).ConfigureAwait(false);
 
-            var usage = await SendAndReadAsync(
+            var usage = await TrySendOptionalAsync(
                 transport,
                 pendingResponses,
                 UsageRequestId,
+                "account/usage/read",
                 CodexJsonRpcParser.CreateRequest(UsageRequestId, "account/usage/read"),
+                diagnostics,
                 cancellationToken).ConfigureAwait(false);
 
             await CleanupAsync(transport, diagnosticsCts, diagnosticsTask, diagnostics).ConfigureAwait(false);
             cleanupCompleted = true;
 
             return new CodexAppServerData(
-                DiagnosticRedactor.Redact(account),
-                DiagnosticRedactor.Redact(rateLimits),
-                DiagnosticRedactor.Redact(usage),
+                RedactOrNull(account),
+                RedactOrNull(rateLimits),
+                RedactOrNull(usage),
                 diagnostics.ToArray());
         }
         finally
@@ -89,6 +95,32 @@ public sealed class CodexAppServerClient : ICodexAppServerClient
             {
                 await CleanupAsync(transport, diagnosticsCts, diagnosticsTask, diagnostics).ConfigureAwait(false);
             }
+        }
+    }
+
+    private async Task<string?> TrySendOptionalAsync(
+        ICodexAppServerTransport transport,
+        IDictionary<int, string> pendingResponses,
+        int expectedId,
+        string methodName,
+        string request,
+        ConcurrentQueue<string> diagnostics,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await SendAndReadAsync(
+                transport,
+                pendingResponses,
+                expectedId,
+                request,
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (CodexJsonRpcResponseException ex)
+        {
+            diagnostics.Enqueue(DiagnosticRedactor.Redact(
+                $"Codex app-server method {methodName} failed: {ex.Message}"));
+            return null;
         }
     }
 
@@ -150,6 +182,11 @@ public sealed class CodexAppServerClient : ICodexAppServerClient
         }
     }
 
+    private static string? RedactOrNull(string? text)
+    {
+        return text is null ? null : DiagnosticRedactor.Redact(text);
+    }
+
     private static string EnsureSuccessfulResponse(int expectedId, string line)
     {
         return EnsureSuccessfulResponse(expectedId, line, ParseEnvelope(line));
@@ -169,7 +206,7 @@ public sealed class CodexAppServerClient : ICodexAppServerClient
                 throw new UnauthorizedAccessException(message);
             }
 
-            throw new InvalidOperationException(message);
+            throw new CodexJsonRpcResponseException(message);
         }
 
         return line;
@@ -258,4 +295,6 @@ public sealed class CodexAppServerClient : ICodexAppServerClient
             diagnostics.Enqueue("Stopped reading Codex app-server diagnostics.");
         }
     }
+
+    private sealed class CodexJsonRpcResponseException(string message) : InvalidOperationException(message);
 }
