@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using WinAiUsageBar.Core.Abstractions;
+using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Core.Models;
 
 namespace WinAiUsageBar.Core.Providers.Codex;
@@ -79,8 +80,9 @@ public sealed class CodexAppServerProviderAdapter(
 
     private static CommandProbeResult? CreateProbeFromOverride(string? commandPathOverride)
     {
-        return string.IsNullOrWhiteSpace(commandPathOverride)
+        var normalizedOverride = CliCommandSettings.NormalizeCommandPathOverride(commandPathOverride);
+        return normalizedOverride is null
             ? null
-            : CommandProbeResult.Configured("codex", commandPathOverride.Trim());
+            : CommandProbeResult.Configured("codex", normalizedOverride);
     }
 }

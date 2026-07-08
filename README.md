@@ -18,7 +18,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - Settings window uses WinUI `NavigationView`.
 - Overview includes a first-run setup checklist with action buttons until setup is marked complete.
 - Providers shows per-provider setup guidance for source choices, Manual fallback, CLI/app-server caveats, and API reference requirements without echoing configured secret or scope values.
-- CLI-backed provider settings can store a non-secret command override so refresh can use a known launchable CLI path when PATH discovery finds a broken WindowsApps alias.
+- CLI-backed provider settings can store a non-secret command override so refresh can use a known launchable CLI path when PATH discovery finds a broken WindowsApps alias; balanced outer quotes pasted around a Windows path are normalized away.
 - Desktop widget window shows up to three selected providers, remembers placement, and has settings for startup/topmost/provider selection.
 - Provider cards show health, usage percentage, reset text, status messages, credits/costs, source, update time, and errors.
 - Provider Details shows non-secret snapshot details for identity, usage windows, credits, status, errors, and repair guidance.

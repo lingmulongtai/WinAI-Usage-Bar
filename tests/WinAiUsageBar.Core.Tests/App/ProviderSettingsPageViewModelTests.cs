@@ -175,6 +175,42 @@ public sealed class ProviderSettingsPageViewModelTests
     }
 
     [Fact]
+    public void TryApply_NormalizesQuotedCliCommandOverrideForLocalAppServerProvider()
+    {
+        var config = AppConfig.CreateDefault();
+        var descriptor = ProviderDescriptors.Get(ProviderId.Codex);
+        var provider = config.GetOrCreateProvider(descriptor);
+        var viewModel = new ProviderSettingsPageViewModel(config, [descriptor]);
+        var editor = viewModel.Editors.Single();
+        editor.SourceKindText = DataSourceKind.LocalAppServer.ToString();
+        editor.CliCommandPathOverrideText = "  \"C:\\Program Files\\Codex\\codex.cmd\"  ";
+
+        var result = viewModel.TryApply();
+
+        Assert.True(result.IsValid);
+        Assert.Equal(@"C:\Program Files\Codex\codex.cmd", provider.Cli.CommandPathOverride);
+    }
+
+    [Fact]
+    public void TryApply_RejectsCliCommandOverrideWithPartialQuotes()
+    {
+        var config = AppConfig.CreateDefault();
+        var descriptor = ProviderDescriptors.Get(ProviderId.Codex);
+        var provider = config.GetOrCreateProvider(descriptor);
+        provider.Cli.CommandPathOverride = @"C:\Tools\codex.cmd";
+        var viewModel = new ProviderSettingsPageViewModel(config, [descriptor]);
+        var editor = viewModel.Editors.Single();
+        editor.SourceKindText = DataSourceKind.LocalAppServer.ToString();
+        editor.CliCommandPathOverrideText = "\"C:\\Tools\\codex.cmd\" --verbose";
+
+        var result = viewModel.TryApply();
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, error => error.Contains("quotes must wrap", StringComparison.Ordinal));
+        Assert.Equal(@"C:\Tools\codex.cmd", provider.Cli.CommandPathOverride);
+    }
+
+    [Fact]
     public void TryApply_RejectsCliCommandOverrideThatLooksSensitive()
     {
         var config = AppConfig.CreateDefault();

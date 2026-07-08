@@ -113,7 +113,7 @@ public sealed class ProviderSettingsEditorViewModel(
                 return string.Empty;
             }
 
-            return TrimToNull(CliCommandPathOverrideText) is null
+            return CliCommandSettings.NormalizeCommandPathOverride(CliCommandPathOverrideText) is null
                 ? "Provider refresh will use normal PATH discovery for CLI or local app-server sources."
                 : "Provider refresh will try the configured CLI command override before normal PATH discovery; this guidance does not echo the value.";
         }
@@ -314,7 +314,7 @@ public sealed class ProviderSettingsEditorViewModel(
         provider.SourceKind = validation.SourceKind.Value;
         provider.Manual = validation.ManualSettings;
         provider.ApiKey.SecretName = TrimToNull(ApiKeySecretNameText);
-        provider.Cli.CommandPathOverride = TrimToNull(CliCommandPathOverrideText);
+        provider.Cli.CommandPathOverride = CliCommandSettings.NormalizeCommandPathOverride(CliCommandPathOverrideText);
         provider.GitHubCopilot.Organization = TrimToNull(GitHubOrganizationText);
         provider.GitHubCopilot.EnterpriseSlug = TrimToNull(GitHubEnterpriseSlugText);
         provider.GitHubCopilot.PatSecretName = TrimToNull(GitHubPatSecretNameText);
@@ -380,15 +380,15 @@ public sealed class ProviderSettingsEditorViewModel(
             return;
         }
 
-        lines.Add(TrimToNull(CliCommandPathOverrideText) is null
+        lines.Add(CliCommandSettings.NormalizeCommandPathOverride(CliCommandPathOverrideText) is null
             ? "CLI or local app-server refresh will use PATH discovery unless a command override is configured."
             : "CLI command override is configured; guidance does not echo the command path.");
     }
 
     private void ValidateCliCommandSettings(ICollection<string> errors)
     {
-        var overrideText = TrimToNull(CliCommandPathOverrideText);
-        if (overrideText is null)
+        var normalizedOverride = CliCommandSettings.NormalizeCommandPathOverride(CliCommandPathOverrideText);
+        if (normalizedOverride is null)
         {
             return;
         }
@@ -399,17 +399,22 @@ public sealed class ProviderSettingsEditorViewModel(
             return;
         }
 
-        if (overrideText.Length > 512)
+        if (CliCommandSettings.HasInvalidCommandPathOverrideQuotes(CliCommandPathOverrideText))
+        {
+            errors.Add("CLI command override quotes must wrap a single path or command.");
+        }
+
+        if (normalizedOverride.Length > 512)
         {
             errors.Add("CLI command override must be 512 characters or fewer.");
         }
 
-        if (overrideText.Contains('\r') || overrideText.Contains('\n'))
+        if (normalizedOverride.Contains('\r') || normalizedOverride.Contains('\n'))
         {
             errors.Add("CLI command override must be a single path or command.");
         }
 
-        if (LooksSensitive(overrideText))
+        if (LooksSensitive(normalizedOverride))
         {
             errors.Add("CLI command override must not contain tokens, cookies, or auth values.");
         }

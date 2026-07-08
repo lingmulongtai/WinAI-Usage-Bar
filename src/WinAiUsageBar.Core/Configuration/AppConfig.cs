@@ -123,6 +123,44 @@ public sealed class ApiKeySettings
 public sealed class CliCommandSettings
 {
     public string? CommandPathOverride { get; set; }
+
+    public static string? NormalizeCommandPathOverride(string? value)
+    {
+        var trimmed = TrimToNull(value);
+        if (trimmed is null)
+        {
+            return null;
+        }
+
+        if (!HasBalancedOuterQuotes(trimmed))
+        {
+            return trimmed;
+        }
+
+        return TrimToNull(trimmed[1..^1]);
+    }
+
+    public static bool HasInvalidCommandPathOverrideQuotes(string? value)
+    {
+        var trimmed = TrimToNull(value);
+        if (trimmed is null || !trimmed.Contains('"', StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return !HasBalancedOuterQuotes(trimmed)
+            || trimmed[1..^1].Contains('"', StringComparison.Ordinal);
+    }
+
+    private static bool HasBalancedOuterQuotes(string value)
+    {
+        return value.Length >= 2 && value[0] == '"' && value[^1] == '"';
+    }
+
+    private static string? TrimToNull(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
 }
 
 public sealed class GitHubCopilotSettings

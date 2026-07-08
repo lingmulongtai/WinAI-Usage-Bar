@@ -166,6 +166,28 @@ public sealed class ProviderAdapterTests
     }
 
     [Fact]
+    public async Task CodexAppServerProviderAdapter_NormalizesQuotedCommandOverrideBeforeClient()
+    {
+        var descriptor = ProviderDescriptors.Get(ProviderId.Codex);
+        var commandProbe = new CountingCommandProbe(CommandProbeResult.Missing("codex"));
+        var client = new RecordingCodexClient(new UnauthorizedAccessException("auth required"));
+        var config = ProviderConfig.CreateDefault(descriptor);
+        config.SourceKind = DataSourceKind.LocalAppServer;
+        config.Cli.CommandPathOverride = " \"C:\\Program Files\\Codex\\codex.cmd\" ";
+        var adapter = new CodexAppServerProviderAdapter(
+            descriptor,
+            commandProbe,
+            client);
+
+        await adapter.FetchAsync(
+            new ProviderFetchContext(config, DateTimeOffset.UtcNow, "test"),
+            CancellationToken.None);
+
+        Assert.Equal(0, commandProbe.InspectCount);
+        Assert.Equal(@"C:\Program Files\Codex\codex.cmd", Assert.Single(client.LastProbe?.Paths ?? []));
+    }
+
+    [Fact]
     public async Task CodexAppServerProviderAdapter_FallsBackToPathProbeWithoutCommandOverride()
     {
         var descriptor = ProviderDescriptors.Get(ProviderId.Codex);
