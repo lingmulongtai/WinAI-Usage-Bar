@@ -61,7 +61,7 @@ Overall:
 - Diagnostics exports also use create-new writes and suffix duplicate timestamp names instead of overwriting same-second support bundles.
 - Privacy & Data and `--health-report` now include non-secret storage pressure guidance for history, backups, diagnostics exports, crash reports, and diagnostics logs, plus recovery guidance for backup, restore, reset, diagnostics export choices, and persisted startup update status.
 - Privacy & Data now lists recent crash report metadata, including timestamp, source, exception type, app version, size, path, and parse status, without showing crash message or stack trace contents.
-- Startup and WinUI unhandled failures now write local redacted JSON crash reports under app data and prune them to a bounded recent set.
+- Startup and WinUI unhandled failures now write local redacted JSON crash reports under app data, redact local user profile paths in payload text, and prune reports to a bounded recent set.
 - Privacy & Data and the CLI can prune old config backups, diagnostics exports, and app-generated crash reports while keeping the newest matched files and leaving config, cache, logs, updates, unrelated files, and `secrets/` alone.
 - Windows shell dogfooding now has a concrete manual verification checklist and a timestamped local report script.
 - The issue and commit history is becoming meaningful rather than fake contribution noise.

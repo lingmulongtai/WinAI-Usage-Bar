@@ -89,10 +89,10 @@ public static partial class DiagnosticRedactor
     [GeneratedRegex(@"(?i)((?:""?(?:email|userEmail|accountName|account|organization|org|workspace|enterpriseSlug|enterprise|secretName|patSecretName|commandPathOverride)""?)\s*[:=]\s*)[^\s,;}]+")]
     private static partial Regex SupportExportBareKeyValueRegex();
 
-    [GeneratedRegex(@"(?i)\b[A-Z]:\\\\Users\\\\[^\r\n""'`]+")]
+    [GeneratedRegex(@"(?i)\b[A-Z]:\\\\Users\\\\[^\r\n""'`]+?(?=\s+[A-Za-z_][A-Za-z0-9_-]*\s*[:=]|[\r\n""'`]|$)")]
     private static partial Regex EscapedWindowsUserProfilePathRegex();
 
-    [GeneratedRegex(@"(?i)\b[A-Z]:\\Users\\[^\r\n""'`]+")]
+    [GeneratedRegex(@"(?i)\b[A-Z]:\\Users\\[^\r\n""'`]+?(?=\s+[A-Za-z_][A-Za-z0-9_-]*\s*[:=]|[\r\n""'`]|$)")]
     private static partial Regex WindowsUserProfilePathRegex();
 
     [GeneratedRegex(@"(?i)\b[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}\b")]

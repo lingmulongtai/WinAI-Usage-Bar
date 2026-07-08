@@ -355,7 +355,7 @@ public sealed class CrashReportService(
 
     private string SafeText(string value)
     {
-        var redacted = DiagnosticRedactor.RedactForDisplay(value).Trim();
+        var redacted = DiagnosticRedactor.RedactForSupportExport(value).Trim();
         if (redacted.Length <= maxTextLength)
         {
             return redacted;

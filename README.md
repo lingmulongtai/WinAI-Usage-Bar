@@ -244,7 +244,7 @@ The release workflow builds, tests, publishes, smoke-tests, packages the app, bu
 - Privacy & Data shows non-secret diagnostics metadata only; it does not list secret names or values.
 - Privacy & Data recovery guidance is derived from non-secret diagnostics metadata only.
 - Diagnostics can be exported from Privacy & Data; exports redact common secret shapes, account identifiers, scope/reference fields, local user profile paths, and CLI override paths, use bounded redaction context when truncating large files, omit local app-data and secret-store root paths, never include files under `secrets/`, and avoid overwriting same-second exports by adding a numeric suffix when needed.
-- Crash reports are local JSON files only. They include timestamp, source, exception type, redacted message, redacted stack trace, app version, and optional redacted context. Privacy & Data lists recent crash report metadata only; it does not display message or stack trace contents.
+- Crash reports are local JSON files only. They include timestamp, source, exception type, redacted message, redacted stack trace, app version, and optional redacted context; payload text also redacts local user profile paths. Privacy & Data lists recent crash report metadata only; it does not display message or stack trace contents.
 - Secret values can be saved or deleted by secret name from Privacy & Data; values are never displayed back.
 - Provider snapshots are sanitized before cache/history persistence, and legacy history summaries are sanitized before aggregation.
 - Snapshot cache and retained history can be cleared from Privacy & Data; `config.json` and `secrets/` are left untouched.

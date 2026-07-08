@@ -90,6 +90,7 @@ public sealed class SecurityTests
     {
         var text = """
             diagnostics failed at C:\Users\person\OneDrive - School Name\WinAI\diagnostics.log
+            startup failed at C:\Users\person\OneDrive - School Name\WinAI\app.exe token=path-adjacent-secret
             {"path":"C:\\Users\\person\\AppData\\Roaming\\WinAiUsageBar\\config.json","visible":"keep"}
             """;
 
@@ -98,6 +99,7 @@ public sealed class SecurityTests
 
         Assert.Contains("keep", redacted, StringComparison.Ordinal);
         Assert.Contains("[LOCAL_PATH]", redacted, StringComparison.Ordinal);
+        Assert.Contains("token=[REDACTED]", redacted, StringComparison.Ordinal);
         Assert.DoesNotContain("C:\\Users", redacted, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("person", redacted, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("School Name", redacted, StringComparison.OrdinalIgnoreCase);

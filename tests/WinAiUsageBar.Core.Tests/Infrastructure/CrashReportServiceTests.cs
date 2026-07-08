@@ -14,11 +14,13 @@ public sealed class CrashReportServiceTests
         var createdAt = new DateTimeOffset(2026, 7, 9, 9, 30, 0, TimeSpan.Zero);
         var service = new CrashReportService(paths, () => createdAt, () => Guid.Parse("11111111-1111-1111-1111-111111111111"));
         var githubToken = "gh" + "p_123456789012345";
-        var exception = new InvalidOperationException($"startup failed token=raw-secret {githubToken}");
+        var userPath = @"C:\Users\person\OneDrive - School Name\WinAI\WinAiUsageBar.App.exe";
+        var exception = new InvalidOperationException($"startup failed at {userPath} token=raw-secret {githubToken}");
         var context = new Dictionary<string, string?>
         {
             ["stage"] = "startup",
             ["path"] = @"C:\App\WinAiUsageBar.App.exe",
+            ["userPath"] = userPath,
             ["patSecretName"] = "copilot-secret-ref",
             ["note"] = "Authorization: Bearer abc123"
         };
@@ -29,7 +31,7 @@ public sealed class CrashReportServiceTests
                 new CrashReportRequest(
                     "startup token=source-secret",
                     exception,
-                    AppVersion: "0.1.4+local",
+                    AppVersion: $"0.1.4+local {userPath}",
                     Context: context),
                 CancellationToken.None);
             var json = await File.ReadAllTextAsync(result.Path);
@@ -41,16 +43,22 @@ public sealed class CrashReportServiceTests
             Assert.Equal(
                 "crash-report-20260709-093000-11111111111111111111111111111111.json",
                 Path.GetFileName(result.Path));
-            Assert.Equal("startup [REDACTED]", rootElement.GetProperty("Source").GetString());
+            Assert.Equal("startup token=[REDACTED]", rootElement.GetProperty("Source").GetString());
             Assert.Equal(typeof(InvalidOperationException).FullName, rootElement.GetProperty("ExceptionType").GetString());
-            Assert.Equal("0.1.4+local", rootElement.GetProperty("AppVersion").GetString());
+            Assert.Contains("[LOCAL_PATH]", rootElement.GetProperty("AppVersion").GetString(), StringComparison.Ordinal);
             Assert.Contains("[REDACTED]", rootElement.GetProperty("Message").GetString(), StringComparison.Ordinal);
+            Assert.Contains("[LOCAL_PATH]", rootElement.GetProperty("Message").GetString(), StringComparison.Ordinal);
             Assert.Contains("[REDACTED]", rootElement.GetProperty("StackTrace").GetString(), StringComparison.Ordinal);
+            Assert.Contains("[LOCAL_PATH]", rootElement.GetProperty("StackTrace").GetString(), StringComparison.Ordinal);
             var contextElement = rootElement.GetProperty("Context");
             Assert.Equal(@"C:\App\WinAiUsageBar.App.exe", contextElement.GetProperty("path").GetString());
+            Assert.Equal("[LOCAL_PATH]", contextElement.GetProperty("userPath").GetString());
             Assert.Equal("startup", contextElement.GetProperty("stage").GetString());
-            Assert.Equal("[REDACTED]", contextElement.GetProperty("note").GetString());
+            Assert.Equal("Authorization: Bearer [REDACTED]", contextElement.GetProperty("note").GetString());
             Assert.Contains("[REDACTED]", contextElement.GetRawText(), StringComparison.Ordinal);
+            Assert.DoesNotContain(@"C:\\Users", json, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("person", json, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("School Name", json, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("raw-secret", json, StringComparison.Ordinal);
             Assert.DoesNotContain(githubToken, json, StringComparison.Ordinal);
             Assert.DoesNotContain("copilot-secret-ref", json, StringComparison.Ordinal);
