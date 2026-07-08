@@ -98,6 +98,7 @@ public sealed class RefreshSettingsPageViewModelTests
         config.Updates.LastPackageAssetName = "WinAIUsageBar-0.2.0-win-x64.zip";
         config.Updates.LastPackageChecksumAssetName = "WinAIUsageBar-0.2.0-win-x64.zip.sha256";
         config.Updates.LastPackagePath = @"C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\WinAIUsageBar-0.2.0-win-x64.zip";
+        config.Updates.LastPackageChecksumPath = @"C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\WinAIUsageBar-0.2.0-win-x64.zip.sha256";
         config.Updates.LastInstallerAssetName = "WinAIUsageBar-0.2.0-setup.exe";
         config.Updates.LastInstallerChecksumAssetName = "WinAIUsageBar-0.2.0-setup.exe.sha256";
         config.Updates.LastInstallScriptPath = @"C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\install-1\apply-update.ps1";
@@ -118,6 +119,8 @@ public sealed class RefreshSettingsPageViewModelTests
         Assert.Contains("Package checksum asset: WinAIUsageBar-0.2.0-win-x64.zip.sha256", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("Package path:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("WinAIUsageBar-0.2.0-win-x64.zip", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.Contains("Checksum path:", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.Contains("WinAIUsageBar-0.2.0-win-x64.zip.sha256", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("Installer asset: WinAIUsageBar-0.2.0-setup.exe", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("Installer checksum asset: WinAIUsageBar-0.2.0-setup.exe.sha256", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.Contains("Install script:", viewModel.UpdateStatusText, StringComparison.Ordinal);
@@ -144,6 +147,7 @@ public sealed class RefreshSettingsPageViewModelTests
         config.Updates.LastPackageAssetName = "WinAIUsageBar.zip token=package-secret";
         config.Updates.LastPackageChecksumAssetName = "WinAIUsageBar.zip.sha256 secret=package-checksum-secret";
         config.Updates.LastPackagePath = @"C:\Updates\token=sample-secret-value\WinAIUsageBar.zip";
+        config.Updates.LastPackageChecksumPath = @"C:\Updates\secret=package-checksum-path-secret\WinAIUsageBar.zip.sha256";
         config.Updates.LastInstallerAssetName = "setup.exe token=installer-secret";
         config.Updates.LastInstallerChecksumAssetName = "setup.exe.sha256 secret=checksum-secret";
         config.Updates.LastInstallScriptPath = @"C:\Updates\secret=script-secret\apply-update.ps1";
@@ -163,6 +167,7 @@ public sealed class RefreshSettingsPageViewModelTests
         Assert.DoesNotContain("install-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("package-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("package-checksum-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("package-checksum-path-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("installer-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("checksum-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("script-secret", viewModel.UpdateStatusText, StringComparison.Ordinal);
@@ -191,6 +196,7 @@ public sealed class RefreshSettingsPageViewModelTests
         Assert.DoesNotContain("Package asset:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("Package checksum asset:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("Package path:", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("Checksum path:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("Installer asset:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("Installer checksum asset:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("Install script:", viewModel.UpdateStatusText, StringComparison.Ordinal);

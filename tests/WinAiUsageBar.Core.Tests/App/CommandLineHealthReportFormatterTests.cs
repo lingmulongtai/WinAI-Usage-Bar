@@ -105,6 +105,7 @@ public sealed class CommandLineHealthReportFormatterTests
             LastPackageAssetName = "WinAIUsageBar-0.1.5-win-x64.zip",
             LastPackageChecksumAssetName = "WinAIUsageBar-0.1.5-win-x64.zip.sha256",
             LastPackagePath = @"C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\WinAIUsageBar-0.1.5-win-x64.zip",
+            LastPackageChecksumPath = @"C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\WinAIUsageBar-0.1.5-win-x64.zip.sha256",
             LastInstallerAssetName = "WinAIUsageBar-0.1.5-setup.exe",
             LastInstallerChecksumAssetName = "WinAIUsageBar-0.1.5-setup.exe.sha256",
             LastInstallScriptPath = @"C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\install-1\apply-update.ps1",
@@ -147,6 +148,7 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.Contains("Package asset: WinAIUsageBar-0.1.5-win-x64.zip", report, StringComparison.Ordinal);
         Assert.Contains("Package checksum asset: WinAIUsageBar-0.1.5-win-x64.zip.sha256", report, StringComparison.Ordinal);
         Assert.Contains(@"Package path: C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\WinAIUsageBar-0.1.5-win-x64.zip", report, StringComparison.Ordinal);
+        Assert.Contains(@"Checksum path: C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\WinAIUsageBar-0.1.5-win-x64.zip.sha256", report, StringComparison.Ordinal);
         Assert.Contains("Installer asset: WinAIUsageBar-0.1.5-setup.exe", report, StringComparison.Ordinal);
         Assert.Contains("Installer checksum asset: WinAIUsageBar-0.1.5-setup.exe.sha256", report, StringComparison.Ordinal);
         Assert.Contains(@"Install script: C:\Users\test\AppData\Roaming\WinAiUsageBar\updates\install-1\apply-update.ps1", report, StringComparison.Ordinal);
@@ -208,6 +210,7 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.Contains("Package asset: n/a", report, StringComparison.Ordinal);
         Assert.Contains("Package checksum asset: n/a", report, StringComparison.Ordinal);
         Assert.Contains("Package path: n/a", report, StringComparison.Ordinal);
+        Assert.Contains("Checksum path: n/a", report, StringComparison.Ordinal);
         Assert.Contains("Installer asset: n/a", report, StringComparison.Ordinal);
         Assert.Contains("Installer checksum asset: n/a", report, StringComparison.Ordinal);
         Assert.Contains("Install script: n/a", report, StringComparison.Ordinal);
@@ -227,6 +230,7 @@ public sealed class CommandLineHealthReportFormatterTests
             LastReleasePageUrl = "https://example.test/releases/v0.1.5?token=release-secret",
             LastPackageAssetName = "WinAIUsageBar.zip token=package-secret",
             LastPackageChecksumAssetName = "WinAIUsageBar.zip.sha256 secret=package-checksum-secret",
+            LastPackageChecksumPath = @"C:\Updates\token=package-checksum-path-secret\WinAIUsageBar.zip.sha256",
             LastInstallerAssetName = "WinAIUsageBar-setup.exe token=installer-secret",
             LastInstallerChecksumAssetName = "WinAIUsageBar-setup.exe.sha256 secret=checksum-secret"
         };
@@ -247,6 +251,7 @@ public sealed class CommandLineHealthReportFormatterTests
         Assert.DoesNotContain("release-secret", report, StringComparison.Ordinal);
         Assert.DoesNotContain("package-secret", report, StringComparison.Ordinal);
         Assert.DoesNotContain("package-checksum-secret", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("package-checksum-path-secret", report, StringComparison.Ordinal);
         Assert.DoesNotContain("installer-secret", report, StringComparison.Ordinal);
         Assert.DoesNotContain("checksum-secret", report, StringComparison.Ordinal);
         Assert.DoesNotContain("token", report, StringComparison.OrdinalIgnoreCase);

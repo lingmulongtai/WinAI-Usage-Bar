@@ -279,6 +279,12 @@ public static class CommandLineActions
             cancellationToken).ConfigureAwait(false);
         if (!update.IsUpdateAvailable || update.Package is null || update.Checksum is null)
         {
+            await SaveCliUpdateDownloadStatusAsync(
+                update,
+                download: null,
+                paths,
+                persistDownloadStatus: string.IsNullOrWhiteSpace(currentVersionOverride),
+                cancellationToken).ConfigureAwait(false);
             var exitCode = update.Status == UpdateCheckStatus.Error ? 1 : 0;
             return new CommandLineActionResult(
                 CommandLineUpdateDownloadFormatter.Format(update, download: null),
@@ -293,6 +299,12 @@ public static class CommandLineActions
         var isFailure = download.Status is UpdateDownloadStatus.Error
             or UpdateDownloadStatus.InvalidAsset
             or UpdateDownloadStatus.ChecksumMismatch;
+        await SaveCliUpdateDownloadStatusAsync(
+            update,
+            download,
+            paths,
+            persistDownloadStatus: string.IsNullOrWhiteSpace(currentVersionOverride),
+            cancellationToken).ConfigureAwait(false);
 
         return new CommandLineActionResult(
             CommandLineUpdateDownloadFormatter.Format(update, download),
@@ -482,6 +494,58 @@ public static class CommandLineActions
         config.Updates.LastInstallerChecksumAssetName = result.InstallerChecksum?.Name;
         config.Updates.LastCheckedAt = DateTimeOffset.Now;
         await configStore.SaveAsync(config, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task SaveCliUpdateDownloadStatusAsync(
+        ReleaseUpdateCheckResult update,
+        UpdateDownloadResult? download,
+        AppDataPaths paths,
+        bool persistDownloadStatus,
+        CancellationToken cancellationToken)
+    {
+        var configStore = new JsonAppConfigStore(paths);
+        var config = await configStore.LoadAsync(cancellationToken).ConfigureAwait(false);
+        if (persistDownloadStatus)
+        {
+            config.Updates.LastStatus = ToStartupUpdateDownloadStatus(update, download).ToString();
+            config.Updates.LastMessage = download?.Message ?? update.Message;
+            config.Updates.LastCurrentVersion = update.CurrentVersion;
+            if (download?.Status is UpdateDownloadStatus.Downloaded)
+            {
+                config.Updates.LastPackagePath = download.PackagePath;
+                config.Updates.LastPackageChecksumPath = download.ChecksumPath;
+            }
+            else
+            {
+                config.Updates.LastPackagePath = null;
+                config.Updates.LastPackageChecksumPath = null;
+            }
+        }
+
+        config.Updates.LastLatestVersion = update.LatestVersion;
+        config.Updates.LastReleasePageUrl = update.ReleasePageUrl?.ToString();
+        config.Updates.LastPackageAssetName = update.Package?.Name;
+        config.Updates.LastPackageChecksumAssetName = update.Checksum?.Name;
+        config.Updates.LastInstallerAssetName = update.Installer?.Name;
+        config.Updates.LastInstallerChecksumAssetName = update.InstallerChecksum?.Name;
+        config.Updates.LastCheckedAt = DateTimeOffset.Now;
+        await configStore.SaveAsync(config, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static StartupUpdateStatus ToStartupUpdateDownloadStatus(
+        ReleaseUpdateCheckResult update,
+        UpdateDownloadResult? download)
+    {
+        if (download is null)
+        {
+            return update.Status is UpdateCheckStatus.UpToDate or UpdateCheckStatus.NoRelease
+                ? StartupUpdateStatus.NoUpdate
+                : StartupUpdateStatus.UpdateCheckFailed;
+        }
+
+        return download.Status is UpdateDownloadStatus.Downloaded
+            ? StartupUpdateStatus.Downloaded
+            : StartupUpdateStatus.DownloadFailed;
     }
 
     public static async Task<CommandLineActionResult> PruneSupportArtifactsAsync(

@@ -318,6 +318,7 @@ public sealed class AppHostTests
         Assert.Equal("WinAIUsageBar-0.2.0-setup.exe", config.Updates.LastInstallerAssetName);
         Assert.Equal("WinAIUsageBar-0.2.0-setup.exe.sha256", config.Updates.LastInstallerChecksumAssetName);
         Assert.Equal(Path.Combine(paths.UpdatesDirectory, "WinAIUsageBar-0.2.0-win-x64.zip"), config.Updates.LastPackagePath);
+        Assert.Equal(Path.Combine(paths.UpdatesDirectory, "WinAIUsageBar-0.2.0-win-x64.zip.sha256"), config.Updates.LastPackageChecksumPath);
         Assert.Equal(Path.Combine(paths.UpdatesDirectory, "install-1", "apply-update.ps1"), config.Updates.LastInstallScriptPath);
         Assert.Equal(Path.Combine(paths.UpdatesDirectory, "install-1", "install-result.json"), config.Updates.LastInstallResultPath);
         Assert.Equal("0.2.0", config.Updates.LastInstallLaunchedVersion);

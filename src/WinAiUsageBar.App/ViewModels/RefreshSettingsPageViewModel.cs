@@ -148,6 +148,11 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
             lines.Add($"Package path: {SafeValue(updates.LastPackagePath)}");
         }
 
+        if (!string.IsNullOrWhiteSpace(updates.LastPackageChecksumPath))
+        {
+            lines.Add($"Checksum path: {SafeValue(updates.LastPackageChecksumPath)}");
+        }
+
         if (!string.IsNullOrWhiteSpace(updates.LastInstallerAssetName))
         {
             lines.Add($"Installer asset: {SafeValue(updates.LastInstallerAssetName)}");

@@ -889,15 +889,60 @@ public sealed class CommandLineActionsTests
             updateCheck,
             downloader,
             paths,
-            CancellationToken.None,
-            currentVersionOverride: "0.1.2");
+            CancellationToken.None);
+        var config = await new JsonAppConfigStore(paths).LoadAsync(CancellationToken.None);
 
         Assert.Equal(0, result.ExitCode);
-        Assert.Equal("0.1.2", updateCheck.LastCurrentVersion);
+        Assert.Equal("0.1.0", updateCheck.LastCurrentVersion);
         Assert.Equal(1, downloader.DownloadCount);
         Assert.Contains("Update download", result.Output, StringComparison.Ordinal);
         Assert.Contains("Download status: Downloaded", result.Output, StringComparison.Ordinal);
         Assert.Contains("Package path:", result.Output, StringComparison.Ordinal);
+        Assert.Equal("Downloaded", config.Updates.LastStatus);
+        Assert.Equal("downloaded", config.Updates.LastMessage);
+        Assert.Equal("0.1.0", config.Updates.LastCurrentVersion);
+        Assert.Equal("0.2.0", config.Updates.LastLatestVersion);
+        Assert.Equal("WinAIUsageBar-0.2.0-win-x64.zip", config.Updates.LastPackageAssetName);
+        Assert.Equal("WinAIUsageBar-0.2.0-win-x64.zip.sha256", config.Updates.LastPackageChecksumAssetName);
+        Assert.Equal(Path.Combine(paths.UpdatesDirectory, "WinAIUsageBar-0.2.0-win-x64.zip"), config.Updates.LastPackagePath);
+        Assert.Equal(Path.Combine(paths.UpdatesDirectory, "WinAIUsageBar-0.2.0-win-x64.zip.sha256"), config.Updates.LastPackageChecksumPath);
+        Assert.NotNull(config.Updates.LastCheckedAt);
+    }
+
+    [Fact]
+    public async Task DownloadUpdateAsync_DoesNotPersistDogfoodDownloadPaths()
+    {
+        var paths = TestPaths();
+        var updateCheck = new FakeUpdateCheckService(AvailableUpdate());
+        var downloader = new FakeUpdatePackageDownloader(new UpdateDownloadResult(
+            UpdateDownloadStatus.Downloaded,
+            "downloaded",
+            Path.Combine(paths.UpdatesDirectory, "WinAIUsageBar-0.2.0-win-x64.zip"),
+            Path.Combine(paths.UpdatesDirectory, "WinAIUsageBar-0.2.0-win-x64.zip.sha256"),
+            ExpectedSha256: new string('a', 64),
+            ActualSha256: new string('a', 64)));
+
+        var result = await CommandLineActions.DownloadUpdateAsync(
+            new AppInfo("WinAI Usage Bar", "0.1.0.0", "0.1.0"),
+            updateCheck,
+            downloader,
+            paths,
+            CancellationToken.None,
+            currentVersionOverride: "0.1.2");
+        var config = await new JsonAppConfigStore(paths).LoadAsync(CancellationToken.None);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("0.1.2", updateCheck.LastCurrentVersion);
+        Assert.Equal(1, downloader.DownloadCount);
+        Assert.Null(config.Updates.LastStatus);
+        Assert.Null(config.Updates.LastMessage);
+        Assert.Null(config.Updates.LastCurrentVersion);
+        Assert.Equal("0.2.0", config.Updates.LastLatestVersion);
+        Assert.Equal("WinAIUsageBar-0.2.0-win-x64.zip", config.Updates.LastPackageAssetName);
+        Assert.Equal("WinAIUsageBar-0.2.0-win-x64.zip.sha256", config.Updates.LastPackageChecksumAssetName);
+        Assert.Null(config.Updates.LastPackagePath);
+        Assert.Null(config.Updates.LastPackageChecksumPath);
+        Assert.NotNull(config.Updates.LastCheckedAt);
     }
 
     [Fact]
@@ -926,10 +971,16 @@ public sealed class CommandLineActionsTests
             downloader,
             paths,
             CancellationToken.None);
+        var config = await new JsonAppConfigStore(paths).LoadAsync(CancellationToken.None);
 
         Assert.Equal(0, result.ExitCode);
         Assert.Equal(0, downloader.DownloadCount);
         Assert.Contains("Download status: Skipped", result.Output, StringComparison.Ordinal);
+        Assert.Equal("NoUpdate", config.Updates.LastStatus);
+        Assert.Equal("The current app version is up to date.", config.Updates.LastMessage);
+        Assert.Equal("0.1.0", config.Updates.LastCurrentVersion);
+        Assert.Null(config.Updates.LastPackagePath);
+        Assert.Null(config.Updates.LastPackageChecksumPath);
     }
 
     [Fact]
@@ -950,10 +1001,16 @@ public sealed class CommandLineActionsTests
             downloader,
             paths,
             CancellationToken.None);
+        var config = await new JsonAppConfigStore(paths).LoadAsync(CancellationToken.None);
 
         Assert.Equal(1, result.ExitCode);
         Assert.Equal(1, downloader.DownloadCount);
         Assert.Contains("Download status: ChecksumMismatch", result.Output, StringComparison.Ordinal);
+        Assert.Equal("DownloadFailed", config.Updates.LastStatus);
+        Assert.Equal("hash mismatch", config.Updates.LastMessage);
+        Assert.Equal("0.1.0", config.Updates.LastCurrentVersion);
+        Assert.Null(config.Updates.LastPackagePath);
+        Assert.Null(config.Updates.LastPackageChecksumPath);
     }
 
     [Fact]

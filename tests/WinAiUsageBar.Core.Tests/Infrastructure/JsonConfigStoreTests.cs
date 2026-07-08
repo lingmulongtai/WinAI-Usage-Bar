@@ -30,6 +30,7 @@ public sealed class JsonConfigStoreTests
         config.Updates.LastReleasePageUrl = "https://example.test/releases/v0.2.0";
         config.Updates.LastPackageAssetName = "WinAIUsageBar-0.2.0-win-x64.zip";
         config.Updates.LastPackageChecksumAssetName = "WinAIUsageBar-0.2.0-win-x64.zip.sha256";
+        config.Updates.LastPackageChecksumPath = @"C:\Updates\WinAIUsageBar-0.2.0-win-x64.zip.sha256";
         config.Updates.LastInstallerAssetName = "WinAIUsageBar-0.2.0-setup.exe";
         config.Updates.LastInstallerChecksumAssetName = "WinAIUsageBar-0.2.0-setup.exe.sha256";
 
@@ -51,6 +52,7 @@ public sealed class JsonConfigStoreTests
         Assert.Equal("https://example.test/releases/v0.2.0", reloaded.Updates.LastReleasePageUrl);
         Assert.Equal("WinAIUsageBar-0.2.0-win-x64.zip", reloaded.Updates.LastPackageAssetName);
         Assert.Equal("WinAIUsageBar-0.2.0-win-x64.zip.sha256", reloaded.Updates.LastPackageChecksumAssetName);
+        Assert.Equal(@"C:\Updates\WinAIUsageBar-0.2.0-win-x64.zip.sha256", reloaded.Updates.LastPackageChecksumPath);
         Assert.Equal("WinAIUsageBar-0.2.0-setup.exe", reloaded.Updates.LastInstallerAssetName);
         Assert.Equal("WinAIUsageBar-0.2.0-setup.exe.sha256", reloaded.Updates.LastInstallerChecksumAssetName);
 
@@ -115,6 +117,7 @@ public sealed class JsonConfigStoreTests
             "lastReleasePageUrl": "   ",
             "lastPackageAssetName": "   ",
             "lastPackageChecksumAssetName": "",
+            "lastPackageChecksumPath": "   ",
             "lastInstallerAssetName": "   ",
             "lastInstallerChecksumAssetName": ""
           }
@@ -153,6 +156,7 @@ public sealed class JsonConfigStoreTests
             Assert.Null(config.Updates.LastReleasePageUrl);
             Assert.Null(config.Updates.LastPackageAssetName);
             Assert.Null(config.Updates.LastPackageChecksumAssetName);
+            Assert.Null(config.Updates.LastPackageChecksumPath);
             Assert.Null(config.Updates.LastInstallerAssetName);
             Assert.Null(config.Updates.LastInstallerChecksumAssetName);
             Assert.Equal(123, config.Widget.Left);

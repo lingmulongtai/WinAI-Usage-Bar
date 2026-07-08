@@ -131,6 +131,7 @@ public static class CommandLineHealthReportFormatter
         builder.AppendLine($"  Package asset: {SafeValue(updates.LastPackageAssetName)}");
         builder.AppendLine($"  Package checksum asset: {SafeValue(updates.LastPackageChecksumAssetName)}");
         builder.AppendLine($"  Package path: {SafeValue(updates.LastPackagePath)}");
+        builder.AppendLine($"  Checksum path: {SafeValue(updates.LastPackageChecksumPath)}");
         builder.AppendLine($"  Installer asset: {SafeValue(updates.LastInstallerAssetName)}");
         builder.AppendLine($"  Installer checksum asset: {SafeValue(updates.LastInstallerChecksumAssetName)}");
         builder.AppendLine($"  Install script: {SafeValue(updates.LastInstallScriptPath)}");

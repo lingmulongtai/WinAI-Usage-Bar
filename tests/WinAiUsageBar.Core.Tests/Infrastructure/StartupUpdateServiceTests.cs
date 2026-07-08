@@ -36,6 +36,7 @@ public sealed class StartupUpdateServiceTests
         config.Updates.LastReleasePageUrl = "https://example.test/releases/v0.1.0";
         config.Updates.LastPackageAssetName = "WinAIUsageBar-0.1.0-win-x64.zip";
         config.Updates.LastPackageChecksumAssetName = "WinAIUsageBar-0.1.0-win-x64.zip.sha256";
+        config.Updates.LastPackageChecksumPath = @"C:\Updates\WinAIUsageBar-0.1.0-win-x64.zip.sha256";
         config.Updates.LastInstallerAssetName = "WinAIUsageBar-0.1.0-setup.exe";
         config.Updates.LastInstallerChecksumAssetName = "WinAIUsageBar-0.1.0-setup.exe.sha256";
         var store = new InMemoryConfigStore(config);
@@ -51,6 +52,7 @@ public sealed class StartupUpdateServiceTests
         Assert.Equal("https://example.test/releases/v0.1.0", config.Updates.LastReleasePageUrl);
         Assert.Equal("WinAIUsageBar-0.1.0-win-x64.zip", config.Updates.LastPackageAssetName);
         Assert.Equal("WinAIUsageBar-0.1.0-win-x64.zip.sha256", config.Updates.LastPackageChecksumAssetName);
+        Assert.Equal(@"C:\Updates\WinAIUsageBar-0.1.0-win-x64.zip.sha256", config.Updates.LastPackageChecksumPath);
         Assert.Equal("WinAIUsageBar-0.1.0-setup.exe", config.Updates.LastInstallerAssetName);
         Assert.Equal("WinAIUsageBar-0.1.0-setup.exe.sha256", config.Updates.LastInstallerChecksumAssetName);
         Assert.Contains("still fresh", config.Updates.LastMessage, StringComparison.OrdinalIgnoreCase);
@@ -165,6 +167,7 @@ public sealed class StartupUpdateServiceTests
         Assert.Equal(0, preparation.PrepareCount);
         Assert.Equal(Path.Combine(paths.UpdatesDirectory, "WinAIUsageBar-0.2.0-win-x64.zip"), result.PackagePath);
         Assert.Equal(result.PackagePath, config.Updates.LastPackagePath);
+        Assert.Equal(Path.Combine(paths.UpdatesDirectory, "WinAIUsageBar-0.2.0-win-x64.zip.sha256"), config.Updates.LastPackageChecksumPath);
         Assert.Null(config.Updates.LastInstallScriptPath);
     }
 
@@ -210,6 +213,7 @@ public sealed class StartupUpdateServiceTests
         config.Updates.InstallAutomatically = true;
         config.Updates.LastInstallLaunchedVersion = "0.2.0";
         config.Updates.LastPackagePath = @"C:\Updates\package.zip";
+        config.Updates.LastPackageChecksumPath = @"C:\Updates\package.zip.sha256";
         config.Updates.LastInstallScriptPath = @"C:\Updates\install\apply-update.ps1";
         var store = new InMemoryConfigStore(config);
         var updateCheck = new FakeUpdateCheckService(UpdateAvailable());
@@ -234,6 +238,7 @@ public sealed class StartupUpdateServiceTests
         Assert.Equal("0.2.0", config.Updates.LastInstallLaunchedVersion);
         Assert.Equal(Now, config.Updates.LastCheckedAt);
         Assert.Equal(@"C:\Updates\package.zip", result.PackagePath);
+        Assert.Equal(@"C:\Updates\package.zip.sha256", config.Updates.LastPackageChecksumPath);
         Assert.Equal(@"C:\Updates\install\apply-update.ps1", result.InstallScriptPath);
         Assert.Equal(@"C:\Updates\install\install-result.json", result.InstallResultPath);
     }

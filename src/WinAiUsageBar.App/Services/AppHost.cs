@@ -608,6 +608,7 @@ public sealed class AppHost : IAsyncDisposable
         }
 
         config.Updates.LastPackagePath = result.Download?.PackagePath;
+        config.Updates.LastPackageChecksumPath = result.Download?.ChecksumPath;
         var nextInstallScriptPath = result.Preparation?.ScriptPath ?? result.Launch?.ScriptPath;
         if (!string.IsNullOrWhiteSpace(nextInstallScriptPath))
         {

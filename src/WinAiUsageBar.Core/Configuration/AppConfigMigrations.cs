@@ -113,6 +113,7 @@ public static class AppConfigMigrations
         updates.LastPackageAssetName = NullIfWhiteSpace(updates.LastPackageAssetName);
         updates.LastPackageChecksumAssetName = NullIfWhiteSpace(updates.LastPackageChecksumAssetName);
         updates.LastPackagePath = NullIfWhiteSpace(updates.LastPackagePath);
+        updates.LastPackageChecksumPath = NullIfWhiteSpace(updates.LastPackageChecksumPath);
         updates.LastInstallerAssetName = NullIfWhiteSpace(updates.LastInstallerAssetName);
         updates.LastInstallerChecksumAssetName = NullIfWhiteSpace(updates.LastInstallerChecksumAssetName);
         updates.LastInstallScriptPath = NullIfWhiteSpace(updates.LastInstallScriptPath);
