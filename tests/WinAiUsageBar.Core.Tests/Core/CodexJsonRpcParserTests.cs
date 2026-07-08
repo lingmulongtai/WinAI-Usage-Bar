@@ -230,6 +230,128 @@ public sealed class CodexJsonRpcParserTests
     }
 
     [Fact]
+    public void ParseUsageWindow_ParsesDeepNestedDataCurrentWindow()
+    {
+        var now = new DateTimeOffset(2026, 7, 8, 10, 0, 0, TimeSpan.Zero);
+        const string json = """
+        {
+          "result": {
+            "data": {
+              "current": {
+                "usedAmount": 42,
+                "limitAmount": 100,
+                "remainingAmount": 58,
+                "unit": "messages",
+                "resetAfterSeconds": 3600
+              }
+            }
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json, now: now);
+
+        Assert.Equal(42, window?.Used);
+        Assert.Equal(100, window?.Limit);
+        Assert.Equal(42, window?.UsedPercent);
+        Assert.Equal(58, window?.RemainingPercent);
+        Assert.Equal("messages", window?.Unit);
+        Assert.Equal(now.AddHours(1), window?.ResetsAt);
+    }
+
+    [Fact]
+    public void ParseUsageWindow_PrefersTopLevelWindowBeforeNestedCandidates()
+    {
+        const string json = """
+        {
+          "result": {
+            "used": 10,
+            "limit": 100,
+            "usage": {
+              "used": 90,
+              "limit": 100
+            }
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json);
+
+        Assert.Equal(10, window?.Used);
+        Assert.Equal(100, window?.Limit);
+        Assert.Equal(10, window?.UsedPercent);
+        Assert.Equal(90, window?.RemainingPercent);
+    }
+
+    [Fact]
+    public void ParseUsageWindow_PrefersFirstNestedCandidateWithoutMixingLaterCandidates()
+    {
+        const string json = """
+        {
+          "result": {
+            "usage": {
+              "used": 20
+            },
+            "rateLimit": {
+              "limit": 100,
+              "remaining": 40
+            }
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json);
+
+        Assert.Equal(20, window?.Used);
+        Assert.Null(window?.Limit);
+        Assert.Null(window?.RemainingPercent);
+    }
+
+    [Fact]
+    public void CreateSnapshot_ParsesNestedRateLimitWindow()
+    {
+        const string usage = """
+        {
+          "result": {
+            "usage": {
+              "remainingPercent": 70
+            }
+          }
+        }
+        """;
+        const string rateLimits = """
+        {
+          "result": {
+            "data": {
+              "rate_limit": {
+                "used": 82,
+                "limit": 100,
+                "resetDescription": "rolling"
+              }
+            }
+          }
+        }
+        """;
+
+        var data = new CodexAppServerData(
+            AccountJson: null,
+            RateLimitsJson: rateLimits,
+            UsageJson: usage,
+            Diagnostics: []);
+
+        var snapshot = CodexJsonRpcParser.CreateSnapshot(
+            ProviderDescriptors.Get(ProviderId.Codex),
+            data,
+            new DateTimeOffset(2026, 7, 8, 0, 0, 0, TimeSpan.Zero));
+
+        Assert.Equal(70, snapshot.PrimaryWindow?.RemainingPercent);
+        Assert.Equal("Codex rate limit", snapshot.SecondaryWindow?.Label);
+        Assert.Equal(82, snapshot.SecondaryWindow?.Used);
+        Assert.Equal(18, snapshot.SecondaryWindow?.RemainingPercent);
+        Assert.Equal("rolling", snapshot.SecondaryWindow?.ResetDescription);
+    }
+
+    [Fact]
     public void ParseUsageWindow_ParsesSnakeCasePercentAndRetryAfterAliases()
     {
         var now = new DateTimeOffset(2026, 7, 8, 10, 0, 0, TimeSpan.Zero);
@@ -269,6 +391,32 @@ public sealed class CodexJsonRpcParserTests
 
         var window = CodexJsonRpcParser.ParseUsageWindow(json);
 
+        Assert.Null(window?.ResetsAt);
+    }
+
+    [Fact]
+    public void ParseUsageWindow_IgnoresSensitiveLookingNestedUsageFields()
+    {
+        const string json = """
+        {
+          "result": {
+            "usage": {
+              "tokenUsed": 99,
+              "used": 25,
+              "limit": 100,
+              "authResetAt": "2026-07-08T12:00:00Z",
+              "unit": "requests"
+            }
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json);
+
+        Assert.Equal(25, window?.Used);
+        Assert.Equal(25, window?.UsedPercent);
+        Assert.Equal(75, window?.RemainingPercent);
+        Assert.Equal("requests", window?.Unit);
         Assert.Null(window?.ResetsAt);
     }
 

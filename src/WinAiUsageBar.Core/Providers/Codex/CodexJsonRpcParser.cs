@@ -8,6 +8,143 @@ namespace WinAiUsageBar.Core.Providers.Codex;
 public static class CodexJsonRpcParser
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly string[] UsedPercentFields =
+    [
+        "usedPercent",
+        "used_percent",
+        "used_pct",
+        "usagePercent",
+        "usage_percent",
+        "usagePct",
+        "usage_pct",
+        "percentUsed",
+        "percent_used",
+        "usedPercentage",
+        "quotaUsedPercent",
+        "quota_used_percent"
+    ];
+    private static readonly string[] RemainingPercentFields =
+    [
+        "remainingPercent",
+        "remaining_percent",
+        "remaining_pct",
+        "percentRemaining",
+        "percent_remaining",
+        "remainingPercentage",
+        "leftPercent",
+        "left_percent",
+        "quotaRemainingPercent",
+        "quota_remaining_percent"
+    ];
+    private static readonly string[] UsedFields =
+    [
+        "used",
+        "usedAmount",
+        "used_amount",
+        "current",
+        "consumed",
+        "consumedAmount",
+        "consumed_amount",
+        "quotaUsed",
+        "quota_used",
+        "usedQuota",
+        "used_quota",
+        "usageUsed",
+        "usage_used"
+    ];
+    private static readonly string[] LimitFields =
+    [
+        "limit",
+        "quota",
+        "maximum",
+        "max",
+        "total",
+        "totalQuota",
+        "total_quota",
+        "quotaLimit",
+        "quota_limit",
+        "limitAmount",
+        "limit_amount",
+        "usageLimit",
+        "usage_limit"
+    ];
+    private static readonly string[] RemainingFields =
+    [
+        "remaining",
+        "remainingAmount",
+        "remaining_amount",
+        "remainingQuota",
+        "remaining_quota",
+        "quotaRemaining",
+        "quota_remaining",
+        "available",
+        "availableQuota",
+        "available_quota"
+    ];
+    private static readonly string[] UnitFields = ["unit", "units"];
+    private static readonly string[] ResetDescriptionFields = ["resetDescription", "resetsIn", "reset"];
+    private static readonly string[] ResetAtFields =
+    [
+        "resetsAt",
+        "resetAt",
+        "resetTime",
+        "resetTimestamp",
+        "resetUnixSeconds",
+        "resetUnixMilliseconds",
+        "resetEpochSeconds",
+        "resetEpochMilliseconds",
+        "resets_at",
+        "reset_at",
+        "reset_time",
+        "reset_timestamp",
+        "reset_unix_seconds",
+        "reset_unix_milliseconds",
+        "reset_epoch_seconds",
+        "reset_epoch_milliseconds"
+    ];
+    private static readonly string[] ResetDurationFields =
+    [
+        "resetsInSeconds",
+        "resetInSeconds",
+        "resetSeconds",
+        "secondsUntilReset",
+        "resetAfterSeconds",
+        "retryAfterSeconds",
+        "resets_in_seconds",
+        "reset_in_seconds",
+        "reset_seconds",
+        "seconds_until_reset",
+        "reset_after_seconds",
+        "retry_after_seconds",
+        "resetsInMilliseconds",
+        "resetInMilliseconds",
+        "resetMilliseconds",
+        "millisecondsUntilReset",
+        "resetAfterMilliseconds",
+        "retryAfterMilliseconds",
+        "resetAfterMs",
+        "retryAfterMs",
+        "resets_in_milliseconds",
+        "reset_in_milliseconds",
+        "reset_milliseconds",
+        "milliseconds_until_reset",
+        "reset_after_milliseconds",
+        "retry_after_milliseconds",
+        "reset_after_ms",
+        "retry_after_ms"
+    ];
+    private static readonly string[] UsageWindowCandidateNames =
+    [
+        "usage",
+        "quota",
+        "limit",
+        "limits",
+        "rateLimit",
+        "rate_limit",
+        "window",
+        "current",
+        "data"
+    ];
 
     public static string CreateRequest(int id, string method)
     {
@@ -112,85 +249,29 @@ public static class CodexJsonRpcParser
             return null;
         }
 
-        var usedPercent = TryGetNumber(
-            result,
-            [
-                "usedPercent",
-                "used_percent",
-                "used_pct",
-                "usagePercent",
-                "usage_percent",
-                "usagePct",
-                "usage_pct",
-                "percentUsed",
-                "percent_used",
-                "usedPercentage",
-                "quotaUsedPercent",
-                "quota_used_percent"
-            ]);
-        var remainingPercent = TryGetNumber(
-            result,
-            [
-                "remainingPercent",
-                "remaining_percent",
-                "remaining_pct",
-                "percentRemaining",
-                "percent_remaining",
-                "remainingPercentage",
-                "leftPercent",
-                "left_percent",
-                "quotaRemainingPercent",
-                "quota_remaining_percent"
-            ]);
-        var used = TryGetNumber(
-            result,
-            [
-                "used",
-                "usedAmount",
-                "used_amount",
-                "current",
-                "consumed",
-                "consumedAmount",
-                "consumed_amount",
-                "quotaUsed",
-                "quota_used",
-                "usedQuota",
-                "used_quota",
-                "usageUsed",
-                "usage_used"
-            ]);
-        var limit = TryGetNumber(
-            result,
-            [
-                "limit",
-                "quota",
-                "maximum",
-                "max",
-                "total",
-                "totalQuota",
-                "total_quota",
-                "quotaLimit",
-                "quota_limit",
-                "limitAmount",
-                "limit_amount",
-                "usageLimit",
-                "usage_limit"
-            ]);
-        var remaining = TryGetNumber(
-            result,
-            [
-                "remaining",
-                "remainingAmount",
-                "remaining_amount",
-                "remainingQuota",
-                "remaining_quota",
-                "quotaRemaining",
-                "quota_remaining",
-                "available",
-                "availableQuota",
-                "available_quota"
-            ]);
-        var unit = TryGetSafeString(result, ["unit", "units"]);
+        foreach (var candidate in EnumerateUsageWindowCandidates(result))
+        {
+            var window = TryParseUsageWindowCandidate(candidate, label, now);
+            if (window is not null)
+            {
+                return window;
+            }
+        }
+
+        return null;
+    }
+
+    private static UsageWindow? TryParseUsageWindowCandidate(
+        JsonElement result,
+        string label,
+        DateTimeOffset? now)
+    {
+        var usedPercent = TryGetDirectNumber(result, UsedPercentFields);
+        var remainingPercent = TryGetDirectNumber(result, RemainingPercentFields);
+        var used = TryGetDirectNumber(result, UsedFields);
+        var limit = TryGetDirectNumber(result, LimitFields);
+        var remaining = TryGetDirectNumber(result, RemainingFields);
+        var unit = TryGetDirectSafeString(result, UnitFields);
 
         if (used is null && remaining is not null && limit is > 0)
         {
@@ -222,59 +303,9 @@ public static class CodexJsonRpcParser
             return null;
         }
 
-        var resetDescription = TryGetSafeString(result, ["resetDescription", "resetsIn", "reset"]);
-        var resetsAt = TryGetDateTime(
-            result,
-            [
-                "resetsAt",
-                "resetAt",
-                "resetTime",
-                "resetTimestamp",
-                "resetUnixSeconds",
-                "resetUnixMilliseconds",
-                "resetEpochSeconds",
-                "resetEpochMilliseconds",
-                "resets_at",
-                "reset_at",
-                "reset_time",
-                "reset_timestamp",
-                "reset_unix_seconds",
-                "reset_unix_milliseconds",
-                "reset_epoch_seconds",
-                "reset_epoch_milliseconds"
-            ]);
-        var resetDuration = TryGetDuration(
-            result,
-            [
-                "resetsInSeconds",
-                "resetInSeconds",
-                "resetSeconds",
-                "secondsUntilReset",
-                "resetAfterSeconds",
-                "retryAfterSeconds",
-                "resets_in_seconds",
-                "reset_in_seconds",
-                "reset_seconds",
-                "seconds_until_reset",
-                "reset_after_seconds",
-                "retry_after_seconds",
-                "resetsInMilliseconds",
-                "resetInMilliseconds",
-                "resetMilliseconds",
-                "millisecondsUntilReset",
-                "resetAfterMilliseconds",
-                "retryAfterMilliseconds",
-                "resetAfterMs",
-                "retryAfterMs",
-                "resets_in_milliseconds",
-                "reset_in_milliseconds",
-                "reset_milliseconds",
-                "milliseconds_until_reset",
-                "reset_after_milliseconds",
-                "retry_after_milliseconds",
-                "reset_after_ms",
-                "retry_after_ms"
-            ]);
+        var resetDescription = TryGetDirectSafeString(result, ResetDescriptionFields);
+        var resetsAt = TryGetDirectDateTime(result, ResetAtFields);
+        var resetDuration = TryGetDirectDuration(result, ResetDurationFields);
 
         if (resetsAt is null && resetDuration is not null && now is not null)
         {
@@ -384,6 +415,111 @@ public static class CodexJsonRpcParser
     {
         var number = TryGetNumber(root, names);
         return number is null ? null : Convert.ToInt64(number.Value);
+    }
+
+    private static string? TryGetDirectSafeString(JsonElement root, string[] names)
+    {
+        if (root.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        foreach (var property in root.EnumerateObject())
+        {
+            if (!names.Contains(property.Name, StringComparer.OrdinalIgnoreCase)
+                || IsSensitiveName(property.Name)
+                || property.Value.ValueKind != JsonValueKind.String)
+            {
+                continue;
+            }
+
+            var text = property.Value.GetString();
+            return string.IsNullOrWhiteSpace(text) ? null : text;
+        }
+
+        return null;
+    }
+
+    private static double? TryGetDirectNumber(JsonElement root, string[] names)
+    {
+        if (root.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        foreach (var property in root.EnumerateObject())
+        {
+            if (!names.Contains(property.Name, StringComparer.OrdinalIgnoreCase) || IsSensitiveName(property.Name))
+            {
+                continue;
+            }
+
+            var number = TryGetNumberValue(property.Value);
+            if (number is not null)
+            {
+                return number;
+            }
+        }
+
+        return null;
+    }
+
+    private static DateTimeOffset? TryGetDirectDateTime(JsonElement root, string[] names)
+    {
+        if (root.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        foreach (var property in root.EnumerateObject())
+        {
+            if (!names.Contains(property.Name, StringComparer.OrdinalIgnoreCase) || IsSensitiveName(property.Name))
+            {
+                continue;
+            }
+
+            if (property.Value.ValueKind == JsonValueKind.String
+                && DateTimeOffset.TryParse(property.Value.GetString(), out var parsed))
+            {
+                return parsed;
+            }
+
+            var timestamp = TryGetNumberValue(property.Value);
+            if (timestamp is not null)
+            {
+                return TryCreateUnixTimestamp(timestamp.Value, property.Name);
+            }
+        }
+
+        return null;
+    }
+
+    private static TimeSpan? TryGetDirectDuration(JsonElement root, string[] names)
+    {
+        if (root.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        foreach (var property in root.EnumerateObject())
+        {
+            if (!names.Contains(property.Name, StringComparer.OrdinalIgnoreCase) || IsSensitiveName(property.Name))
+            {
+                continue;
+            }
+
+            var duration = TryGetNumberValue(property.Value);
+            if (duration is null || duration.Value < 0)
+            {
+                continue;
+            }
+
+            return IsMillisecondField(property.Name)
+                ? TimeSpan.FromMilliseconds(duration.Value)
+                : TimeSpan.FromSeconds(duration.Value);
+        }
+
+        return null;
     }
 
     private static DateTimeOffset? TryGetDateTime(JsonElement root, string[] names)
@@ -526,6 +662,69 @@ public static class CodexJsonRpcParser
             foreach (var item in element.EnumerateArray())
             {
                 foreach (var child in Flatten(item))
+                {
+                    yield return child;
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<JsonElement> EnumerateUsageWindowCandidates(JsonElement result)
+    {
+        yield return result;
+
+        foreach (var candidate in EnumerateNestedUsageWindowCandidates(result, includeObject: false))
+        {
+            yield return candidate;
+        }
+    }
+
+    private static IEnumerable<JsonElement> EnumerateNestedUsageWindowCandidates(
+        JsonElement element,
+        bool includeObject)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in element.EnumerateObject())
+            {
+                var isCandidate = UsageWindowCandidateNames.Contains(
+                    property.Name,
+                    StringComparer.OrdinalIgnoreCase);
+                if (property.Value.ValueKind == JsonValueKind.Object)
+                {
+                    if (includeObject || isCandidate)
+                    {
+                        yield return property.Value;
+                    }
+
+                    foreach (var child in EnumerateNestedUsageWindowCandidates(
+                        property.Value,
+                        includeObject || isCandidate))
+                    {
+                        yield return child;
+                    }
+                }
+                else if (property.Value.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var child in EnumerateNestedUsageWindowCandidates(
+                        property.Value,
+                        includeObject || isCandidate))
+                    {
+                        yield return child;
+                    }
+                }
+            }
+        }
+        else if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in element.EnumerateArray())
+            {
+                if (item.ValueKind == JsonValueKind.Object && includeObject)
+                {
+                    yield return item;
+                }
+
+                foreach (var child in EnumerateNestedUsageWindowCandidates(item, includeObject))
                 {
                     yield return child;
                 }

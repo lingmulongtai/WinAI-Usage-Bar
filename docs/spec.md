@@ -26,7 +26,7 @@ The CLI can persist the same provider command override with `--set-provider-cli-
 
 Codex/ChatGPT app-server initialization is required, but account, rate-limit, and usage method calls should be treated as optional data sources after initialization. A non-auth JSON-RPC error or timeout from one optional method should be recorded as a redacted diagnostic while the client continues to later methods. Auth, login, unauthorized, malformed JSON, closed streams, and process startup failures should still become visible provider failures.
 
-Codex/ChatGPT app-server parsing should tolerate common usage and reset timestamp shapes, including ISO reset strings, Unix seconds, Unix milliseconds, and relative reset seconds, while ignoring sensitive-looking token/auth/secret/cookie/key fields.
+Codex/ChatGPT app-server parsing should tolerate common usage and reset timestamp shapes, including ISO reset strings, Unix seconds, Unix milliseconds, and relative reset seconds, while ignoring sensitive-looking token/auth/secret/cookie/key fields. Usage parsing should also recognize nested usage/rate-limit window objects under common names such as `usage`, `quota`, `limit`, `limits`, `rateLimit`, `rate_limit`, `window`, `current`, and `data`; top-level fields win first, and nested candidates must be parsed as coherent windows instead of mixing values from unrelated objects.
 
 GitHub Copilot supports personal Manual mode without organization metrics. Organization or Enterprise metrics preparation stores only organization/enterprise identifiers and a PAT secret name in config; the PAT value itself must be stored through `ISecretStore`.
 
