@@ -215,6 +215,8 @@ Manual provider values are validated before saving:
 
 The CLI `--smoke-test` command runs without opening WinUI windows. It should use temporary app data to verify default config creation, config round-trip, DPAPI secret round-trip, provider descriptor registration, app service composition, refresh-service initialization, and one non-UI refresh pipeline run with default safe provider sources. It must clean up temporary app data and must not send local notifications.
 
+The test suite should also include a headless UI composition smoke test that constructs the primary shell, provider card, provider details, provider settings, widget settings, first-run setup, refresh settings, diagnostics summary, history summary, and secret editor view models from isolated app data and sample snapshots without launching WinUI windows. This does not replace manual or future automated visual WinUI verification; it is a CI-safe guard against broken non-window UI composition.
+
 The Privacy & Data page can create a diagnostics export under `%AppData%\WinAiUsageBar\diagnostics-exports`. The export may include `config.json`, `snapshots.json`, `history.ndjson`, and `diagnostics.log`, but it must redact common secret shapes at export time and must never include files from `secrets/`. Diagnostics export writes should use create-new semantics and add a numeric filename suffix when the timestamp-based export name already exists.
 
 Diagnostics summary is separate from diagnostics export: the summary is for quick on-screen troubleshooting, while the export creates a redacted text bundle for deeper inspection.

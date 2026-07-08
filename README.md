@@ -40,6 +40,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - Mock and Manual provider modes are implemented.
 - Manual mode can track used/remaining percentage, reset datetime/description, credits, currency/unit, month cost, last-31-day tokens, and notes.
 - CLI `--refresh-once` can run one headless provider refresh and print a safe snapshot summary, including a redacted secondary usage/rate-limit window when available, without launching UI.
+- Tests include a headless UI composition smoke check that constructs the primary shell, provider, settings, widget, diagnostics, history, and secret editor view models without launching WinUI windows. This is not a visual UI automation substitute, but it catches broken non-window UI composition in CI.
 - CLI `--set-provider-cli-override` can save a non-secret command override for CLI/local app-server providers without echoing the value, and `--clear-provider-cli-override` can remove it.
 - CLI `--prune-support-artifacts` can prune old config backups, diagnostics exports, and crash reports without launching UI.
 - CLI `--export-config-backup` can create a config-only backup without launching UI.

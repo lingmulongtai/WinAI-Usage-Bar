@@ -16,7 +16,7 @@ Latest published release: `v0.1.4`. It adds English release-note generation from
 | Windows shell integration | 6/10 | Tray, windows, placement, startup registration, and notifications exist, with duplicate notification suppression plus a manual verification checklist and report scaffold. Actual shell behavior still needs hands-on runs. |
 | Product usability | 6/10 | The app now has guided first-run checklist state, provider details, backup export/restore, and recovery checks, but it is still mostly useful with Mock/Manual data today. |
 | Packaging and release | 9/10 | Self-contained publish, zip packaging, checksums, readiness gates, artifacts, release workflow, English release notes generated from the changelog, published setup assets, update-check, verified download, install-script preparation, rollback-capable guarded script launch with post-install smoke validation, explicit latest-update install orchestration, setup installer artifact/release paths, throttled startup update policy, current-version update dogfooding, and published disposable release-to-release update dogfooding exist. No signing yet. |
-| Test confidence | 8/10 | Core, infrastructure, view model, CLI, storage, parser, refresh, app-composition smoke, and packaging smoke paths are covered without external CLIs. UI runtime coverage remains limited. |
+| Test confidence | 8/10 | Core, infrastructure, view model, CLI, storage, parser, refresh, app-composition smoke, headless UI composition smoke, and packaging smoke paths are covered without external CLIs. Visual UI runtime coverage remains limited. |
 | Observability and support | 8/10 | Diagnostics summary, provider repair guidance, recovery guidance, redacted export, health report, isolated app-data dogfooding, provider dogfooding notes, release dogfooding notes, validation log metadata, logs, and local redacted crash reports are solid for an MVP. No remote crash reporting or crash-report UI yet. |
 
 Overall:
@@ -36,6 +36,7 @@ Overall:
 - Tests now include a repository-level guard against common secret-shaped fixture strings, so redaction samples should use obvious placeholders or runtime-composed patterns instead of committed key-looking literals.
 - Config, snapshots, history, diagnostics, and maintenance flows are all represented in code and tests.
 - CI now builds, tests, publishes, smoke-tests app service composition, packages, and uploads artifacts on `main`.
+- Headless UI composition smoke coverage now constructs the primary shell, provider, settings, widget, diagnostics, history, and secret editor view models from isolated app data without launching WinUI windows.
 - The CLI surface gives useful non-UI checks: help, version, smoke test with app service composition and refresh pipeline coverage, diagnostics export, config backup export/list/validation, health report with storage pressure guidance, recovery guidance, launch targets, and repair hints, provider catalog, provider CLI override setting, support artifact pruning, update checks, verified update downloads, staged install script preparation, guarded prepared-script launch, explicit latest-update install orchestration, headless startup update policy execution, and headless refresh-once.
 - Release readiness checks now cover version metadata, changelog, audit date, published-app smoke test, package presence, installer presence, and checksum validity.
 - The repo now has an Inno Setup build path, checksum generation, CI artifact upload, and release asset wiring for setup executables.
@@ -77,7 +78,7 @@ Overall:
 - Config backup and reset recovery now exist with basic decision guidance, CLI backup inventory, path-based and latest-backup CLI validation/restore entries, and CLI reset-to-default recovery, but they still need repeated dogfooding before they can be treated as comfort features.
 - Local storage growth is visible for history, backups, diagnostics exports, and diagnostics logs, with basic pruning for backups and exports, but the maintenance flow still needs real-use tuning.
 - Local CLI discovery can still be messy on Windows. Provider Details has generic CLI repair guidance, but deeper provider-specific repair checks are still needed for future CLI-backed providers.
-- There is no visual regression or automated UI smoke test for WinUI windows.
+- There is no visual regression or automated WinUI window activation test yet. Headless UI composition coverage exists, but it cannot prove layout, focus, shell integration, or rendering behavior.
 
 ## Risk Register
 

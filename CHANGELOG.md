@@ -32,6 +32,7 @@ All notable changes to WinAI Usage Bar are documented here.
 - Generated update apply scripts now run the updated app's `--smoke-test` before reporting success, roll back on validation failure, and persist non-secret validation status.
 - Generated update apply scripts now retain post-install validation stdout/stderr logs beside `install-result.json`, and startup/health reconciliation persists only redacted log paths plus byte counts.
 - Update dogfood helpers now fall back to script-adjacent result paths when redirected GUI output mangles non-ASCII paths, and current-flow helpers verify validation log metadata.
+- Added a headless UI composition smoke test that constructs the primary settings, provider, widget, diagnostics, history, and shell view models without launching WinUI windows.
 
 ## 0.1.4 - 2026-07-08
 
