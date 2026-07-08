@@ -104,6 +104,14 @@ Create a local Windows setup executable with Inno Setup 6 installed:
 
 The installer script is `installer\WinAIUsageBar.iss`, and the default setup output goes under `artifacts\installer`. The build script publishes the app first unless `-SkipPublish` is passed. It also writes `WinAIUsageBar-<version>-setup.exe.sha256`. If `ISCC.exe` is not on `PATH`, pass `-InnoSetupCompiler <path>` or install Inno Setup 6 locally. Pushes to `main` upload a `WinAIUsageBar-win-x64-installer` artifact from GitHub Actions.
 
+Dogfood a prepared update install against a disposable install directory:
+
+```powershell
+.\scripts\test-update-prepare-apply.ps1 -PackagePath .\artifacts\packages\WinAIUsageBar-0.1.2-win-x64.zip -Apply
+```
+
+The script uses an isolated app-data root under `artifacts\update-dogfood`, prepares `apply-update.ps1`, and only applies it when the install directory stays inside that work directory.
+
 Run the published-app smoke test without opening UI:
 
 ```powershell

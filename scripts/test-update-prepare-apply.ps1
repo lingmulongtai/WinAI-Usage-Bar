@@ -1,0 +1,233 @@
+param(
+    [string]$AppExePath = "",
+    [string]$PackagePath = "",
+    [string]$InstallDirectory = "",
+    [string]$WorkDirectory = "",
+    [switch]$Apply
+)
+
+$ErrorActionPreference = "Stop"
+
+$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent $scriptRoot
+
+if ([string]::IsNullOrWhiteSpace($AppExePath)) {
+    $AppExePath = Join-Path $repoRoot "artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe"
+}
+
+if ([string]::IsNullOrWhiteSpace($PackagePath)) {
+    throw "PackagePath is required. Pass a release zip with -PackagePath."
+}
+
+if ([string]::IsNullOrWhiteSpace($WorkDirectory)) {
+    $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+    $WorkDirectory = Join-Path $repoRoot "artifacts\update-dogfood\prepared-update-$timestamp"
+}
+
+function Resolve-ExistingFile {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$Description
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "$Description was not found: $Path"
+    }
+
+    return (Resolve-Path -LiteralPath $Path).Path
+}
+
+function Resolve-OrCreateDirectory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    New-Item -ItemType Directory -Force -Path $Path | Out-Null
+    return (Resolve-Path -LiteralPath $Path).Path
+}
+
+function Assert-PathInside {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ChildPath,
+        [Parameter(Mandatory = $true)]
+        [string]$ParentPath,
+        [Parameter(Mandatory = $true)]
+        [string]$Description
+    )
+
+    $child = [System.IO.Path]::GetFullPath($ChildPath)
+    $parent = [System.IO.Path]::GetFullPath($ParentPath)
+    $parentWithSeparator = $parent.TrimEnd(
+        [System.IO.Path]::DirectorySeparatorChar,
+        [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+
+    if (-not ($child.Equals($parent, [StringComparison]::OrdinalIgnoreCase) -or
+        $child.StartsWith($parentWithSeparator, [StringComparison]::OrdinalIgnoreCase))) {
+        throw "$Description must stay under the work directory. Path: $child Work directory: $parent"
+    }
+}
+
+function Quote-ProcessArgument {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Value
+    )
+
+    if ($Value.IndexOfAny([char[]]@(" ", "`t", "`r", "`n", '"')) -lt 0) {
+        return $Value
+    }
+
+    return '"' + $Value.Replace('"', '\"') + '"'
+}
+
+function Join-ProcessArguments {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments
+    )
+
+    return ($Arguments | ForEach-Object { Quote-ProcessArgument $_ }) -join " "
+}
+
+function Invoke-LoggedProcess {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath,
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments,
+        [Parameter(Mandatory = $true)]
+        [string]$OutputPath,
+        [Parameter(Mandatory = $true)]
+        [string]$ErrorPath
+    )
+
+    Remove-Item -LiteralPath $OutputPath -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $ErrorPath -Force -ErrorAction SilentlyContinue
+
+    $argumentText = Join-ProcessArguments -Arguments $Arguments
+    $process = Start-Process `
+        -FilePath $FilePath `
+        -ArgumentList $argumentText `
+        -Wait `
+        -PassThru `
+        -RedirectStandardOutput $OutputPath `
+        -RedirectStandardError $ErrorPath `
+        -WindowStyle Hidden
+
+    return $process.ExitCode
+}
+
+$appExe = Resolve-ExistingFile -Path $AppExePath -Description "App executable"
+$package = Resolve-ExistingFile -Path $PackagePath -Description "Update package"
+$workRoot = Resolve-OrCreateDirectory -Path $WorkDirectory
+$logsRoot = Resolve-OrCreateDirectory -Path (Join-Path $workRoot "logs")
+$appDataRoot = Resolve-OrCreateDirectory -Path (Join-Path $workRoot "appdata")
+
+if ([string]::IsNullOrWhiteSpace($InstallDirectory)) {
+    $InstallDirectory = Join-Path $workRoot "install"
+    $appRoot = Split-Path -Parent $appExe
+    if (Test-Path -LiteralPath $InstallDirectory) {
+        Remove-Item -LiteralPath $InstallDirectory -Recurse -Force
+    }
+
+    New-Item -ItemType Directory -Force -Path $InstallDirectory | Out-Null
+    Get-ChildItem -LiteralPath $appRoot -Force | ForEach-Object {
+        Copy-Item -LiteralPath $_.FullName -Destination $InstallDirectory -Recurse -Force
+    }
+}
+
+$installRoot = Resolve-OrCreateDirectory -Path $InstallDirectory
+Assert-PathInside -ChildPath $installRoot -ParentPath $workRoot -Description "Install directory"
+
+$installedExe = Join-Path $installRoot "WinAiUsageBar.App.exe"
+if (-not (Test-Path -LiteralPath $installedExe -PathType Leaf)) {
+    throw "Install directory must contain WinAiUsageBar.App.exe: $installRoot"
+}
+
+$oldOverride = [Environment]::GetEnvironmentVariable("WINAIUSAGEBAR_APPDATA", "Process")
+[Environment]::SetEnvironmentVariable("WINAIUSAGEBAR_APPDATA", $appDataRoot, "Process")
+try {
+    $prepareOut = Join-Path $logsRoot "prepare.out.txt"
+    $prepareErr = Join-Path $logsRoot "prepare.err.txt"
+    $prepareExit = Invoke-LoggedProcess `
+        -FilePath $appExe `
+        -Arguments @(
+            "--prepare-update-install",
+            "--package",
+            $package,
+            "--install-dir",
+            $installRoot
+        ) `
+        -OutputPath $prepareOut `
+        -ErrorPath $prepareErr
+
+    $prepareText = Get-Content -LiteralPath $prepareOut -Raw
+    if ($prepareExit -ne 0) {
+        throw "Prepare update install failed with exit code $prepareExit. See $prepareOut and $prepareErr"
+    }
+
+    if ($prepareText.IndexOf("Status: Prepared", [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+        throw "Prepare output did not report Status: Prepared. See $prepareOut"
+    }
+
+    $script = $null
+    $scriptMatch = [regex]::Match($prepareText, "(?m)^Script:\s*(.+)$")
+    if ($scriptMatch.Success) {
+        $scriptPath = $scriptMatch.Groups[1].Value.Trim()
+        if (Test-Path -LiteralPath $scriptPath -PathType Leaf) {
+            $script = (Resolve-Path -LiteralPath $scriptPath).Path
+        }
+    }
+
+    if ([string]::IsNullOrWhiteSpace($script)) {
+        $script = Get-ChildItem -LiteralPath (Join-Path $appDataRoot "updates") -Recurse -Filter "apply-update.ps1" -File |
+            Sort-Object LastWriteTimeUtc -Descending |
+            Select-Object -ExpandProperty FullName -First 1
+    }
+
+    if ([string]::IsNullOrWhiteSpace($script) -or -not (Test-Path -LiteralPath $script -PathType Leaf)) {
+        throw "Prepared update script was not found under isolated app data. See $prepareOut"
+    }
+
+    Assert-PathInside -ChildPath $script -ParentPath $appDataRoot -Description "Prepared update script"
+
+    Write-Host "Prepared update script: $script"
+    Write-Host "Prepare output: $prepareOut"
+    Write-Host "Install directory: $installRoot"
+
+    if ($Apply) {
+        Assert-PathInside -ChildPath $installRoot -ParentPath $workRoot -Description "Apply install directory"
+
+        $applyOut = Join-Path $logsRoot "apply.out.txt"
+        $applyErr = Join-Path $logsRoot "apply.err.txt"
+        $applyExit = Invoke-LoggedProcess `
+            -FilePath "powershell.exe" `
+            -Arguments @(
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                $script
+            ) `
+            -OutputPath $applyOut `
+            -ErrorPath $applyErr
+
+        if ($applyExit -ne 0) {
+            throw "Prepared update script failed with exit code $applyExit. See $applyOut and $applyErr"
+        }
+
+        if (-not (Test-Path -LiteralPath $installedExe -PathType Leaf)) {
+            throw "Applied update did not leave WinAiUsageBar.App.exe in the install directory."
+        }
+
+        Write-Host "Applied prepared update script to disposable install directory."
+        Write-Host "Apply output: $applyOut"
+    }
+}
+finally {
+    [Environment]::SetEnvironmentVariable("WINAIUSAGEBAR_APPDATA", $oldOverride, "Process")
+}

@@ -99,7 +99,7 @@ public sealed class UpdateInstallPreparationService(
                 backupDirectory,
                 Math.Max(request.ProcessIdToWait, 0),
                 request.RestartAfterInstall);
-            await File.WriteAllTextAsync(scriptPath, script, new UTF8Encoding(false), cancellationToken)
+            await File.WriteAllTextAsync(scriptPath, script, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), cancellationToken)
                 .ConfigureAwait(false);
 
             var command = $"powershell -ExecutionPolicy Bypass -File \"{scriptPath}\"";

@@ -60,6 +60,47 @@ public sealed class UpdateInstallPreparationServiceTests
     }
 
     [Fact]
+    public async Task PrepareAsync_WritesApplyScriptWithUtf8BomForWindowsPowerShellUnicodePaths()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", $"unicode-{Guid.NewGuid():N}");
+        var paths = new AppDataPaths(Path.Combine(root, "appdata"));
+        var installDirectory = Path.Combine(root, "install-日本語");
+        Directory.CreateDirectory(installDirectory);
+        await File.WriteAllTextAsync(Path.Combine(installDirectory, "WinAiUsageBar.App.exe"), "old exe");
+        var packagePath = Path.Combine(root, "WinAIUsageBar-0.2.0-win-x64.zip");
+        CreatePackage(packagePath, includeAppExe: true);
+        var service = new UpdateInstallPreparationService(paths);
+
+        try
+        {
+            var result = await service.PrepareAsync(
+                new UpdateInstallPreparationRequest(
+                    packagePath,
+                    installDirectory,
+                    ProcessIdToWait: 0,
+                    RestartAfterInstall: false),
+                CancellationToken.None);
+
+            Assert.Equal(UpdateInstallPreparationStatus.Prepared, result.Status);
+            var bytes = await File.ReadAllBytesAsync(result.ScriptPath!);
+            Assert.True(bytes.Length > 3);
+            Assert.Equal(0xEF, bytes[0]);
+            Assert.Equal(0xBB, bytes[1]);
+            Assert.Equal(0xBF, bytes[2]);
+
+            var script = await File.ReadAllTextAsync(result.ScriptPath!);
+            Assert.Contains("install-日本語", script, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task PrepareAsync_RejectsPackageWithoutAppExecutable()
     {
         var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));

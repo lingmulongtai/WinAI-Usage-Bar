@@ -4,6 +4,7 @@ obj/
 .vscode/
 TestResults/
 artifacts/
+.tmp/
 *.user
 *.suo
 *.nupkg
