@@ -120,6 +120,7 @@ Dogfood a published release-to-latest update flow without touching normal app da
 ```
 
 This downloads the older published zip, extracts it into an isolated temp workspace, and runs the older executable against the real GitHub latest-release endpoint. Releases before `v0.1.3` do not support `WINAIUSAGEBAR_APPDATA`, so the helper safely stops after discovery for those versions. For source releases `v0.1.3` and newer, pass `-Apply` when you want to download, prepare, and apply the latest update to the disposable extracted install directory.
+Add `-AssertNormalAppDataUnchanged` when you want the helper to snapshot the normal `%AppData%\WinAiUsageBar\updates` directory before and after the isolated run and fail if it changed.
 
 Dogfood the current updater implementation as if it were an older installed version:
 

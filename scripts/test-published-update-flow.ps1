@@ -3,7 +3,8 @@ param(
     [string]$ExpectedLatestTag = "",
     [string]$Repository = "lingmulongtai/WinAI-Usage-Bar",
     [string]$WorkDirectory = "",
-    [switch]$Apply
+    [switch]$Apply,
+    [switch]$AssertNormalAppDataUnchanged
 )
 
 $ErrorActionPreference = "Stop"
@@ -152,6 +153,92 @@ function Get-OutputValue {
     return $match.Groups[1].Value.Trim()
 }
 
+function Get-NormalUpdatesDirectory {
+    $appData = [Environment]::GetFolderPath([Environment+SpecialFolder]::ApplicationData)
+    if ([string]::IsNullOrWhiteSpace($appData)) {
+        throw "Could not resolve the normal ApplicationData directory."
+    }
+
+    return Join-Path (Join-Path $appData "WinAiUsageBar") "updates"
+}
+
+function Get-DirectorySnapshot {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $entries = @{}
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return @{
+            Exists = $false
+            Entries = $entries
+        }
+    }
+
+    $root = (Resolve-Path -LiteralPath $Path).Path
+    $entries["D|."] = "dir"
+
+    Get-ChildItem -LiteralPath $root -Force -Recurse | ForEach-Object {
+        $relativePath = $_.FullName.Substring($root.Length).TrimStart(
+            [System.IO.Path]::DirectorySeparatorChar,
+            [System.IO.Path]::AltDirectorySeparatorChar)
+        $kind = if ($_.PSIsContainer) { "D" } else { "F" }
+        if ($_.PSIsContainer) {
+            $entries["$kind|$relativePath"] = "dir"
+        }
+        else {
+            $length = $_.Length.ToString([System.Globalization.CultureInfo]::InvariantCulture)
+            $entries["$kind|$relativePath"] = "$length|$($_.LastWriteTimeUtc.Ticks)"
+        }
+    }
+
+    return @{
+        Exists = $true
+        Entries = $entries
+    }
+}
+
+function Assert-DirectorySnapshotUnchanged {
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Before,
+        [Parameter(Mandatory = $true)]
+        [hashtable]$After,
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    if ($Before.Exists -ne $After.Exists) {
+        throw "Normal app data updates directory existence changed while isolated dogfood ran. Path: $Path"
+    }
+
+    if (-not $Before.Exists) {
+        return
+    }
+
+    $changes = @()
+    foreach ($key in $Before.Entries.Keys) {
+        if (-not $After.Entries.ContainsKey($key)) {
+            $changes += "removed $key"
+        }
+        elseif ($After.Entries[$key] -ne $Before.Entries[$key]) {
+            $changes += "changed $key"
+        }
+    }
+
+    foreach ($key in $After.Entries.Keys) {
+        if (-not $Before.Entries.ContainsKey($key)) {
+            $changes += "added $key"
+        }
+    }
+
+    if ($changes.Count -gt 0) {
+        $preview = ($changes | Sort-Object | Select-Object -First 20) -join "; "
+        throw "Normal app data updates directory changed while isolated dogfood ran. Path: $Path Changes: $preview"
+    }
+}
+
 $fromVersion = ConvertTo-VersionFromTag -TagName $FromTag
 $expectedLatestVersion = if ([string]::IsNullOrWhiteSpace($ExpectedLatestTag)) {
     ""
@@ -171,6 +258,8 @@ $downloadsRoot = Resolve-OrCreateDirectory -Path (Join-Path $workRoot "downloads
 $installRoot = Resolve-OrCreateDirectory -Path (Join-Path $workRoot "install")
 $logsRoot = Resolve-OrCreateDirectory -Path (Join-Path $workRoot "logs")
 $appDataRoot = Resolve-OrCreateDirectory -Path (Join-Path $workRoot "appdata")
+$normalUpdatesPath = if ($AssertNormalAppDataUnchanged) { Get-NormalUpdatesDirectory } else { "" }
+$normalUpdatesBefore = if ($AssertNormalAppDataUnchanged) { Get-DirectorySnapshot -Path $normalUpdatesPath } else { $null }
 
 Assert-PathInside -ChildPath $downloadsRoot -ParentPath $workRoot -Description "Downloads directory"
 Assert-PathInside -ChildPath $installRoot -ParentPath $workRoot -Description "Install directory"
@@ -235,6 +324,12 @@ try {
         }
 
         Write-Warning $message
+        if ($AssertNormalAppDataUnchanged) {
+            $normalUpdatesAfter = Get-DirectorySnapshot -Path $normalUpdatesPath
+            Assert-DirectorySnapshotUnchanged -Before $normalUpdatesBefore -After $normalUpdatesAfter -Path $normalUpdatesPath
+            Write-Host "Normal app data updates directory unchanged: $normalUpdatesPath"
+        }
+
         Write-Host "Published update discovery passed."
         Write-Host "Work directory: $workRoot"
         Write-Host "Version output: $versionOut"
@@ -356,4 +451,10 @@ try {
 }
 finally {
     [Environment]::SetEnvironmentVariable("WINAIUSAGEBAR_APPDATA", $oldOverride, "Process")
+}
+
+if ($AssertNormalAppDataUnchanged) {
+    $normalUpdatesAfter = Get-DirectorySnapshot -Path $normalUpdatesPath
+    Assert-DirectorySnapshotUnchanged -Before $normalUpdatesBefore -After $normalUpdatesAfter -Path $normalUpdatesPath
+    Write-Host "Normal app data updates directory unchanged: $normalUpdatesPath"
 }

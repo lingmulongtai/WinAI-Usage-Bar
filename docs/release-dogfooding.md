@@ -48,6 +48,8 @@ Use this helper to dogfood an already published release against the real GitHub 
 
 The helper downloads the older release zip from GitHub, extracts it into an isolated temp workspace, redirects command output to logs, sets `WINAIUSAGEBAR_APPDATA` to isolated app data, and runs `--check-for-updates`. Releases before `v0.1.3` do not support `WINAIUSAGEBAR_APPDATA`, so the helper stops after discovery for those versions to avoid writing to normal app data. For source releases `v0.1.3` and newer, `-Apply` can dogfood `--download-update`, `--prepare-update-install`, and the generated update script against the disposable extracted install directory.
 
+Add `-AssertNormalAppDataUnchanged` to snapshot the normal `%AppData%\WinAiUsageBar\updates` directory before and after the isolated run. The helper fails if files are added, removed, or changed there.
+
 ## 2026-07-08 - Prepared Apply Script Handles Unicode Workspace Path
 
 Result: passed on current `main` after fixing generated script encoding.
@@ -96,6 +98,34 @@ Check output: ...\check.out.txt
 Finding:
 
 - The first manual run proved that `v0.1.2` writes update downloads under normal `%AppData%\WinAiUsageBar\updates` because isolated app-data override support was added later. The helper now guards that case before the download stage. Full isolated published release-to-release download/apply dogfooding should use `v0.1.3` or newer as the source release.
+
+## 2026-07-08 - Published v0.1.3 Applies v0.1.4 With Normal App-Data Guard
+
+Result: passed.
+
+What was checked:
+
+- Ran `scripts/test-published-update-flow.ps1 -FromTag v0.1.3 -ExpectedLatestTag v0.1.4 -Apply -AssertNormalAppDataUnchanged`.
+- Downloaded the published `v0.1.3` zip from GitHub Releases.
+- Used isolated temp work, logs, app data, update staging, and extracted install directories.
+- Confirmed the published `v0.1.3` app sees `v0.1.4` through the real latest-release endpoint.
+- Downloaded and SHA256-verified the published `v0.1.4` zip and checksum assets.
+- Prepared and applied `apply-update.ps1` only to the disposable extracted install directory.
+- Confirmed the disposable install reports `v0.1.4` after apply.
+- Confirmed the normal `%AppData%\WinAiUsageBar\updates` directory was unchanged before and after the isolated run.
+
+Observed output summary:
+
+```text
+Status: UpdateAvailable
+Current version: 0.1.3
+Latest version: 0.1.4
+Download status: Downloaded
+Expected SHA256: 0792ab8e18166a5a507a2224000084653edce3df37ba9401969e8da288124b46
+Actual SHA256: 0792ab8e18166a5a507a2224000084653edce3df37ba9401969e8da288124b46
+Updated version: WinAI Usage Bar 0.1.4+89b1bc79e0e8428550fffb09fa647f0badc2e537
+Normal app data updates directory unchanged: %AppData%\WinAiUsageBar\updates
+```
 
 ## Update CLI Current-Version Override
 
