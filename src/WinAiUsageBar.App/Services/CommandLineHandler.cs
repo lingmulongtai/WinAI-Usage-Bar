@@ -61,11 +61,38 @@ public static class CommandLineHandler
         Func<CancellationToken, Task<CommandLineActionResult>>? exportConfigBackup = null,
         Func<CancellationToken, Task<CommandLineActionResult>>? runStartupUpdate = null,
         Func<CancellationToken, Task<CommandLineActionResult>>? restoreLatestConfigBackup = null,
-        Func<CancellationToken, Task<CommandLineActionResult>>? resetConfigToDefaults = null)
+        Func<CancellationToken, Task<CommandLineActionResult>>? resetConfigToDefaults = null,
+        Func<CancellationToken, Task<CommandLineActionResult>>? validateLatestConfigBackup = null)
     {
         if (args.Count == 0)
         {
             return new CommandLineHandleResult(Handled: false, ExitCode: 0);
+        }
+
+        if (args.Count == 1
+            && string.Equals(args[0].Trim(), "--validate-latest-config-backup", StringComparison.OrdinalIgnoreCase))
+        {
+            if (validateLatestConfigBackup is null)
+            {
+                await error.WriteLineAsync(
+                    "--validate-latest-config-backup is unavailable in this host.".AsMemory(),
+                    cancellationToken).ConfigureAwait(false);
+                return new CommandLineHandleResult(Handled: true, ExitCode: 2);
+            }
+
+            var result = await validateLatestConfigBackup(cancellationToken).ConfigureAwait(false);
+            await output.WriteLineAsync(result.Output.AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, result.ExitCode);
+        }
+
+        if (args.Count >= 1
+            && string.Equals(args[0].Trim(), "--validate-latest-config-backup", StringComparison.OrdinalIgnoreCase))
+        {
+            await error.WriteLineAsync(
+                "Validating the latest config backup requires no additional options: --validate-latest-config-backup".AsMemory(),
+                cancellationToken).ConfigureAwait(false);
+            await error.WriteLineAsync(CreateHelpText().AsMemory(), cancellationToken).ConfigureAwait(false);
+            return new CommandLineHandleResult(Handled: true, ExitCode: 2);
         }
 
         if (args.Count == 2
@@ -474,7 +501,7 @@ public static class CommandLineHandler
         WinAI Usage Bar
 
         Usage:
-          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--export-config-backup|--health-report|--refresh-once|--set-provider-cli-override|--clear-provider-cli-override|--provider-catalog|--check-for-updates|--download-update|--launch-prepared-update|--install-latest-update|--run-startup-update-check|--restore-latest-config-backup|--reset-config-to-defaults]
+          WinAiUsageBar.App.exe [--help|--version|--smoke-test|--export-diagnostics|--export-config-backup|--health-report|--refresh-once|--set-provider-cli-override|--clear-provider-cli-override|--provider-catalog|--check-for-updates|--download-update|--launch-prepared-update|--install-latest-update|--run-startup-update-check|--validate-latest-config-backup|--restore-latest-config-backup|--reset-config-to-defaults]
           WinAiUsageBar.App.exe --refresh-once --provider <ProviderId> [--source <DataSourceKind>]
           WinAiUsageBar.App.exe --set-provider-cli-override --provider <ProviderId> --command <path-or-command>
           WinAiUsageBar.App.exe --clear-provider-cli-override --provider <ProviderId>
@@ -484,6 +511,7 @@ public static class CommandLineHandler
           WinAiUsageBar.App.exe --prepare-update-install --package <path> [--install-dir <path>] [--restart-after-install]
           WinAiUsageBar.App.exe --launch-prepared-update --script <path>
           WinAiUsageBar.App.exe --install-latest-update [--restart-after-install] [--current-version <version>]
+          WinAiUsageBar.App.exe --validate-latest-config-backup
           WinAiUsageBar.App.exe --validate-config-backup <path>
           WinAiUsageBar.App.exe --restore-config-backup <path> --confirm
           WinAiUsageBar.App.exe --restore-latest-config-backup --confirm
@@ -529,6 +557,8 @@ public static class CommandLineHandler
                                 Check, download, verify, prepare, and launch the latest update install script.
           --run-startup-update-check
                                 Run the configured startup update policy once without opening UI.
+          --validate-latest-config-backup
+                                Validate the newest app-owned config backup without applying it.
           --validate-config-backup <path>
                                 Validate a config backup without applying it.
           --restore-config-backup <path> --confirm

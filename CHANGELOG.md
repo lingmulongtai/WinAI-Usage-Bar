@@ -8,6 +8,7 @@ All notable changes to WinAI Usage Bar are documented here.
 
 - Added a confirmation-gated `--restore-latest-config-backup` CLI recovery command.
 - Added a confirmation-gated `--reset-config-to-defaults` CLI recovery command.
+- Added a `--validate-latest-config-backup` CLI recovery check.
 - Codex app-server usage parsing now recognizes more real-world quota and reset aliases.
 - Latest-release checks now persist the observed GitHub Release page URL for Refresh settings and health reports.
 - A repository test guard now rejects common secret-shaped fixture patterns before they can trigger scanner noise again.

@@ -684,6 +684,41 @@ public static class CommandLineActions
             result.IsValid ? 0 : 1);
     }
 
+    public static async Task<CommandLineActionResult> ValidateLatestConfigBackupAsync(
+        CancellationToken cancellationToken)
+    {
+        return await ValidateLatestConfigBackupAsync(
+            cancellationToken,
+            AppDataPaths.CreateDefault()).ConfigureAwait(false);
+    }
+
+    public static async Task<CommandLineActionResult> ValidateLatestConfigBackupAsync(
+        CancellationToken cancellationToken,
+        AppDataPaths paths)
+    {
+        var configStore = new JsonAppConfigStore(paths);
+        var snapshotStore = new JsonSnapshotStore(paths);
+        var diagnosticsService = new DiagnosticsSummaryService(paths, configStore, snapshotStore);
+        var summary = await diagnosticsService.GetSummaryAsync(cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(summary.LatestConfigBackupPath))
+        {
+            var missing = new ConfigBackupValidationResult(
+                string.Empty,
+                IsValid: false,
+                ConfigVersion: null,
+                ProviderCount: null,
+                EnabledProviderCount: null,
+                DefaultedProviderCount: null,
+                Errors: ["No config backup is available."],
+                Warnings: []);
+            return new CommandLineActionResult(
+                CommandLineConfigBackupValidationFormatter.Format(missing),
+                1);
+        }
+
+        return await ValidateConfigBackupAsync(summary.LatestConfigBackupPath, cancellationToken).ConfigureAwait(false);
+    }
+
     public static async Task<CommandLineActionResult> RestoreConfigBackupAsync(
         string path,
         CancellationToken cancellationToken)

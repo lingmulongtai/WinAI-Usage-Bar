@@ -282,6 +282,88 @@ public sealed class CommandLineActionsTests
     }
 
     [Fact]
+    public async Task ValidateLatestConfigBackupAsync_ValidatesNewestBackup()
+    {
+        var paths = TestPaths();
+        var configStore = new JsonAppConfigStore(paths);
+        var original = AppConfig.CreateDefault();
+        original.Appearance.Theme = "Dark";
+        original.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.Gemini)).ApiKey.SecretName = "gemini-secret-ref";
+
+        try
+        {
+            await configStore.SaveAsync(original, CancellationToken.None);
+            var oldExport = await CommandLineActions.ExportConfigBackupAsync(CancellationToken.None, paths);
+            var oldBackupPath = Directory.GetFiles(paths.ConfigBackupsDirectory, "config-backup-*.json")
+                .Single();
+            File.SetLastWriteTimeUtc(oldBackupPath, new DateTime(2026, 7, 8, 1, 0, 0, DateTimeKind.Utc));
+
+            var changed = await configStore.LoadAsync(CancellationToken.None);
+            changed.Appearance.Theme = "Light";
+            await configStore.SaveAsync(changed, CancellationToken.None);
+            var newExport = await CommandLineActions.ExportConfigBackupAsync(CancellationToken.None, paths);
+            var newBackupPath = Directory
+                .GetFiles(paths.ConfigBackupsDirectory, "config-backup-*.json")
+                .Single(path => !string.Equals(path, oldBackupPath, StringComparison.OrdinalIgnoreCase));
+            File.SetLastWriteTimeUtc(newBackupPath, new DateTime(2026, 7, 9, 1, 0, 0, DateTimeKind.Utc));
+
+            var result = await CommandLineActions.ValidateLatestConfigBackupAsync(
+                CancellationToken.None,
+                paths);
+            var reloaded = await configStore.LoadAsync(CancellationToken.None);
+
+            Assert.Equal(0, oldExport.ExitCode);
+            Assert.Equal(0, newExport.ExitCode);
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("Config backup validation: valid", result.Output, StringComparison.Ordinal);
+            Assert.Contains(newBackupPath, result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain(oldBackupPath, result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("gemini-secret-ref", result.Output, StringComparison.Ordinal);
+            Assert.Equal("Light", reloaded.Appearance.Theme);
+            Assert.Empty(Directory.GetFiles(paths.ConfigBackupsDirectory, "config-backup-before-*.json"));
+        }
+        finally
+        {
+            if (Directory.Exists(paths.RootDirectory))
+            {
+                Directory.Delete(paths.RootDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ValidateLatestConfigBackupAsync_ReturnsFailureWhenNoBackupExists()
+    {
+        var paths = TestPaths();
+        var configStore = new JsonAppConfigStore(paths);
+        var config = AppConfig.CreateDefault();
+        config.Appearance.Theme = "Dark";
+
+        try
+        {
+            await configStore.SaveAsync(config, CancellationToken.None);
+
+            var result = await CommandLineActions.ValidateLatestConfigBackupAsync(
+                CancellationToken.None,
+                paths);
+            var reloaded = await configStore.LoadAsync(CancellationToken.None);
+
+            Assert.Equal(1, result.ExitCode);
+            Assert.Contains("Config backup validation: invalid", result.Output, StringComparison.Ordinal);
+            Assert.Contains("No config backup is available.", result.Output, StringComparison.Ordinal);
+            Assert.Equal("Dark", reloaded.Appearance.Theme);
+            Assert.Empty(Directory.GetFiles(paths.ConfigBackupsDirectory, "config-backup-before-*.json"));
+        }
+        finally
+        {
+            if (Directory.Exists(paths.RootDirectory))
+            {
+                Directory.Delete(paths.RootDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task RestoreLatestConfigBackupAsync_RestoresNewestBackup()
     {
         var paths = TestPaths();

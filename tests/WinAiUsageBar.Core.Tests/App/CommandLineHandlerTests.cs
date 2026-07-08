@@ -67,6 +67,7 @@ public sealed class CommandLineHandlerTests
         Assert.Contains("--keep-newest <N>", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--export-config-backup", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--validate-config-backup", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--validate-latest-config-backup", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--restore-config-backup", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--restore-latest-config-backup", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("--reset-config-to-defaults", output.ToString(), StringComparison.Ordinal);
@@ -1276,6 +1277,94 @@ public sealed class CommandLineHandlerTests
         Assert.True(result.Handled);
         Assert.Equal(2, result.ExitCode);
         Assert.Contains("Missing path", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ValidatesLatestConfigBackup()
+    {
+        using var output = new StringWriter();
+        var validateCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--validate-latest-config-backup"],
+            output,
+            new StringWriter(),
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            validateLatestConfigBackup: cancellationToken =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                validateCount++;
+                return Task.FromResult(new CommandLineActionResult("latest validate ok", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(1, validateCount);
+        Assert.Contains("latest validate ok", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ReturnsErrorWhenValidateLatestConfigBackupIsUnavailable()
+    {
+        using var error = new StringWriter();
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            ["--validate-latest-config-backup"],
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None);
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains("unavailable", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("--validate-latest-config-backup", "--confirm")]
+    [InlineData("--validate-latest-config-backup", "--force")]
+    [InlineData("--validate-latest-config-backup", "--validate-latest-config-backup")]
+    public async Task TryHandleAsync_RejectsValidateLatestConfigBackupOptions(params string[] args)
+    {
+        using var error = new StringWriter();
+        var validateCount = 0;
+
+        var result = await CommandLineHandler.TryHandleAsync(
+            args,
+            new StringWriter(),
+            error,
+            _ => Task.FromResult(1),
+            ExportDiagnostics,
+            HealthReport,
+            ProviderCatalog,
+            ValidateConfigBackup,
+            RestoreConfigBackup,
+            AppInfo,
+            CancellationToken.None,
+            validateLatestConfigBackup: _ =>
+            {
+                validateCount++;
+                return Task.FromResult(new CommandLineActionResult("should not run", 0));
+            });
+
+        Assert.True(result.Handled);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Equal(0, validateCount);
+        Assert.Contains("requires no additional options", error.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--validate-latest-config-backup", error.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]
