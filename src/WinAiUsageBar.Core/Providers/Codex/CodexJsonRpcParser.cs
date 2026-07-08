@@ -112,15 +112,104 @@ public static class CodexJsonRpcParser
             return null;
         }
 
-        var usedPercent = TryGetNumber(result, ["usedPercent", "used_percent", "usagePercent", "usage_percent", "percentUsed"]);
-        var remainingPercent = TryGetNumber(result, ["remainingPercent", "remaining_percent", "percentRemaining", "leftPercent"]);
-        var used = TryGetNumber(result, ["used", "usedAmount", "current"]);
-        var limit = TryGetNumber(result, ["limit", "quota", "maximum", "max"]);
+        var usedPercent = TryGetNumber(
+            result,
+            [
+                "usedPercent",
+                "used_percent",
+                "used_pct",
+                "usagePercent",
+                "usage_percent",
+                "usagePct",
+                "usage_pct",
+                "percentUsed",
+                "percent_used",
+                "usedPercentage",
+                "quotaUsedPercent",
+                "quota_used_percent"
+            ]);
+        var remainingPercent = TryGetNumber(
+            result,
+            [
+                "remainingPercent",
+                "remaining_percent",
+                "remaining_pct",
+                "percentRemaining",
+                "percent_remaining",
+                "remainingPercentage",
+                "leftPercent",
+                "left_percent",
+                "quotaRemainingPercent",
+                "quota_remaining_percent"
+            ]);
+        var used = TryGetNumber(
+            result,
+            [
+                "used",
+                "usedAmount",
+                "used_amount",
+                "current",
+                "consumed",
+                "consumedAmount",
+                "consumed_amount",
+                "quotaUsed",
+                "quota_used",
+                "usedQuota",
+                "used_quota",
+                "usageUsed",
+                "usage_used"
+            ]);
+        var limit = TryGetNumber(
+            result,
+            [
+                "limit",
+                "quota",
+                "maximum",
+                "max",
+                "total",
+                "totalQuota",
+                "total_quota",
+                "quotaLimit",
+                "quota_limit",
+                "limitAmount",
+                "limit_amount",
+                "usageLimit",
+                "usage_limit"
+            ]);
+        var remaining = TryGetNumber(
+            result,
+            [
+                "remaining",
+                "remainingAmount",
+                "remaining_amount",
+                "remainingQuota",
+                "remaining_quota",
+                "quotaRemaining",
+                "quota_remaining",
+                "available",
+                "availableQuota",
+                "available_quota"
+            ]);
         var unit = TryGetSafeString(result, ["unit", "units"]);
+
+        if (used is null && remaining is not null && limit is > 0)
+        {
+            used = Math.Max(0, limit.Value - remaining.Value);
+        }
 
         if (usedPercent is null && remainingPercent is null && used is not null && limit is > 0)
         {
             usedPercent = Math.Round(used.Value / limit.Value * 100, 2);
+        }
+
+        if (remainingPercent is null && remaining is not null && limit is > 0)
+        {
+            remainingPercent = Math.Round(remaining.Value / limit.Value * 100, 2);
+        }
+
+        if (remainingPercent is null && used is null && limit is null && remaining is not null)
+        {
+            remainingPercent = remaining;
         }
 
         if (remainingPercent is null && usedPercent is not null)
@@ -161,18 +250,30 @@ public static class CodexJsonRpcParser
                 "resetInSeconds",
                 "resetSeconds",
                 "secondsUntilReset",
+                "resetAfterSeconds",
+                "retryAfterSeconds",
                 "resets_in_seconds",
                 "reset_in_seconds",
                 "reset_seconds",
                 "seconds_until_reset",
+                "reset_after_seconds",
+                "retry_after_seconds",
                 "resetsInMilliseconds",
                 "resetInMilliseconds",
                 "resetMilliseconds",
                 "millisecondsUntilReset",
+                "resetAfterMilliseconds",
+                "retryAfterMilliseconds",
+                "resetAfterMs",
+                "retryAfterMs",
                 "resets_in_milliseconds",
                 "reset_in_milliseconds",
                 "reset_milliseconds",
-                "milliseconds_until_reset"
+                "milliseconds_until_reset",
+                "reset_after_milliseconds",
+                "retry_after_milliseconds",
+                "reset_after_ms",
+                "retry_after_ms"
             ]);
 
         if (resetsAt is null && resetDuration is not null && now is not null)
@@ -387,7 +488,8 @@ public static class CodexJsonRpcParser
     {
         return fieldName.Contains("millisecond", StringComparison.OrdinalIgnoreCase)
             || fieldName.Contains("millis", StringComparison.OrdinalIgnoreCase)
-            || fieldName.EndsWith("Ms", StringComparison.Ordinal);
+            || fieldName.EndsWith("Ms", StringComparison.OrdinalIgnoreCase)
+            || fieldName.EndsWith("_ms", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string FormatResetDuration(TimeSpan duration)

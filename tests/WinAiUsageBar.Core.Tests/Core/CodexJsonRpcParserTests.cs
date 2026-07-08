@@ -199,6 +199,61 @@ public sealed class CodexJsonRpcParserTests
     }
 
     [Fact]
+    public void ParseUsageWindow_ParsesNestedQuotaAliases()
+    {
+        var now = new DateTimeOffset(2026, 7, 8, 10, 0, 0, TimeSpan.Zero);
+        const string json = """
+        {
+          "result": {
+            "limits": {
+              "primary": {
+                "consumed": 350,
+                "total": 1000,
+                "remainingQuota": 650,
+                "unit": "requests",
+                "reset_after_ms": 7200000
+              }
+            }
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json, now: now);
+
+        Assert.Equal(350, window?.Used);
+        Assert.Equal(1000, window?.Limit);
+        Assert.Equal(35, window?.UsedPercent);
+        Assert.Equal(65, window?.RemainingPercent);
+        Assert.Equal("requests", window?.Unit);
+        Assert.Equal(now.AddHours(2), window?.ResetsAt);
+        Assert.Equal("resets in 2h", window?.ResetDescription);
+    }
+
+    [Fact]
+    public void ParseUsageWindow_ParsesSnakeCasePercentAndRetryAfterAliases()
+    {
+        var now = new DateTimeOffset(2026, 7, 8, 10, 0, 0, TimeSpan.Zero);
+        const string json = """
+        {
+          "result": {
+            "quota": {
+              "percent_used": "12.5",
+              "percent_remaining": "87.5",
+              "retry_after_seconds": "1800"
+            }
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json, now: now);
+
+        Assert.Equal(12.5, window?.UsedPercent);
+        Assert.Equal(87.5, window?.RemainingPercent);
+        Assert.Equal(now.AddMinutes(30), window?.ResetsAt);
+        Assert.Equal("resets in 30m", window?.ResetDescription);
+    }
+
+    [Fact]
     public void ParseUsageWindow_IgnoresSensitiveLookingResetDurationFields()
     {
         const string json = """
