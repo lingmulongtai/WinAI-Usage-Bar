@@ -7,6 +7,10 @@ public interface IDataMaintenanceService
     Task<DataMaintenanceResult> ClearHistoryAsync(CancellationToken cancellationToken);
 
     Task<ConfigBackupResult> ExportConfigBackupAsync(CancellationToken cancellationToken);
+
+    Task<DataPruneResult> PruneConfigBackupsAsync(int keepNewest, CancellationToken cancellationToken);
+
+    Task<DataPruneResult> PruneDiagnosticsExportsAsync(int keepNewest, CancellationToken cancellationToken);
 }
 
 public sealed record DataMaintenanceResult(
@@ -17,6 +21,16 @@ public sealed record DataMaintenanceResult(
 public sealed record ConfigBackupResult(
     string Path,
     DateTimeOffset CreatedAt);
+
+public sealed record DataPruneResult(
+    string DirectoryPath,
+    string SearchPattern,
+    int KeepNewest,
+    int MatchedCount,
+    int KeptCount,
+    int DeletedCount,
+    long DeletedBytes,
+    DateTimeOffset PrunedAt);
 
 public sealed class DataMaintenanceService(
     AppDataPaths paths,
@@ -50,6 +64,28 @@ public sealed class DataMaintenanceService(
         return new ConfigBackupResult(exportPath, createdAt);
     }
 
+    public Task<DataPruneResult> PruneConfigBackupsAsync(
+        int keepNewest,
+        CancellationToken cancellationToken)
+    {
+        return PruneFileSetAsync(
+            paths.ConfigBackupsDirectory,
+            "config-backup-*.json",
+            keepNewest,
+            cancellationToken);
+    }
+
+    public Task<DataPruneResult> PruneDiagnosticsExportsAsync(
+        int keepNewest,
+        CancellationToken cancellationToken)
+    {
+        return PruneFileSetAsync(
+            paths.DiagnosticsExportsDirectory,
+            "diagnostics-export-*.txt",
+            keepNewest,
+            cancellationToken);
+    }
+
     private Task<DataMaintenanceResult> DeleteKnownFileAsync(
         string path,
         CancellationToken cancellationToken)
@@ -67,6 +103,50 @@ public sealed class DataMaintenanceService(
         return Task.FromResult(new DataMaintenanceResult(
             path,
             deleted,
+            nowProvider()));
+    }
+
+    private Task<DataPruneResult> PruneFileSetAsync(
+        string directory,
+        string searchPattern,
+        int keepNewest,
+        CancellationToken cancellationToken)
+    {
+        if (keepNewest < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(keepNewest), keepNewest, "At least one file must be kept.");
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        paths.EnsureCreated();
+
+        var files = Directory
+            .EnumerateFiles(directory, searchPattern, SearchOption.TopDirectoryOnly)
+            .Select(path => new FileInfo(path))
+            .Where(file => file.Exists)
+            .OrderByDescending(file => file.LastWriteTimeUtc)
+            .ThenByDescending(file => file.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var deleteCandidates = files.Skip(keepNewest).ToList();
+        long deletedBytes = 0;
+
+        foreach (var file in deleteCandidates)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            deletedBytes += file.Length;
+            file.Delete();
+        }
+
+        var deletedCount = deleteCandidates.Count;
+        return Task.FromResult(new DataPruneResult(
+            directory,
+            searchPattern,
+            keepNewest,
+            files.Count,
+            files.Count - deletedCount,
+            deletedCount,
+            deletedBytes,
             nowProvider()));
     }
 }

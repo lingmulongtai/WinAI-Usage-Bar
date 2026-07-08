@@ -248,16 +248,24 @@ public sealed class AppHostTests
         var snapshotsResult = await host.ClearSnapshotsAsync(CancellationToken.None);
         var historyResult = await host.ClearHistoryAsync(CancellationToken.None);
         var backupResult = await host.ExportConfigBackupAsync(CancellationToken.None);
+        var pruneBackupsResult = await host.PruneConfigBackupsAsync(5, CancellationToken.None);
+        var pruneExportsResult = await host.PruneDiagnosticsExportsAsync(5, CancellationToken.None);
 
         Assert.Equal(1, maintenance.ClearSnapshotsCount);
         Assert.Equal(1, maintenance.ClearHistoryCount);
         Assert.Equal(1, maintenance.ExportConfigBackupCount);
+        Assert.Equal(1, maintenance.PruneConfigBackupsCount);
+        Assert.Equal(1, maintenance.PruneDiagnosticsExportsCount);
         Assert.Equal(paths.SnapshotsPath, snapshotsResult.Path);
         Assert.Equal(paths.HistoryPath, historyResult.Path);
         Assert.Equal(Path.Combine(paths.ConfigBackupsDirectory, "config-backup.json"), backupResult.Path);
+        Assert.Equal(paths.ConfigBackupsDirectory, pruneBackupsResult.DirectoryPath);
+        Assert.Equal(paths.DiagnosticsExportsDirectory, pruneExportsResult.DirectoryPath);
         Assert.Contains("Snapshot cache cleared.", diagnostics.InfoMessages);
         Assert.Contains("History file cleared.", diagnostics.InfoMessages);
         Assert.Contains(diagnostics.InfoMessages, message => message.StartsWith("Config backup exported to ", StringComparison.Ordinal));
+        Assert.Contains(diagnostics.InfoMessages, message => message.StartsWith("Config backups pruned: ", StringComparison.Ordinal));
+        Assert.Contains(diagnostics.InfoMessages, message => message.StartsWith("Diagnostics exports pruned: ", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -798,6 +806,10 @@ public sealed class AppHostTests
 
         public int ExportConfigBackupCount { get; private set; }
 
+        public int PruneConfigBackupsCount { get; private set; }
+
+        public int PruneDiagnosticsExportsCount { get; private set; }
+
         public Task<DataMaintenanceResult> ClearSnapshotsAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -825,6 +837,36 @@ public sealed class AppHostTests
             return Task.FromResult(new ConfigBackupResult(
                 Path.Combine(paths.ConfigBackupsDirectory, "config-backup.json"),
                 DateTimeOffset.Now));
+        }
+
+        public Task<DataPruneResult> PruneConfigBackupsAsync(int keepNewest, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            PruneConfigBackupsCount++;
+            return Task.FromResult(new DataPruneResult(
+                paths.ConfigBackupsDirectory,
+                "config-backup-*.json",
+                keepNewest,
+                MatchedCount: 6,
+                KeptCount: keepNewest,
+                DeletedCount: 1,
+                DeletedBytes: 1024,
+                PrunedAt: DateTimeOffset.Now));
+        }
+
+        public Task<DataPruneResult> PruneDiagnosticsExportsAsync(int keepNewest, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            PruneDiagnosticsExportsCount++;
+            return Task.FromResult(new DataPruneResult(
+                paths.DiagnosticsExportsDirectory,
+                "diagnostics-export-*.txt",
+                keepNewest,
+                MatchedCount: 6,
+                KeptCount: keepNewest,
+                DeletedCount: 1,
+                DeletedBytes: 2048,
+                PrunedAt: DateTimeOffset.Now));
         }
     }
 

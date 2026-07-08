@@ -96,6 +96,7 @@ Record the environment for each run.
 | Review recovery guidance in Privacy & Data | Guidance explains backup, restore, reset, and diagnostics choices without showing secret names or values |  |  |
 | Export diagnostics | Export excludes `secrets/` and redacts common secret shapes |  |  |
 | Export config backup | Backup includes config only and does not copy `secrets/` |  |  |
+| Prune old backups and diagnostics exports | Only old matched files are removed, the newest 5 are kept, and `config.json`, cache files, logs, and `secrets/` remain |  |  |
 | Validate latest config backup from Privacy & Data | Latest backup is validated and result does not expose secret values |  |  |
 | Restore latest config backup from Privacy & Data | Restore requires confirmation, creates rollback backup, and restarts refresh |  |  |
 | Reset config to defaults from Privacy & Data | Reset requires confirmation, creates rollback backup, keeps `secrets/` unchanged, and restarts refresh |  |  |

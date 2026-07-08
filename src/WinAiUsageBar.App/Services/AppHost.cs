@@ -173,6 +173,48 @@ public sealed class AppHost : IAsyncDisposable
         }
     }
 
+    public async Task<DataPruneResult> PruneConfigBackupsAsync(
+        int keepNewest,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await dataMaintenanceService.PruneConfigBackupsAsync(keepNewest, cancellationToken)
+                .ConfigureAwait(false);
+            await DiagnosticsLog.InfoAsync(
+                $"Config backups pruned: {result.DeletedCount} deleted, {result.KeptCount} kept.",
+                cancellationToken).ConfigureAwait(false);
+            return result;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await DiagnosticsLog.ErrorAsync("Config backup pruning failed.", ex, CancellationToken.None)
+                .ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    public async Task<DataPruneResult> PruneDiagnosticsExportsAsync(
+        int keepNewest,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await dataMaintenanceService.PruneDiagnosticsExportsAsync(keepNewest, cancellationToken)
+                .ConfigureAwait(false);
+            await DiagnosticsLog.InfoAsync(
+                $"Diagnostics exports pruned: {result.DeletedCount} deleted, {result.KeptCount} kept.",
+                cancellationToken).ConfigureAwait(false);
+            return result;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await DiagnosticsLog.ErrorAsync("Diagnostics export pruning failed.", ex, CancellationToken.None)
+                .ConfigureAwait(false);
+            throw;
+        }
+    }
+
     public async Task<ConfigBackupValidationResult> ValidateLatestConfigBackupAsync(CancellationToken cancellationToken)
     {
         var path = await GetLatestConfigBackupPathAsync(cancellationToken).ConfigureAwait(false);

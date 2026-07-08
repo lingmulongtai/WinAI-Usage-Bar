@@ -161,4 +161,146 @@ public sealed class DataMaintenanceServiceTests
             }
         }
     }
+
+    [Fact]
+    public async Task PruneConfigBackupsAsync_DeletesOnlyOldMatchedBackupFiles()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        paths.EnsureCreated();
+        await File.WriteAllTextAsync(paths.ConfigPath, "config");
+        var secretPath = Path.Combine(paths.SecretsDirectory, "config-backup-20260708-090000.json");
+        await File.WriteAllTextAsync(secretPath, "secret");
+        var unrelatedPath = Path.Combine(paths.ConfigBackupsDirectory, "manual-note.json");
+        await File.WriteAllTextAsync(unrelatedPath, "keep me");
+        var oldBackup = await WriteTimestampedFileAsync(
+            paths.ConfigBackupsDirectory,
+            "config-backup-20260708-100000.json",
+            "old backup",
+            new DateTime(2026, 7, 8, 10, 0, 0, DateTimeKind.Utc));
+        var olderRollback = await WriteTimestampedFileAsync(
+            paths.ConfigBackupsDirectory,
+            "config-backup-before-reset-20260708-110000.json",
+            "older rollback",
+            new DateTime(2026, 7, 8, 11, 0, 0, DateTimeKind.Utc));
+        var newestRollback = await WriteTimestampedFileAsync(
+            paths.ConfigBackupsDirectory,
+            "config-backup-before-restore-20260708-120000.json",
+            "newest rollback",
+            new DateTime(2026, 7, 8, 12, 0, 0, DateTimeKind.Utc));
+        var newestBackup = await WriteTimestampedFileAsync(
+            paths.ConfigBackupsDirectory,
+            "config-backup-20260708-130000.json",
+            "newest backup",
+            new DateTime(2026, 7, 8, 13, 0, 0, DateTimeKind.Utc));
+        var deletedBytes = new FileInfo(oldBackup).Length + new FileInfo(olderRollback).Length;
+        var now = new DateTimeOffset(2026, 7, 8, 21, 0, 0, TimeSpan.Zero);
+        var service = new DataMaintenanceService(paths, new JsonAppConfigStore(paths), () => now);
+
+        try
+        {
+            var result = await service.PruneConfigBackupsAsync(2, CancellationToken.None);
+
+            Assert.Equal(paths.ConfigBackupsDirectory, result.DirectoryPath);
+            Assert.Equal("config-backup-*.json", result.SearchPattern);
+            Assert.Equal(2, result.KeepNewest);
+            Assert.Equal(4, result.MatchedCount);
+            Assert.Equal(2, result.KeptCount);
+            Assert.Equal(2, result.DeletedCount);
+            Assert.Equal(deletedBytes, result.DeletedBytes);
+            Assert.Equal(now, result.PrunedAt);
+            Assert.False(File.Exists(oldBackup));
+            Assert.False(File.Exists(olderRollback));
+            Assert.True(File.Exists(newestRollback));
+            Assert.True(File.Exists(newestBackup));
+            Assert.True(File.Exists(unrelatedPath));
+            Assert.True(File.Exists(paths.ConfigPath));
+            Assert.True(File.Exists(secretPath));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task PruneDiagnosticsExportsAsync_DeletesOnlyOldMatchedExportFiles()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        paths.EnsureCreated();
+        var unrelatedPath = Path.Combine(paths.DiagnosticsExportsDirectory, "diagnostics-export-note.log");
+        await File.WriteAllTextAsync(unrelatedPath, "keep me");
+        var oldExport = await WriteTimestampedFileAsync(
+            paths.DiagnosticsExportsDirectory,
+            "diagnostics-export-20260708-100000.txt",
+            "old export",
+            new DateTime(2026, 7, 8, 10, 0, 0, DateTimeKind.Utc));
+        var newestExport = await WriteTimestampedFileAsync(
+            paths.DiagnosticsExportsDirectory,
+            "diagnostics-export-20260708-110000.txt",
+            "newest export",
+            new DateTime(2026, 7, 8, 11, 0, 0, DateTimeKind.Utc));
+        var deletedBytes = new FileInfo(oldExport).Length;
+        var service = new DataMaintenanceService(paths, new JsonAppConfigStore(paths));
+
+        try
+        {
+            var result = await service.PruneDiagnosticsExportsAsync(1, CancellationToken.None);
+
+            Assert.Equal(paths.DiagnosticsExportsDirectory, result.DirectoryPath);
+            Assert.Equal("diagnostics-export-*.txt", result.SearchPattern);
+            Assert.Equal(2, result.MatchedCount);
+            Assert.Equal(1, result.KeptCount);
+            Assert.Equal(1, result.DeletedCount);
+            Assert.Equal(deletedBytes, result.DeletedBytes);
+            Assert.False(File.Exists(oldExport));
+            Assert.True(File.Exists(newestExport));
+            Assert.True(File.Exists(unrelatedPath));
+            Assert.True(Directory.Exists(paths.SecretsDirectory));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task PruneConfigBackupsAsync_RequiresAtLeastOneKeptFile()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        var service = new DataMaintenanceService(paths, new JsonAppConfigStore(paths));
+
+        try
+        {
+            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+                () => service.PruneConfigBackupsAsync(0, CancellationToken.None));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    private static async Task<string> WriteTimestampedFileAsync(
+        string directory,
+        string fileName,
+        string content,
+        DateTime lastWriteTimeUtc)
+    {
+        var path = Path.Combine(directory, fileName);
+        await File.WriteAllTextAsync(path, content);
+        File.SetLastWriteTimeUtc(path, lastWriteTimeUtc);
+        return path;
+    }
 }

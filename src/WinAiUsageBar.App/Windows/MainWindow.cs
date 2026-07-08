@@ -15,6 +15,8 @@ namespace WinAiUsageBar.App.Windows;
 
 public sealed class MainWindow : Window
 {
+    private const int SupportArtifactPruneKeepNewest = 5;
+
     private readonly AppHost host;
     private readonly NavigationView navigationView = new()
     {
@@ -1094,6 +1096,65 @@ public sealed class MainWindow : Window
 
         panel.Children.Add(maintenanceActions);
 
+        panel.Children.Add(UiFactory.Text(
+            $"Prune retained support artifacts while keeping the newest {SupportArtifactPruneKeepNewest} files.",
+            14));
+        var pruneActions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8
+        };
+        var pruneBackupsButton = new Button { Content = "Prune Old Backups" };
+        pruneBackupsButton.Click += async (_, _) =>
+        {
+            try
+            {
+                var result = await host.PruneConfigBackupsAsync(
+                    SupportArtifactPruneKeepNewest,
+                    CancellationToken.None);
+                maintenanceInfo.Severity = InfoBarSeverity.Success;
+                maintenanceInfo.Title = result.DeletedCount > 0
+                    ? "Old config backups pruned"
+                    : "No old config backups pruned";
+                maintenanceInfo.Message = FormatPruneResult(result);
+                maintenanceInfo.IsOpen = true;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                maintenanceInfo.Severity = InfoBarSeverity.Error;
+                maintenanceInfo.Title = "Config backup pruning failed";
+                maintenanceInfo.Message = ex.Message;
+                maintenanceInfo.IsOpen = true;
+            }
+        };
+        pruneActions.Children.Add(pruneBackupsButton);
+
+        var pruneDiagnosticsExportsButton = new Button { Content = "Prune Old Diagnostics Exports" };
+        pruneDiagnosticsExportsButton.Click += async (_, _) =>
+        {
+            try
+            {
+                var result = await host.PruneDiagnosticsExportsAsync(
+                    SupportArtifactPruneKeepNewest,
+                    CancellationToken.None);
+                maintenanceInfo.Severity = InfoBarSeverity.Success;
+                maintenanceInfo.Title = result.DeletedCount > 0
+                    ? "Old diagnostics exports pruned"
+                    : "No old diagnostics exports pruned";
+                maintenanceInfo.Message = FormatPruneResult(result);
+                maintenanceInfo.IsOpen = true;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                maintenanceInfo.Severity = InfoBarSeverity.Error;
+                maintenanceInfo.Title = "Diagnostics export pruning failed";
+                maintenanceInfo.Message = ex.Message;
+                maintenanceInfo.IsOpen = true;
+            }
+        };
+        pruneActions.Children.Add(pruneDiagnosticsExportsButton);
+        panel.Children.Add(pruneActions);
+
         var backupActions = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -1342,6 +1403,17 @@ public sealed class MainWindow : Window
         }
 
         return string.Join(Environment.NewLine, lines);
+    }
+
+    private static string FormatPruneResult(DataPruneResult result)
+    {
+        return string.Join(
+            Environment.NewLine,
+            $"Matched files: {result.MatchedCount}",
+            $"Kept newest: {result.KeptCount}",
+            $"Deleted: {result.DeletedCount}",
+            $"Freed: {DiagnosticsSummaryViewModel.FormatBytes(result.DeletedBytes)}",
+            $"Directory: {result.DirectoryPath}");
     }
 
     private sealed record ProviderEditor(
