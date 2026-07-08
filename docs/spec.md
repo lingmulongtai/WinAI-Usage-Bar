@@ -26,6 +26,8 @@ The CLI can persist the same provider command override with `--set-provider-cli-
 
 Codex/ChatGPT app-server initialization is required, but account, rate-limit, and usage method calls should be treated as optional data sources after initialization. A non-auth JSON-RPC error or timeout from one optional method should be recorded as a redacted diagnostic while the client continues to later methods. Auth, login, unauthorized, malformed JSON, closed streams, and process startup failures should still become visible provider failures.
 
+Codex/ChatGPT usage parsing should recognize safe percent, ratio, fraction, amount, remaining, limit, reset timestamp, and reset duration aliases from top-level and nested usage/rate-limit windows. Ratio or fraction aliases with values from 0 to 1 should be converted to percentages; values above 1 should be treated as already-percent values. Sensitive-looking fields containing auth, token, secret, cookie, or key markers must be ignored even if their names otherwise resemble usage aliases.
+
 The app-server `initialize` request should send `clientInfo.name` as `WinAI Usage Bar` and `clientInfo.version` from the app informational version, with a safe non-empty fallback when composition has no version metadata.
 
 Codex/ChatGPT app-server JSON-RPC response matching must use only top-level envelope `id` values. Notifications and events without a top-level `id`, even when they contain nested fields such as `params.id`, must not be treated as responses or buffered pending responses.

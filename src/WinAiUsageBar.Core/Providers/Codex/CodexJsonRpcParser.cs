@@ -23,6 +23,21 @@ public static class CodexJsonRpcParser
         "quotaUsedPercent",
         "quota_used_percent"
     ];
+    private static readonly string[] UsedFractionFields =
+    [
+        "usedFraction",
+        "used_fraction",
+        "usedRatio",
+        "used_ratio",
+        "usageFraction",
+        "usage_fraction",
+        "usageRatio",
+        "usage_ratio",
+        "quotaUsedFraction",
+        "quota_used_fraction",
+        "quotaUsedRatio",
+        "quota_used_ratio"
+    ];
     private static readonly string[] RemainingPercentFields =
     [
         "remainingPercent",
@@ -35,6 +50,21 @@ public static class CodexJsonRpcParser
         "left_percent",
         "quotaRemainingPercent",
         "quota_remaining_percent"
+    ];
+    private static readonly string[] RemainingFractionFields =
+    [
+        "remainingFraction",
+        "remaining_fraction",
+        "remainingRatio",
+        "remaining_ratio",
+        "leftFraction",
+        "left_fraction",
+        "leftRatio",
+        "left_ratio",
+        "quotaRemainingFraction",
+        "quota_remaining_fraction",
+        "quotaRemainingRatio",
+        "quota_remaining_ratio"
     ];
     private static readonly string[] UsedFields =
     [
@@ -284,6 +314,8 @@ public static class CodexJsonRpcParser
     {
         var usedPercent = TryGetDirectNumber(result, UsedPercentFields);
         var remainingPercent = TryGetDirectNumber(result, RemainingPercentFields);
+        usedPercent ??= TryGetDirectPercentFraction(result, UsedFractionFields);
+        remainingPercent ??= TryGetDirectPercentFraction(result, RemainingFractionFields);
         var used = TryGetDirectNumber(result, UsedFields);
         var limit = TryGetDirectNumber(result, LimitFields);
         var remaining = TryGetDirectNumber(result, RemainingFields);
@@ -312,6 +344,11 @@ public static class CodexJsonRpcParser
         if (remainingPercent is null && usedPercent is not null)
         {
             remainingPercent = Math.Round(100 - usedPercent.Value, 2);
+        }
+
+        if (usedPercent is null && remainingPercent is not null)
+        {
+            usedPercent = Math.Round(100 - remainingPercent.Value, 2);
         }
 
         if (usedPercent is null && remainingPercent is null && used is null && limit is null)
@@ -496,6 +533,17 @@ public static class CodexJsonRpcParser
         }
 
         return null;
+    }
+
+    private static double? TryGetDirectPercentFraction(JsonElement root, string[] names)
+    {
+        var value = TryGetDirectNumber(root, names);
+        return value is null ? null : NormalizeFractionToPercent(value.Value);
+    }
+
+    private static double NormalizeFractionToPercent(double value)
+    {
+        return value is >= 0 and <= 1 ? Math.Round(value * 100, 2) : value;
     }
 
     private static DateTimeOffset? TryGetDirectDateTime(JsonElement root, string[] names)

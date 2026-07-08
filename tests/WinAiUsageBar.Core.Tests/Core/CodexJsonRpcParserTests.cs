@@ -222,6 +222,23 @@ public sealed class CodexJsonRpcParserTests
     }
 
     [Fact]
+    public void ParseUsageWindow_ComputesUsedPercentFromRemainingPercentOnly()
+    {
+        const string json = """
+        {
+          "result": {
+            "remainingPercent": 70
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json);
+
+        Assert.Equal(30, window?.UsedPercent);
+        Assert.Equal(70, window?.RemainingPercent);
+    }
+
+    [Fact]
     public void ParseUsageWindow_ParsesUnixSecondResetTimestamp()
     {
         var expected = new DateTimeOffset(2026, 7, 8, 12, 0, 0, TimeSpan.Zero);
@@ -569,6 +586,68 @@ public sealed class CodexJsonRpcParserTests
     }
 
     [Fact]
+    public void ParseUsageWindow_ParsesUsedFractionAliases()
+    {
+        const string json = """
+        {
+          "result": {
+            "usage": {
+              "usedFraction": 0.375
+            }
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json);
+
+        Assert.Equal(37.5, window?.UsedPercent);
+        Assert.Equal(62.5, window?.RemainingPercent);
+    }
+
+    [Fact]
+    public void ParseUsageWindow_ParsesRemainingRatioAliases()
+    {
+        const string json = """
+        {
+          "result": {
+            "rateLimits": [
+              {
+                "name": "metadata"
+              },
+              {
+                "remaining_ratio": "0.625"
+              }
+            ]
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json);
+
+        Assert.Equal(37.5, window?.UsedPercent);
+        Assert.Equal(62.5, window?.RemainingPercent);
+    }
+
+    [Fact]
+    public void ParseUsageWindow_TreatsFractionAliasAboveOneAsPercent()
+    {
+        const string json = """
+        {
+          "result": {
+            "usage": {
+              "usageRatio": 42
+            }
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json);
+
+        Assert.Equal(42, window?.UsedPercent);
+        Assert.Equal(58, window?.RemainingPercent);
+    }
+
+    [Fact]
     public void ParseUsageWindow_IgnoresSensitiveLookingResetDurationFields()
     {
         const string json = """
@@ -585,6 +664,29 @@ public sealed class CodexJsonRpcParserTests
         var window = CodexJsonRpcParser.ParseUsageWindow(json);
 
         Assert.Null(window?.ResetsAt);
+    }
+
+    [Fact]
+    public void ParseUsageWindow_IgnoresSensitiveLookingFractionFields()
+    {
+        const string json = """
+        {
+          "result": {
+            "usage": {
+              "authUsageRatio": 0.99,
+              "tokenRemainingRatio": 0.01,
+              "used": 25,
+              "limit": 100
+            }
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json);
+
+        Assert.Equal(25, window?.Used);
+        Assert.Equal(25, window?.UsedPercent);
+        Assert.Equal(75, window?.RemainingPercent);
     }
 
     [Fact]

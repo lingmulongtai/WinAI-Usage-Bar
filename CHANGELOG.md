@@ -42,6 +42,7 @@ All notable changes to WinAI Usage Bar are documented here.
 - Provider cards now use the same snapshot freshness checks as Provider Details for stale and future-dated timestamps.
 - Provider cards now redact status and error text before display.
 - Provider notifications now redact snapshot-derived titles and body text before display.
+- Codex app-server usage parsing now recognizes safe ratio/fraction aliases and converts 0..1 values into percentages.
 
 ## 0.1.4 - 2026-07-08
 
