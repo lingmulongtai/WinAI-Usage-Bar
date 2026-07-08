@@ -38,6 +38,7 @@ public sealed class UsageRefreshService(
     private CancellationTokenSource? loopCancellation;
     private Task? loopTask;
     private IReadOnlyDictionary<ProviderId, UsageSnapshot> currentSnapshots = new Dictionary<ProviderId, UsageSnapshot>();
+    private readonly Dictionary<ProviderId, string> lastNotifiedReasons = [];
 
     public event EventHandler<IReadOnlyList<UsageSnapshot>>? SnapshotsChanged;
 
@@ -131,12 +132,18 @@ public sealed class UsageRefreshService(
 
                 snapshots.Add(snapshot);
 
-                if (ShouldNotify(config, snapshot))
+                if (ShouldNotify(config, snapshot, out var notificationReason))
                 {
                     await notificationService.NotifyAsync(snapshot, cancellationToken).ConfigureAwait(false);
+                    lastNotifiedReasons[snapshot.ProviderId] = notificationReason!;
+                }
+                else if (notificationReason is null)
+                {
+                    lastNotifiedReasons.Remove(snapshot.ProviderId);
                 }
             }
 
+            RemoveStaleNotificationReasons(snapshots);
             currentSnapshots = snapshots.ToDictionary(snapshot => snapshot.ProviderId);
             await snapshotStore.SaveAsync(snapshots, cancellationToken).ConfigureAwait(false);
             await snapshotStore.AppendHistoryAsync(snapshots, config.HistoryRetention, cancellationToken).ConfigureAwait(false);
@@ -145,6 +152,24 @@ public sealed class UsageRefreshService(
         finally
         {
             refreshLock.Release();
+        }
+    }
+
+    private void RemoveStaleNotificationReasons(IReadOnlyCollection<UsageSnapshot> snapshots)
+    {
+        if (lastNotifiedReasons.Count == 0)
+        {
+            return;
+        }
+
+        var activeProviderIds = snapshots
+            .Select(snapshot => snapshot.ProviderId)
+            .ToHashSet();
+        foreach (var providerId in lastNotifiedReasons.Keys
+            .Where(providerId => !activeProviderIds.Contains(providerId))
+            .ToList())
+        {
+            lastNotifiedReasons.Remove(providerId);
         }
     }
 
@@ -287,14 +312,25 @@ public sealed class UsageRefreshService(
         }
     }
 
-    private static bool ShouldNotify(AppConfig config, UsageSnapshot snapshot)
+    private bool ShouldNotify(
+        AppConfig config,
+        UsageSnapshot snapshot,
+        out string? notificationReason)
     {
+        notificationReason = null;
         if (!config.Notifications.IsEnabled)
         {
             return false;
         }
 
-        return snapshot.Health == ProviderHealth.AuthRequired
-            || snapshot.PrimaryWindow?.RemainingPercent < 20;
+        var payload = LocalNotificationPayloadFactory.Create(snapshot);
+        if (payload is null)
+        {
+            return false;
+        }
+
+        notificationReason = payload.Reason;
+        return !lastNotifiedReasons.TryGetValue(snapshot.ProviderId, out var previousReason)
+            || previousReason != payload.Reason;
     }
 }

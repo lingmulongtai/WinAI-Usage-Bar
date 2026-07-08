@@ -167,6 +167,120 @@ public sealed class UsageRefreshServiceTests
     }
 
     [Fact]
+    public async Task RefreshNowAsync_SuppressesDuplicateNotificationsForSameReason()
+    {
+        var config = DisabledDefaultConfig();
+        Enable(config, ProviderId.Codex);
+        var notifications = new RecordingNotificationService();
+        var adapter = new MutableQuotaProviderAdapter(ProviderDescriptors.Get(ProviderId.Codex), 15);
+        var refreshService = new UsageRefreshService(
+            new InMemoryConfigStore(config),
+            new InMemorySnapshotStore(),
+            new FakeProviderSource([adapter.Descriptor], _ => adapter),
+            TestPaths(),
+            notifications);
+
+        await refreshService.RefreshNowAsync(CancellationToken.None);
+        await refreshService.RefreshNowAsync(CancellationToken.None);
+
+        Assert.Single(notifications.Snapshots);
+    }
+
+    [Fact]
+    public async Task RefreshNowAsync_NotifiesAgainWhenNotificationReasonChanges()
+    {
+        var config = DisabledDefaultConfig();
+        Enable(config, ProviderId.Codex);
+        var notifications = new RecordingNotificationService();
+        var adapter = new MutableQuotaProviderAdapter(ProviderDescriptors.Get(ProviderId.Codex), 15);
+        var refreshService = new UsageRefreshService(
+            new InMemoryConfigStore(config),
+            new InMemorySnapshotStore(),
+            new FakeProviderSource([adapter.Descriptor], _ => adapter),
+            TestPaths(),
+            notifications);
+
+        await refreshService.RefreshNowAsync(CancellationToken.None);
+        adapter.RemainingPercent = 8;
+        await refreshService.RefreshNowAsync(CancellationToken.None);
+
+        Assert.Equal(2, notifications.Snapshots.Count);
+        Assert.Equal(15, notifications.Snapshots[0].PrimaryWindow?.RemainingPercent);
+        Assert.Equal(8, notifications.Snapshots[1].PrimaryWindow?.RemainingPercent);
+    }
+
+    [Fact]
+    public async Task RefreshNowAsync_ClearsNotificationStateAfterRecovery()
+    {
+        var config = DisabledDefaultConfig();
+        Enable(config, ProviderId.Codex);
+        var notifications = new RecordingNotificationService();
+        var adapter = new MutableQuotaProviderAdapter(ProviderDescriptors.Get(ProviderId.Codex), 15);
+        var refreshService = new UsageRefreshService(
+            new InMemoryConfigStore(config),
+            new InMemorySnapshotStore(),
+            new FakeProviderSource([adapter.Descriptor], _ => adapter),
+            TestPaths(),
+            notifications);
+
+        await refreshService.RefreshNowAsync(CancellationToken.None);
+        adapter.RemainingPercent = 75;
+        await refreshService.RefreshNowAsync(CancellationToken.None);
+        adapter.RemainingPercent = 15;
+        await refreshService.RefreshNowAsync(CancellationToken.None);
+
+        Assert.Equal(2, notifications.Snapshots.Count);
+        Assert.All(notifications.Snapshots, snapshot =>
+            Assert.Equal(15, snapshot.PrimaryWindow?.RemainingPercent));
+    }
+
+    [Fact]
+    public async Task RefreshNowAsync_ClearsNotificationStateWhenNotificationsAreDisabled()
+    {
+        var config = DisabledDefaultConfig();
+        Enable(config, ProviderId.Codex);
+        var notifications = new RecordingNotificationService();
+        var adapter = new MutableQuotaProviderAdapter(ProviderDescriptors.Get(ProviderId.Codex), 15);
+        var refreshService = new UsageRefreshService(
+            new InMemoryConfigStore(config),
+            new InMemorySnapshotStore(),
+            new FakeProviderSource([adapter.Descriptor], _ => adapter),
+            TestPaths(),
+            notifications);
+
+        await refreshService.RefreshNowAsync(CancellationToken.None);
+        config.Notifications.IsEnabled = false;
+        await refreshService.RefreshNowAsync(CancellationToken.None);
+        config.Notifications.IsEnabled = true;
+        await refreshService.RefreshNowAsync(CancellationToken.None);
+
+        Assert.Equal(2, notifications.Snapshots.Count);
+    }
+
+    [Fact]
+    public async Task RefreshNowAsync_ClearsNotificationStateWhenProviderIsDisabled()
+    {
+        var config = DisabledDefaultConfig();
+        var codex = Enable(config, ProviderId.Codex);
+        var notifications = new RecordingNotificationService();
+        var adapter = new MutableQuotaProviderAdapter(ProviderDescriptors.Get(ProviderId.Codex), 15);
+        var refreshService = new UsageRefreshService(
+            new InMemoryConfigStore(config),
+            new InMemorySnapshotStore(),
+            new FakeProviderSource([adapter.Descriptor], _ => adapter),
+            TestPaths(),
+            notifications);
+
+        await refreshService.RefreshNowAsync(CancellationToken.None);
+        codex.IsEnabled = false;
+        await refreshService.RefreshNowAsync(CancellationToken.None);
+        codex.IsEnabled = true;
+        await refreshService.RefreshNowAsync(CancellationToken.None);
+
+        Assert.Equal(2, notifications.Snapshots.Count);
+    }
+
+    [Fact]
     public async Task RefreshNowAsync_LogsProviderDiagnosticsWithRedaction()
     {
         var config = DisabledDefaultConfig();
@@ -377,6 +491,38 @@ public sealed class UsageRefreshServiceTests
                 DataSourceKind.Manual,
                 context.Now,
                 "Low",
+                ErrorMessage: null);
+
+            return Task.FromResult(ProviderFetchResult.FromSnapshot(snapshot));
+        }
+    }
+
+    private sealed class MutableQuotaProviderAdapter(
+        ProviderDescriptor descriptor,
+        double remainingPercent) : IProviderAdapter
+    {
+        public ProviderDescriptor Descriptor { get; } = descriptor;
+
+        public double RemainingPercent { get; set; } = remainingPercent;
+
+        public Task<ProviderFetchResult> FetchAsync(ProviderFetchContext context, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var health = RemainingPercent < 20
+                ? ProviderHealth.Warning
+                : ProviderHealth.Ok;
+            var usedPercent = 100 - RemainingPercent;
+            var snapshot = new UsageSnapshot(
+                Descriptor.Id,
+                Descriptor.DisplayName,
+                health,
+                Identity: null,
+                new UsageWindow("Test", usedPercent, RemainingPercent, null, "test reset", "%", usedPercent, 100),
+                SecondaryWindow: null,
+                Credits: null,
+                DataSourceKind.Manual,
+                context.Now,
+                health == ProviderHealth.Ok ? "OK" : "Low",
                 ErrorMessage: null);
 
             return Task.FromResult(ProviderFetchResult.FromSnapshot(snapshot));

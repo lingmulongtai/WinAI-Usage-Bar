@@ -203,5 +203,5 @@ The release workflow builds, tests, publishes, smoke-tests, packages the app, bu
 - Add official API integrations where documented and permitted.
 - Improve compact panel placement near the taskbar.
 - Add charts from `history.ndjson`.
-- Add Windows local notifications beyond the no-op MVP service.
+- Dogfood Windows local notification delivery across packaged and unpackaged runs.
 - Package and sign the app for easier installation.

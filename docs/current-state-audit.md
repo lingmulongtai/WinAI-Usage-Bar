@@ -37,6 +37,7 @@ Overall:
 - Release readiness checks now cover version metadata, changelog, audit date, published-app smoke test, package presence, and checksum validity.
 - The repo now has an Inno Setup build path, checksum generation, CI artifact upload, and draft-release asset wiring for setup executables.
 - Refresh settings can run a manual latest-release check or explicitly launch the confirmation-gated safe latest-update install flow, while startup update policy checks releases on a conservative interval, can download verified packages, can launch guarded install scripts, and avoids repeatedly launching the same release version.
+- Provider notifications now suppress repeated alerts for the same provider/reason during periodic refresh while still notifying when severity changes or after recovery.
 - Guided first-run checklist state, Provider Details, config backup export, backup validation, confirmed CLI restore, latest-backup in-app restore, and confirmed reset-to-default recovery are implemented.
 - Providers now includes non-secret setup guidance for source choices, Manual fallback, API references, Copilot metrics requirements, and CLI/app-server caveats.
 - Provider Details now includes non-secret repair guidance for warning, auth-required, unsupported, error, and unknown provider states.

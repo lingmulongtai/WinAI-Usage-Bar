@@ -160,7 +160,7 @@ Refresh settings also expose notification enablement, history retention limits, 
 
 ## Notifications
 
-When notifications are enabled, auth-required snapshots and providers with less than 20% remaining quota can emit Windows App SDK local app notifications. The notification service registers lazily and falls back silently when the current Windows runtime does not support app notifications, so refreshes do not fail because toast delivery failed.
+When notifications are enabled, auth-required snapshots and providers with less than 20% remaining quota can emit Windows App SDK local app notifications. The notification service registers lazily and falls back silently when the current Windows runtime does not support app notifications, so refreshes do not fail because toast delivery failed. Refresh scheduling must suppress duplicate notifications for the same provider and reason while the condition remains unchanged, notify again when the reason changes, and clear remembered notification state after recovery or while notifications are disabled.
 
 ## Manual Input Validation
 
