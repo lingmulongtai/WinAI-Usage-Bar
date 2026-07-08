@@ -6,6 +6,7 @@ Current app version: `0.1.2`.
 
 For a strict status check, see [docs/current-state-audit.md](docs/current-state-audit.md).
 For Windows shell dogfooding checks, see [docs/windows-manual-verification.md](docs/windows-manual-verification.md).
+For release-to-release dogfooding notes, see [docs/release-dogfooding.md](docs/release-dogfooding.md).
 Create a timestamped local verification report with `.\scripts\new-windows-verification-report.ps1`.
 
 ## Features
