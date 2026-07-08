@@ -60,6 +60,7 @@ public sealed class CodexJsonRpcParserTests
 
         Assert.Equal(75, snapshot.PrimaryWindow?.UsedPercent);
         Assert.Equal(25, snapshot.PrimaryWindow?.RemainingPercent);
+        Assert.Equal(new DateTimeOffset(2026, 7, 8, 12, 0, 0, TimeSpan.Zero), snapshot.PrimaryWindow?.ResetsAt);
         Assert.Equal(9.5m, snapshot.Credits?.Balance);
         Assert.Equal(12345, snapshot.Credits?.TokensLast31Days);
         Assert.Equal(ProviderHealth.Ok, snapshot.Health);
@@ -137,6 +138,101 @@ public sealed class CodexJsonRpcParserTests
         Assert.Equal(10, snapshot.PrimaryWindow?.RemainingPercent);
         Assert.Null(snapshot.SecondaryWindow);
         Assert.Equal(ProviderHealth.Warning, snapshot.Health);
+    }
+
+    [Fact]
+    public void ParseUsageWindow_ParsesUnixSecondResetTimestamp()
+    {
+        var expected = new DateTimeOffset(2026, 7, 8, 12, 0, 0, TimeSpan.Zero);
+        var json = $$"""
+        {
+          "result": {
+            "used": 5,
+            "limit": 10,
+            "resetUnixSeconds": {{expected.ToUnixTimeSeconds()}}
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json);
+
+        Assert.Equal(expected, window?.ResetsAt);
+    }
+
+    [Fact]
+    public void ParseUsageWindow_ParsesUnixMillisecondResetTimestamp()
+    {
+        var expected = new DateTimeOffset(2026, 7, 8, 12, 0, 0, TimeSpan.Zero);
+        var json = $$"""
+        {
+          "result": {
+            "used": 5,
+            "limit": 10,
+            "resetUnixMilliseconds": {{expected.ToUnixTimeMilliseconds()}}
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json);
+
+        Assert.Equal(expected, window?.ResetsAt);
+    }
+
+    [Fact]
+    public void ParseUsageWindow_UsesRelativeResetSecondsWhenNowIsAvailable()
+    {
+        var now = new DateTimeOffset(2026, 7, 8, 10, 0, 0, TimeSpan.Zero);
+        const string json = """
+        {
+          "result": {
+            "used": 5,
+            "limit": 10,
+            "resetsInSeconds": 5400
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json, now: now);
+
+        Assert.Equal(now.AddMinutes(90), window?.ResetsAt);
+        Assert.Equal("resets in 1.5h", window?.ResetDescription);
+    }
+
+    [Fact]
+    public void ParseUsageWindow_IgnoresSensitiveLookingResetDurationFields()
+    {
+        const string json = """
+        {
+          "result": {
+            "used": 5,
+            "limit": 10,
+            "authResetAt": "2026-07-08T12:00:00Z",
+            "resetTokenExpiresAt": 1783512000
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json);
+
+        Assert.Null(window?.ResetsAt);
+    }
+
+    [Fact]
+    public void ParseUsageWindow_IgnoresOutOfRangeResetTimestamp()
+    {
+        const string json = """
+        {
+          "result": {
+            "used": 5,
+            "limit": 10,
+            "resetUnixSeconds": 1e100
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json);
+
+        Assert.Null(window?.ResetsAt);
     }
 
     [Fact]

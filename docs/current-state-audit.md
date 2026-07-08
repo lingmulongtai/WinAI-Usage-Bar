@@ -38,6 +38,7 @@ Overall:
 - Guided first-run checklist state, Provider Details, config backup export, backup validation, confirmed CLI restore, latest-backup in-app restore, and confirmed reset-to-default recovery are implemented.
 - Providers now includes non-secret setup guidance for source choices, Manual fallback, API references, Copilot metrics requirements, and CLI/app-server caveats.
 - Provider Details now includes non-secret repair guidance for warning, auth-required, unsupported, error, and unknown provider states.
+- Codex app-server parsing now handles common absolute and relative reset timestamp shapes in addition to basic usage and rate-limit percentages.
 - Privacy & Data now includes non-secret storage pressure guidance and recovery guidance for backup, restore, reset, and diagnostics export choices.
 - Windows shell dogfooding now has a concrete manual verification checklist and a timestamped local report script.
 - The issue and commit history is becoming meaningful rather than fake contribution noise.
@@ -65,7 +66,7 @@ Overall:
 | Secret leakage through diagnostics | High | DPAPI store, redactor, export exclusions | Add more redaction test cases and review every provider diagnostic path. |
 | Tray/window behavior differs across Windows setups | Medium | Placement service, single-instance guard tests, manual checklist, and report scaffold | Run and record the checklist across taskbar edges, DPI, multi-monitor, startup, and theme modes. |
 | CI restore flakiness blocks progress | Medium | Retry script and NuGet audit disabled by default | Keep restore helper simple and inspect future failures quickly. |
-| App feels like a demo because provider data is manual | High | Mock, Manual, Codex parser tests, and provider details are stable | Prioritize one reliable real provider path end to end. |
+| App feels like a demo because provider data is manual | High | Mock, Manual, broader Codex reset parser tests, and provider details are stable | Prioritize one reliable real provider path end to end. |
 | Public binaries are not trusted by Windows | High | Zip and checksum exist | Add signing or at least documented install warnings before public release. |
 | Local data files grow too much | Medium | History retention by days and bytes; Privacy & Data storage pressure guidance | Dogfood pressure thresholds and add richer backup pruning or compaction actions if needed. |
 | Config corruption causes user confusion | Medium | Corrupt config backup, default migration, config export, validation, confirmed CLI restore, latest-backup in-app restore, reset-to-default recovery, and recovery guidance | Dogfood restore and reset repeatedly, then tighten recovery copy and guidance based on real failures. |

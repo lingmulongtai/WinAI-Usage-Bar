@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using WinAiUsageBar.Core.Abstractions;
 using WinAiUsageBar.Core.Models;
@@ -34,8 +35,8 @@ public static class CodexJsonRpcParser
         DateTimeOffset now)
     {
         var account = ParseAccount(data.AccountJson);
-        var usageWindow = ParseUsageWindow(data.UsageJson, "Codex usage");
-        var rateLimitWindow = ParseUsageWindow(data.RateLimitsJson, "Codex rate limit");
+        var usageWindow = ParseUsageWindow(data.UsageJson, "Codex usage", now);
+        var rateLimitWindow = ParseUsageWindow(data.RateLimitsJson, "Codex rate limit", now);
         var primaryWindow = usageWindow ?? rateLimitWindow;
         var secondaryWindow = usageWindow is not null && rateLimitWindow is not null
             ? rateLimitWindow
@@ -101,7 +102,10 @@ public static class CodexJsonRpcParser
         return new ProviderIdentity(email, accountName, planName, organization);
     }
 
-    public static UsageWindow? ParseUsageWindow(string? json, string label = "Codex usage")
+    public static UsageWindow? ParseUsageWindow(
+        string? json,
+        string label = "Codex usage",
+        DateTimeOffset? now = null)
     {
         if (!TryGetResult(json, out var result))
         {
@@ -130,7 +134,52 @@ public static class CodexJsonRpcParser
         }
 
         var resetDescription = TryGetSafeString(result, ["resetDescription", "resetsIn", "reset"]);
-        var resetsAt = TryGetDateTime(result, ["resetsAt", "resetAt", "resetTime", "resets_at"]);
+        var resetsAt = TryGetDateTime(
+            result,
+            [
+                "resetsAt",
+                "resetAt",
+                "resetTime",
+                "resetTimestamp",
+                "resetUnixSeconds",
+                "resetUnixMilliseconds",
+                "resetEpochSeconds",
+                "resetEpochMilliseconds",
+                "resets_at",
+                "reset_at",
+                "reset_time",
+                "reset_timestamp",
+                "reset_unix_seconds",
+                "reset_unix_milliseconds",
+                "reset_epoch_seconds",
+                "reset_epoch_milliseconds"
+            ]);
+        var resetDuration = TryGetDuration(
+            result,
+            [
+                "resetsInSeconds",
+                "resetInSeconds",
+                "resetSeconds",
+                "secondsUntilReset",
+                "resets_in_seconds",
+                "reset_in_seconds",
+                "reset_seconds",
+                "seconds_until_reset",
+                "resetsInMilliseconds",
+                "resetInMilliseconds",
+                "resetMilliseconds",
+                "millisecondsUntilReset",
+                "resets_in_milliseconds",
+                "reset_in_milliseconds",
+                "reset_milliseconds",
+                "milliseconds_until_reset"
+            ]);
+
+        if (resetsAt is null && resetDuration is not null && now is not null)
+        {
+            resetsAt = now.Value.Add(resetDuration.Value);
+            resetDescription ??= FormatResetDuration(resetDuration.Value);
+        }
 
         return new UsageWindow(
             label,
@@ -250,9 +299,110 @@ public static class CodexJsonRpcParser
             {
                 return parsed;
             }
+
+            var timestamp = TryGetNumberValue(value);
+            if (timestamp is not null)
+            {
+                return TryCreateUnixTimestamp(timestamp.Value, name);
+            }
         }
 
         return null;
+    }
+
+    private static TimeSpan? TryGetDuration(JsonElement root, string[] names)
+    {
+        foreach (var (name, value) in Flatten(root))
+        {
+            if (!names.Contains(name, StringComparer.OrdinalIgnoreCase) || IsSensitiveName(name))
+            {
+                continue;
+            }
+
+            var duration = TryGetNumberValue(value);
+            if (duration is null || duration.Value < 0)
+            {
+                continue;
+            }
+
+            return IsMillisecondField(name)
+                ? TimeSpan.FromMilliseconds(duration.Value)
+                : TimeSpan.FromSeconds(duration.Value);
+        }
+
+        return null;
+    }
+
+    private static double? TryGetNumberValue(JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetDouble(out var number))
+        {
+            return number;
+        }
+
+        if (value.ValueKind == JsonValueKind.String
+            && double.TryParse(
+                value.GetString(),
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
+                out var parsed))
+        {
+            return parsed;
+        }
+
+        return null;
+    }
+
+    private static DateTimeOffset? TryCreateUnixTimestamp(double value, string fieldName)
+    {
+        if (double.IsNaN(value) || double.IsInfinity(value))
+        {
+            return null;
+        }
+
+        long timestamp;
+        try
+        {
+            timestamp = Convert.ToInt64(Math.Round(value, MidpointRounding.AwayFromZero));
+        }
+        catch (OverflowException)
+        {
+            return null;
+        }
+
+        var looksLikeMilliseconds = timestamp is >= 10_000_000_000 or <= -10_000_000_000;
+        try
+        {
+            return IsMillisecondField(fieldName) || looksLikeMilliseconds
+                ? DateTimeOffset.FromUnixTimeMilliseconds(timestamp)
+                : DateTimeOffset.FromUnixTimeSeconds(timestamp);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return null;
+        }
+    }
+
+    private static bool IsMillisecondField(string fieldName)
+    {
+        return fieldName.Contains("millisecond", StringComparison.OrdinalIgnoreCase)
+            || fieldName.Contains("millis", StringComparison.OrdinalIgnoreCase)
+            || fieldName.EndsWith("Ms", StringComparison.Ordinal);
+    }
+
+    private static string FormatResetDuration(TimeSpan duration)
+    {
+        if (duration.TotalHours >= 1)
+        {
+            return $"resets in {Math.Round(duration.TotalHours, 1)}h";
+        }
+
+        if (duration.TotalMinutes >= 1)
+        {
+            return $"resets in {Math.Round(duration.TotalMinutes, 1)}m";
+        }
+
+        return $"resets in {Math.Round(duration.TotalSeconds, 1)}s";
     }
 
     private static IEnumerable<(string Name, JsonElement Value)> Flatten(JsonElement element)
