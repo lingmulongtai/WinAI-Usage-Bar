@@ -265,6 +265,37 @@ public sealed class CommandLineActionsTests
     }
 
     [Fact]
+    public async Task CreateHealthReportAsync_DoesNotRewriteNormalizedConfig()
+    {
+        var paths = TestPaths();
+        var configStore = new JsonAppConfigStore(paths);
+        var config = AppConfig.CreateDefault();
+        config.Refresh.Interval = RefreshIntervalKind.FifteenMinutes;
+
+        try
+        {
+            await configStore.SaveAsync(config, CancellationToken.None);
+            var expectedLastWriteTime = new DateTime(2026, 7, 8, 1, 2, 3, DateTimeKind.Utc);
+            File.SetLastWriteTimeUtc(paths.ConfigPath, expectedLastWriteTime);
+
+            var report = await CommandLineActions.CreateHealthReportAsync(
+                CancellationToken.None,
+                paths,
+                new FakeCliEnvironmentService());
+
+            Assert.Contains("Refresh interval: FifteenMinutes", report, StringComparison.Ordinal);
+            Assert.Equal(expectedLastWriteTime, File.GetLastWriteTimeUtc(paths.ConfigPath));
+        }
+        finally
+        {
+            if (Directory.Exists(paths.RootDirectory))
+            {
+                Directory.Delete(paths.RootDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task CheckForUpdatesAsync_FormatsUpdateCheckResult()
     {
         var updateCheck = new FakeUpdateCheckService(new ReleaseUpdateCheckResult(

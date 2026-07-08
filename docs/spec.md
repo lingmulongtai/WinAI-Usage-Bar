@@ -92,7 +92,7 @@ Files are stored under `%AppData%\WinAiUsageBar`:
 
 `config.json` also stores non-secret onboarding state, including whether first-run setup has been completed and when it was completed.
 
-Config saves should write through a per-save unique temporary file before replacing `config.json`, so simultaneous CLI commands or app processes do not collide on a fixed `config.json.tmp` path. Best-effort cleanup should remove abandoned per-save temp files after failed saves when possible.
+Config saves should write through a per-save unique temporary file before replacing `config.json`, so simultaneous CLI commands or app processes do not collide on a fixed `config.json.tmp` path. Best-effort cleanup should remove abandoned per-save temp files after failed saves when possible. Loading an already-normalized current config should not rewrite the file, while missing, corrupt, or migration-normalized configs should still be repaired and saved.
 
 Secrets must go through `ISecretStore`; the DPAPI implementation protects values for the current Windows user.
 
@@ -198,7 +198,7 @@ The Privacy & Data page can create a diagnostics export under `%AppData%\WinAiUs
 
 Diagnostics summary is separate from diagnostics export: the summary is for quick on-screen troubleshooting, while the export creates a redacted text bundle for deeper inspection.
 
-The CLI health report includes a storage pressure section derived from the same non-secret guidance used by Privacy & Data. It should list retained history, config backups, diagnostics exports, and diagnostics log pressure with level, detail, and recommendation text.
+The CLI health report includes a storage pressure section derived from the same non-secret guidance used by Privacy & Data. It should list retained history, config backups, diagnostics exports, and diagnostics log pressure with level, detail, and recommendation text. When `config.json` is already normalized, this read-only report should not rewrite the config file.
 
 The CLI health report includes a recovery guidance section derived from the same non-secret recovery guidance used by Privacy & Data. It should list config backup export, latest-backup restore, reset-to-defaults, and diagnostics export actions with availability and recommendation text. The CLI report should not add raw safety notes that mention secret-store paths; it must not include secret names, secret values, tokens, cookies, or raw auth details.
 

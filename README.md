@@ -54,7 +54,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - Codex CLI startup uses provider command overrides when configured, otherwise resolved Windows command paths, including `.cmd` shims and `.exe` paths. Startup failures are classified separately from auth and JSON-RPC errors with repair-oriented messages for WindowsApps/App Execution Alias or permission problems, including the option to set a provider CLI override to a launchable path.
 - Claude, Claude Code, Gemini, OpenCode Zen, and GitHub Copilot have MVP-safe descriptors and manual mode support.
 - Gemini and OpenCode Zen expose API key secret-name fields without storing API key values in config.
-- JSON config, snapshot cache, and history are stored under `%AppData%\WinAiUsageBar`; config saves use unique temporary files so parallel CLI commands do not collide on a fixed temp file.
+- JSON config, snapshot cache, and history are stored under `%AppData%\WinAiUsageBar`; config saves use unique temporary files so parallel CLI commands do not collide on a fixed temp file, and loading an already-normalized config does not rewrite it during read-only diagnostics.
 
 ## Build And Run
 

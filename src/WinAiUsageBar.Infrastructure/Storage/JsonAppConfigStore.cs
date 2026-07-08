@@ -27,14 +27,14 @@ public sealed class JsonAppConfigStore(AppDataPaths paths) : IAppConfigStore
 
         try
         {
-            AppConfig? config;
-            await using (var stream = File.OpenRead(paths.ConfigPath))
+            var existingJson = await File.ReadAllTextAsync(paths.ConfigPath, cancellationToken).ConfigureAwait(false);
+            var config = JsonSerializer.Deserialize<AppConfig>(existingJson, options);
+            var migrated = AppConfigMigrations.Migrate(config);
+            if (!IsSerializedConfigCurrent(existingJson, migrated))
             {
-                config = await JsonSerializer.DeserializeAsync<AppConfig>(stream, options, cancellationToken).ConfigureAwait(false);
+                await SaveAsync(migrated, cancellationToken).ConfigureAwait(false);
             }
 
-            var migrated = AppConfigMigrations.Migrate(config);
-            await SaveAsync(migrated, cancellationToken).ConfigureAwait(false);
             return migrated;
         }
         catch (Exception ex) when (ex is JsonException or NotSupportedException)
@@ -68,6 +68,12 @@ public sealed class JsonAppConfigStore(AppDataPaths paths) : IAppConfigStore
         {
             TryDeleteTempFile(tempPath);
         }
+    }
+
+    private bool IsSerializedConfigCurrent(string existingJson, AppConfig migrated)
+    {
+        var migratedJson = JsonSerializer.Serialize(migrated, options);
+        return string.Equals(existingJson, migratedJson, StringComparison.Ordinal);
     }
 
     private string CreateUniqueTempPath()

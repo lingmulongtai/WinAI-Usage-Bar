@@ -40,6 +40,32 @@ public sealed class JsonConfigStoreTests
     }
 
     [Fact]
+    public async Task JsonAppConfigStore_LoadAsync_DoesNotRewriteAlreadyNormalizedConfig()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        var store = new JsonAppConfigStore(paths);
+        var config = AppConfig.CreateDefault();
+        config.Startup.LaunchOnLogin = true;
+
+        try
+        {
+            await store.SaveAsync(config, CancellationToken.None);
+            var expectedLastWriteTime = new DateTime(2026, 7, 8, 0, 0, 0, DateTimeKind.Utc);
+            File.SetLastWriteTimeUtc(paths.ConfigPath, expectedLastWriteTime);
+
+            var loaded = await store.LoadAsync(CancellationToken.None);
+
+            Assert.True(loaded.Startup.LaunchOnLogin);
+            Assert.Equal(expectedLastWriteTime, File.GetLastWriteTimeUtc(paths.ConfigPath));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task JsonAppConfigStore_LoadAsync_MigratesMissingSectionsAndPreservesUserValues()
     {
         var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
@@ -104,6 +130,11 @@ public sealed class JsonConfigStoreTests
             Assert.Equal(280, config.Widget.Width);
             Assert.Equal(160, config.Widget.Height);
             Assert.Equal([ProviderId.Gemini], config.Widget.ProviderIds);
+
+            var persisted = await File.ReadAllTextAsync(paths.ConfigPath);
+            Assert.Contains("\"historyRetention\"", persisted, StringComparison.Ordinal);
+            Assert.Contains("\"onboarding\"", persisted, StringComparison.Ordinal);
+            Assert.Contains("\"updates\"", persisted, StringComparison.Ordinal);
         }
         finally
         {
