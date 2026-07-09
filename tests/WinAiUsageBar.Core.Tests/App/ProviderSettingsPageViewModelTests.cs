@@ -355,6 +355,29 @@ public sealed class ProviderSettingsPageViewModelTests
         Assert.DoesNotContain(@"C:\Tools\codex.cmd", guidance, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(ProviderId.Claude)]
+    [InlineData(ProviderId.ClaudeCode)]
+    public void SetupGuidanceLines_ExplainClaudeCliPlaceholderWithoutEchoingOverride(
+        ProviderId providerId)
+    {
+        var config = AppConfig.CreateDefault();
+        var descriptor = ProviderDescriptors.Get(providerId);
+        var viewModel = new ProviderSettingsPageViewModel(config, [descriptor]);
+        var editor = viewModel.Editors.Single();
+        editor.SourceKindText = DataSourceKind.Cli.ToString();
+        editor.CliCommandPathOverrideText = @"C:\Tools\claude.cmd";
+
+        var guidance = GuidanceText(editor);
+
+        Assert.Contains("safe readiness probe", guidance, StringComparison.Ordinal);
+        Assert.Contains("automatic usage retrieval is not implemented", guidance, StringComparison.Ordinal);
+        Assert.Contains("does not run interactive /usage", guidance, StringComparison.Ordinal);
+        Assert.Contains("scrape private local files", guidance, StringComparison.Ordinal);
+        Assert.Contains("Manual mode remains the fallback", guidance, StringComparison.Ordinal);
+        Assert.DoesNotContain(@"C:\Tools\claude.cmd", guidance, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public void SetupGuidanceLines_GuideMissingGitHubCopilotApiRequirements()
     {

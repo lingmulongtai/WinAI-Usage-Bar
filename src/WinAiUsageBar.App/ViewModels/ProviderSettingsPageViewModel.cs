@@ -361,6 +361,7 @@ public sealed class ProviderSettingsEditorViewModel(
 
         AddApiKeyGuidance(lines, sourceKind);
         AddCliCommandGuidance(lines, sourceKind);
+        AddClaudeCliGuidance(lines, sourceKind);
         AddGitHubCopilotGuidance(lines, sourceKind);
         return lines;
     }
@@ -383,6 +384,19 @@ public sealed class ProviderSettingsEditorViewModel(
         lines.Add(CliCommandSettings.NormalizeCommandPathOverride(CliCommandPathOverrideText) is null
             ? "CLI or local app-server refresh will use PATH discovery unless a command override is configured."
             : "CLI command override is configured; guidance does not echo the command path.");
+    }
+
+    private void AddClaudeCliGuidance(
+        ICollection<string> lines,
+        DataSourceKind sourceKind)
+    {
+        if (descriptor.Id is not (ProviderId.Claude or ProviderId.ClaudeCode)
+            || sourceKind != DataSourceKind.Cli)
+        {
+            return;
+        }
+
+        lines.Add("Claude CLI mode is a safe readiness probe only: automatic usage retrieval is not implemented, the app does not run interactive /usage commands or scrape private local files, and Manual mode remains the fallback.");
     }
 
     private void ValidateCliCommandSettings(ICollection<string> errors)

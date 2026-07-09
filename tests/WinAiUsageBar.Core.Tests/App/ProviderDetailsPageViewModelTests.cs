@@ -157,6 +157,9 @@ public sealed class ProviderDetailsPageViewModelTests
         Assert.Contains("Switch to Manual mode", repairText, StringComparison.Ordinal);
         Assert.Contains("command is installed", repairText, StringComparison.Ordinal);
         Assert.Contains("health report", repairText, StringComparison.Ordinal);
+        Assert.Contains("readiness placeholder", repairText, StringComparison.Ordinal);
+        Assert.Contains("does not run interactive /usage", repairText, StringComparison.Ordinal);
+        Assert.Contains("does not scrape private local files", repairText, StringComparison.Ordinal);
         Assert.Contains("launchable claude command", repairText, StringComparison.Ordinal);
         Assert.Contains("provider CLI sign-in flow", repairText, StringComparison.Ordinal);
         Assert.Contains("CLI command override", repairText, StringComparison.Ordinal);

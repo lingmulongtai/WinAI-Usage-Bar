@@ -77,7 +77,7 @@ public sealed class ProviderAdapterTests
     }
 
     [Fact]
-    public async Task CliProbeProviderAdapter_ReturnsAuthRequiredWhenCliExistsButUsageIsUnsupported()
+    public async Task CliProbeProviderAdapter_ReturnsUnsupportedWhenCliExistsButUsageIsUnsupported()
     {
         var descriptor = ProviderDescriptors.Get(ProviderId.ClaudeCode);
         var adapter = new CliProbeProviderAdapter(
@@ -94,8 +94,39 @@ public sealed class ProviderAdapterTests
         var result = await adapter.FetchAsync(context, CancellationToken.None);
 
         Assert.False(result.Success);
-        Assert.Equal(ProviderHealth.AuthRequired, result.Snapshot?.Health);
+        Assert.Equal(ProviderHealth.Unsupported, result.Snapshot?.Health);
         Assert.Equal(DataSourceKind.Cli, result.Snapshot?.SourceKind);
+        Assert.Contains("usage retrieval", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Contains("usage retrieval is not implemented", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Contains("No interactive CLI usage commands", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task CliProbeProviderAdapter_UsesConfiguredOverrideWithoutEchoingPath()
+    {
+        var descriptor = ProviderDescriptors.Get(ProviderId.Claude);
+        var commandProbe = new CountingCommandProbe(CommandProbeResult.Missing("claude"));
+        var adapter = new CliProbeProviderAdapter(
+            descriptor,
+            commandProbe,
+            "claude",
+            "Claude CLI exists, but usage retrieval is unavailable.",
+            "Claude CLI is missing.");
+        var config = ProviderConfig.CreateDefault(descriptor);
+        config.SourceKind = DataSourceKind.Cli;
+        config.Cli.CommandPathOverride = @" C:\Tools\claude.cmd ";
+
+        var result = await adapter.FetchAsync(
+            new ProviderFetchContext(config, DateTimeOffset.UtcNow, "test"),
+            CancellationToken.None);
+
+        var diagnostics = string.Join('\n', result.Diagnostics);
+        Assert.False(result.Success);
+        Assert.Equal(ProviderHealth.Unsupported, result.Snapshot?.Health);
+        Assert.Equal(0, commandProbe.InspectCount);
+        Assert.Contains("override is configured", diagnostics, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(@"C:\Tools\claude.cmd", diagnostics, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(@"C:\Tools\claude.cmd", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

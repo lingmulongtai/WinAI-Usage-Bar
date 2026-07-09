@@ -31,3 +31,29 @@ Clear the workaround with:
 ```powershell
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --clear-provider-cli-override --provider Codex
 ```
+
+## Claude And Claude Code CLI Placeholder
+
+Result expectation: unsupported automatic usage state, not a crash.
+
+What to check:
+
+- Set Claude or Claude Code to `Cli` source.
+- Run `--refresh-once --provider Claude --source Cli` or `--refresh-once --provider ClaudeCode --source Cli`.
+- Repeat once with a provider CLI command override if PATH discovery is unreliable.
+
+Product expectation:
+
+- The adapter reports a visible `Unsupported` state when the `claude` command is missing or when the command/override is present but automatic usage retrieval is unavailable.
+- Diagnostics may say that the `claude` command was found or that a provider CLI command override is configured, but must not echo the override path.
+- Repair guidance should say this is a safe readiness placeholder, not real usage retrieval.
+- The app must not run interactive `/usage` commands, scrape private local files, read auth files, or invent unofficial endpoints.
+- Manual mode remains the recommended fallback until official usage telemetry, SDK, or documented API support is added.
+
+Safe workaround:
+
+Use Manual mode for usage values today. If checking CLI readiness, save only a launchable command override, never tokens or auth values:
+
+```powershell
+.\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --set-provider-cli-override --provider ClaudeCode --command C:\Tools\claude.cmd
+```

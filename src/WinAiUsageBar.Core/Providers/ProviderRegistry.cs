@@ -110,8 +110,8 @@ public sealed class ProviderRegistry(
             descriptor,
             commandProbe,
             "claude",
-            "Claude CLI is installed, but automatic usage retrieval is not implemented in the MVP. Use Manual mode or configure future telemetry support.",
-            "Claude CLI was not found. Manual mode is available.");
+            $"{descriptor.DisplayName} CLI source can only verify the shared claude command in the MVP. Automatic usage retrieval is not implemented; the app does not run interactive usage commands, scrape private local files, or invent unofficial endpoints. Use Manual mode until official usage telemetry or SDK support is added.",
+            $"{descriptor.DisplayName} CLI source needs a launchable claude command. Install or sign in to the Claude CLI, set a provider CLI command override, or use Manual mode.");
     }
 
     private IProviderAdapter CreateGitHubCopilotAdapter(ProviderDescriptor descriptor)

@@ -36,6 +36,7 @@ public static class ProviderRepairGuidanceService
 
         if (IsClaudeCliIssue(snapshot))
         {
+            lines.Add("Claude CLI usage is a readiness placeholder in the MVP: the app checks for a launchable claude command only, does not run interactive /usage commands, and does not scrape private local files.");
             lines.Add("For Claude CLI sources, confirm the launchable claude command starts from a normal terminal, complete the provider CLI sign-in flow if needed, switch to Manual mode as a fallback, or set a provider CLI command override when PATH discovery is unreliable.");
         }
 

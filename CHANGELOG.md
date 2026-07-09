@@ -13,6 +13,7 @@ All notable changes to WinAI Usage Bar are documented here.
 - Diagnostics exports now include a safe manifest summary with file counts, categories, included/missing states, and redaction notes.
 - First-run setup now offers safe inline provider source actions for Manual, Mock, and local app-server choices without applying API or secret setup inline.
 - Added a same-install update dogfooding checklist and report generator for real installed-copy update runs.
+- Claude and Claude Code CLI sources now report unsupported placeholder usage states with safer repair guidance and non-echoed command override diagnostics.
 
 ### Fixed
 
