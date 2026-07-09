@@ -9,6 +9,7 @@ For Windows shell dogfooding checks, see [docs/windows-manual-verification.md](d
 For release-to-release dogfooding notes, see [docs/release-dogfooding.md](docs/release-dogfooding.md).
 For same-install update dogfooding checks, see [docs/same-install-update-dogfooding.md](docs/same-install-update-dogfooding.md).
 For provider integration dogfooding notes, see [docs/provider-dogfooding.md](docs/provider-dogfooding.md).
+For backup, restore, and reset dogfooding notes, see [docs/recovery-dogfooding.md](docs/recovery-dogfooding.md).
 Create a timestamped local verification report with `.\scripts\new-windows-verification-report.ps1`.
 Create a timestamped same-install update report with `.\scripts\new-same-install-update-report.ps1`.
 
