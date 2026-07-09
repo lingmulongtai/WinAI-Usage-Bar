@@ -85,6 +85,56 @@ public sealed class CodexJsonRpcParserTests
     }
 
     [Fact]
+    public void ParseCredits_ParsesSnakeCaseAliases()
+    {
+        const string json = """
+        {
+          "result": {
+            "billing": {
+              "credit_balance": "42.25",
+              "currency_code": "USD",
+              "month_to_date_cost": "5.75",
+              "tokens_last_31_days": "123456"
+            }
+          }
+        }
+        """;
+
+        var credits = CodexJsonRpcParser.ParseCredits(json);
+
+        Assert.Equal(42.25m, credits?.Balance);
+        Assert.Equal("USD", credits?.Currency);
+        Assert.Equal(5.75m, credits?.MonthToDateCost);
+        Assert.Equal(123456, credits?.TokensLast31Days);
+    }
+
+    [Fact]
+    public void ParseCredits_IgnoresSecretAndQuotaTokenNamesWhileParsingSafeAliases()
+    {
+        const string json = """
+        {
+          "result": {
+            "billing": {
+              "accessToken": 999,
+              "authTokenLimit": 888,
+              "tokenLimit": 777,
+              "remaining_credits": 12,
+              "current_month_cost": 3.5,
+              "last_31_days_tokens": 4567
+            }
+          }
+        }
+        """;
+
+        var credits = CodexJsonRpcParser.ParseCredits(json);
+
+        Assert.Equal(12m, credits?.Balance);
+        Assert.Null(credits?.Currency);
+        Assert.Equal(3.5m, credits?.MonthToDateCost);
+        Assert.Equal(4567, credits?.TokensLast31Days);
+    }
+
+    [Fact]
     public void CreateSnapshot_MapsRateLimitsAsSecondaryWindow()
     {
         const string usage = """

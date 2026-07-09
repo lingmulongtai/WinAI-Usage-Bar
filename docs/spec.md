@@ -28,6 +28,8 @@ Codex/ChatGPT app-server initialization is required, but account, rate-limit, an
 
 Codex/ChatGPT usage parsing should recognize safe percent, ratio, fraction, amount, remaining, limit, reset timestamp, and reset duration aliases from top-level and nested usage/rate-limit windows. Ratio or fraction aliases with values from 0 to 1 should be converted to percentages; values above 1 should be treated as already-percent values. Sensitive-looking fields containing auth, token, secret, cookie, or key markers must be ignored even if their names otherwise resemble usage aliases.
 
+Codex/ChatGPT credit parsing should recognize safe balance, currency, month-to-date cost, and last-31-day token aliases, including common snake_case shapes. Sensitive-looking fields must still be ignored unless they are exact safe token counter aliases.
+
 The app-server `initialize` request should send `clientInfo.name` as `WinAI Usage Bar` and `clientInfo.version` from the app informational version, with a safe non-empty fallback when composition has no version metadata.
 
 Codex/ChatGPT app-server JSON-RPC response matching must use only top-level envelope `id` values. Notifications and events without a top-level `id`, even when they contain nested fields such as `params.id`, must not be treated as responses or buffered pending responses.

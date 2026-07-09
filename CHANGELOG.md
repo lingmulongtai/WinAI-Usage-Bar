@@ -44,6 +44,7 @@ All notable changes to WinAI Usage Bar are documented here.
 - Provider notifications now redact snapshot-derived titles and body text before display.
 - Codex app-server usage parsing now recognizes safe ratio/fraction aliases and converts 0..1 values into percentages.
 - Codex app-server usage parsing now recognizes exact token-counter aliases such as `usedTokens`, `maxTokens`, and `tokensRemaining`.
+- Codex app-server credit parsing now recognizes common balance, currency, cost, and last-31-day token summary aliases.
 - Provider refresh now sanitizes snapshot free-text fields before caching snapshots or appending history.
 - Snapshot storage now sanitizes direct `snapshots.json` and `history.ndjson` writes as a persistence backstop.
 - Snapshot cache and history rewrites now use per-write unique temporary files instead of fixed `.tmp` paths.

@@ -202,6 +202,56 @@ public static class CodexJsonRpcParser
         "current",
         "data"
     ];
+    private static readonly string[] CreditBalanceFields =
+    [
+        "balance",
+        "creditBalance",
+        "credit_balance",
+        "credits",
+        "creditsBalance",
+        "credits_balance",
+        "remainingCredits",
+        "remaining_credits",
+        "remainingBalance",
+        "remaining_balance",
+        "availableCredits",
+        "available_credits"
+    ];
+    private static readonly string[] CreditCurrencyFields =
+    [
+        "currency",
+        "currencyCode",
+        "currency_code"
+    ];
+    private static readonly string[] MonthToDateCostFields =
+    [
+        "monthToDateCost",
+        "month_to_date_cost",
+        "mtdCost",
+        "mtd_cost",
+        "monthCost",
+        "month_cost",
+        "currentMonthCost",
+        "current_month_cost",
+        "cost",
+        "spend",
+        "spendMonthToDate",
+        "spend_month_to_date"
+    ];
+    private static readonly string[] Last31DaysTokenFields =
+    [
+        "tokensLast31Days",
+        "tokens_last_31_days",
+        "last31DaysTokens",
+        "last_31_days_tokens",
+        "tokens",
+        "inputTokens",
+        "input_tokens",
+        "outputTokens",
+        "output_tokens",
+        "totalTokens",
+        "total_tokens"
+    ];
 
     public static string CreateRequest(int id, string method)
     {
@@ -402,10 +452,10 @@ public static class CodexJsonRpcParser
             return null;
         }
 
-        var balance = TryGetDecimal(result, ["balance", "creditBalance", "credits", "remainingCredits"]);
-        var currency = TryGetSafeString(result, ["currency"]);
-        var cost = TryGetDecimal(result, ["monthToDateCost", "mtdCost", "cost", "spend"]);
-        var tokens = TryGetLong(result, ["tokensLast31Days", "tokens", "inputTokens", "totalTokens"]);
+        var balance = TryGetDecimal(result, CreditBalanceFields);
+        var currency = TryGetSafeString(result, CreditCurrencyFields);
+        var cost = TryGetDecimal(result, MonthToDateCostFields);
+        var tokens = TryGetLong(result, Last31DaysTokenFields);
 
         if (balance is null && cost is null && tokens is null)
         {
@@ -847,6 +897,8 @@ public static class CodexJsonRpcParser
             "total_tokens",
             "tokensLast31Days",
             "tokens_last_31_days",
+            "last31DaysTokens",
+            "last_31_days_tokens",
             "usedTokens",
             "used_tokens",
             "tokensUsed",
