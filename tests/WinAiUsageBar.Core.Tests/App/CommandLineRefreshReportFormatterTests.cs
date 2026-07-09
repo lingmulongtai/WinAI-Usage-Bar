@@ -148,6 +148,8 @@ public sealed class CommandLineRefreshReportFormatterTests
         Assert.Contains("Repair:", report, StringComparison.Ordinal);
         Assert.Contains("Reconnect credentials", report, StringComparison.Ordinal);
         Assert.Contains("PAT secret reference", report, StringComparison.Ordinal);
+        Assert.Contains("metrics permissions", report, StringComparison.Ordinal);
+        Assert.Contains("Manual mode", report, StringComparison.Ordinal);
         Assert.DoesNotContain("github-copilot-pat", report, StringComparison.Ordinal);
         Assert.DoesNotContain("my-org", report, StringComparison.Ordinal);
         Assert.DoesNotContain("sample-token-value", report, StringComparison.Ordinal);

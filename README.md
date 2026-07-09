@@ -285,7 +285,7 @@ The release workflow builds, tests, publishes, smoke-tests, packages the app, bu
 - Claude / Claude Code: CLI readiness placeholder only with Manual fallback, provider-specific repair guidance, no interactive `/usage` automation, and no private file scraping.
 - Gemini: API key secret-name setting; no unofficial usage endpoint.
 - OpenCode Zen: API key secret-name setting, manual balance mode, and documented TODO for future official balance API.
-- GitHub Copilot: manual mode plus organization/enterprise metrics report metadata via the GitHub Copilot usage metrics API.
+- GitHub Copilot: personal Manual mode plus organization/enterprise metrics report metadata via the GitHub Copilot usage metrics API, with non-secret auth/permission failure states.
 
 ## Roadmap
 

@@ -132,6 +132,8 @@ public sealed class ProviderDetailsPageViewModelTests
         Assert.True(provider.HasRepairLines);
         Assert.Contains("Reconnect credentials", repairText, StringComparison.Ordinal);
         Assert.Contains("PAT secret reference", repairText, StringComparison.Ordinal);
+        Assert.Contains("metrics permissions", repairText, StringComparison.Ordinal);
+        Assert.Contains("Manual mode", repairText, StringComparison.Ordinal);
         Assert.DoesNotContain("github-copilot-pat", repairText, StringComparison.Ordinal);
         Assert.DoesNotContain("my-org", repairText, StringComparison.Ordinal);
         Assert.DoesNotContain("sample-token-value", repairText, StringComparison.Ordinal);

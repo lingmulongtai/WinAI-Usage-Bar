@@ -96,6 +96,30 @@ public sealed class GitHubCopilotMetricsHttpClientTests
         Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Contains("sample-github-token", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task FetchLatestReportAsync_MapsUnauthorizedToAuthRequiredWithoutLeakingToken()
+    {
+        var handler = new RecordingHandler(new HttpResponseMessage(HttpStatusCode.Unauthorized)
+        {
+            ReasonPhrase = "Unauthorized token=sample-github-token"
+        });
+        var client = new GitHubCopilotMetricsHttpClient(
+            new HttpClient(handler),
+            new Uri("https://api.github.test/"));
+
+        var result = await client.FetchLatestReportAsync(
+            new GitHubCopilotMetricsRequest(
+                GitHubCopilotMetricsScope.Organization,
+                "octo-org",
+                "sample-github-token"),
+            CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(ProviderHealth.AuthRequired, result.Health);
+        Assert.Contains("valid PAT", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Contains("sample-github-token", StringComparison.Ordinal));
+    }
+
     private sealed class RecordingHandler(HttpResponseMessage response) : HttpMessageHandler
     {
         public Uri? RequestUri { get; private set; }

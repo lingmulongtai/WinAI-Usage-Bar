@@ -11,7 +11,7 @@ Latest published release: `v0.1.5`. It adds safer update-install confirmation, l
 | Area | Score | Read |
 | --- | ---: | --- |
 | Architecture foundation | 8/10 | The layer split is real, testable, and mostly respected. |
-| Provider extensibility | 7/10 | Descriptors, adapters, manual mode, safe failure states, and Claude/Claude Code CLI placeholder diagnostics are in place. Real provider depth is still thin. |
+| Provider extensibility | 7/10 | Descriptors, adapters, manual mode, safe failure states, Claude/Claude Code CLI placeholder diagnostics, and GitHub Copilot metrics auth-failure hardening are in place. Real provider depth is still thin. |
 | Security posture | 8/10 | Good defaults around DPAPI, display/notification redaction, no cookie scraping, checksum verification, guarded update launch, post-install validation, rollback, unsafe update zip rejection, and disposable update-apply dogfooding. Needs more adversarial review before wider distribution. |
 | Windows shell integration | 6/10 | Tray, windows, placement, startup registration, and notifications exist, with duplicate notification suppression, compact panel placement edge-case tests, a manual verification checklist, report scaffold, and an opt-in packaged-app UI launch smoke helper that can dogfood minimal and Settings windows locally. Actual shell behavior still needs hands-on runs. |
 | Product usability | 6/10 | The app now has guided first-run checklist state, provider-specific setup decisions with safe inline source actions, provider details, backup export/restore, and recovery checks, but it is still mostly useful with Mock/Manual data today. |
@@ -72,7 +72,7 @@ Overall:
 - Automatic provider integrations are not yet deep enough to make the app valuable without manual input.
 - Codex/ChatGPT integration is still best-effort and depends on `codex app-server` behavior that can change.
 - Claude and Claude Code now have clearer CLI placeholder diagnostics, but Claude, Claude Code, Gemini, and OpenCode Zen are still mostly descriptors, manual mode, or placeholders.
-- GitHub Copilot support targets organization or enterprise metrics and is not a complete personal usage experience.
+- GitHub Copilot support targets organization or enterprise metrics with safer missing-scope, missing-PAT, and permission-denied states; personal usage still belongs in Manual mode.
 - The UI is functional but still not visually or ergonomically proven with extended daily use.
 - Tray behavior, taskbar-near placement, topmost widget behavior, and notification delivery need real Windows manual testing.
 - There is no MSIX, code signing, or installer trust story yet beyond a documented unsigned installer warning and checksum verification guidance. Startup auto-update policy exists, disposable prepared-apply dogfooding has passed, the current updater can simulate older-version full update flows, a published `v0.1.3 -> v0.1.4` disposable update has passed, and same-install checklist/report scaffolding now exists, but real same-install release-to-release update installs still need careful repetition before automatic install should be treated as safe-by-default.

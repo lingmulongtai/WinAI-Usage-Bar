@@ -37,11 +37,12 @@ public sealed class GitHubCopilotMetricsHttpClient(
         if (!response.IsSuccessStatusCode)
         {
             var safeReason = DiagnosticRedactor.Redact(response.ReasonPhrase);
+            var authOrPermissionFailure = IsAuthOrPermissionFailure(response.StatusCode);
             return GitHubCopilotMetricsFetchResult.Failure(
-                response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.NotFound
-                    ? "GitHub Copilot metrics require organization or enterprise permissions."
+                authOrPermissionFailure
+                    ? "GitHub Copilot metrics require organization or enterprise permissions and a valid PAT."
                     : $"GitHub Copilot metrics request failed with {(int)response.StatusCode}.",
-                response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.NotFound
+                authOrPermissionFailure
                     ? ProviderHealth.AuthRequired
                     : ProviderHealth.Error,
                 $"GitHub Copilot metrics HTTP {(int)response.StatusCode} {safeReason}");
@@ -71,6 +72,13 @@ public sealed class GitHubCopilotMetricsHttpClient(
             ? $"orgs/{escapedSlug}/copilot/metrics/reports/organization-28-day/latest"
             : $"enterprises/{escapedSlug}/copilot/metrics/reports/enterprise-28-day/latest";
         return new Uri(baseUri, path);
+    }
+
+    private static bool IsAuthOrPermissionFailure(HttpStatusCode statusCode)
+    {
+        return statusCode is HttpStatusCode.Unauthorized
+            or HttpStatusCode.Forbidden
+            or HttpStatusCode.NotFound;
     }
 
     private static DateOnly? ParseDay(string? value)

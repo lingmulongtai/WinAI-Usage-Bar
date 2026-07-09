@@ -401,6 +401,90 @@ public sealed class ProviderAdapterTests
     }
 
     [Fact]
+    public async Task GitHubCopilotMetricsProviderAdapter_ReturnsAuthRequiredWhenScopeIsMissingBeforeResolvingSecret()
+    {
+        var descriptor = ProviderDescriptors.Get(ProviderId.GitHubCopilot);
+        var secretResolver = new CountingSecretResolver("sample-github-token");
+        var metricsClient = new RecordingGitHubCopilotMetricsClient();
+        var adapter = new GitHubCopilotMetricsProviderAdapter(
+            descriptor,
+            secretResolver,
+            metricsClient);
+        var config = ProviderConfig.CreateDefault(descriptor);
+        config.SourceKind = DataSourceKind.OfficialApi;
+        config.GitHubCopilot.PatSecretName = "github-copilot-pat";
+
+        var result = await adapter.FetchAsync(
+            new ProviderFetchContext(config, DateTimeOffset.UtcNow, "test"),
+            CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(ProviderHealth.AuthRequired, result.Snapshot?.Health);
+        Assert.Contains("organization or enterprise slug", result.ErrorMessage, StringComparison.Ordinal);
+        Assert.Contains("Manual mode", result.ErrorMessage, StringComparison.Ordinal);
+        Assert.Equal(0, secretResolver.ResolveCount);
+        Assert.Null(metricsClient.LastRequest);
+    }
+
+    [Fact]
+    public async Task GitHubCopilotMetricsProviderAdapter_ReturnsAuthRequiredWhenPatSecretNameIsMissing()
+    {
+        var descriptor = ProviderDescriptors.Get(ProviderId.GitHubCopilot);
+        var secretResolver = new CountingSecretResolver("sample-github-token");
+        var metricsClient = new RecordingGitHubCopilotMetricsClient();
+        var adapter = new GitHubCopilotMetricsProviderAdapter(
+            descriptor,
+            secretResolver,
+            metricsClient);
+        var config = ProviderConfig.CreateDefault(descriptor);
+        config.SourceKind = DataSourceKind.OfficialApi;
+        config.GitHubCopilot.Organization = "octo-org";
+
+        var result = await adapter.FetchAsync(
+            new ProviderFetchContext(config, DateTimeOffset.UtcNow, "test"),
+            CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(ProviderHealth.AuthRequired, result.Snapshot?.Health);
+        Assert.Contains("PAT secret name", result.ErrorMessage, StringComparison.Ordinal);
+        Assert.Contains("secret-name reference", result.ErrorMessage, StringComparison.Ordinal);
+        Assert.Equal(0, secretResolver.ResolveCount);
+        Assert.Null(metricsClient.LastRequest);
+    }
+
+    [Fact]
+    public async Task GitHubCopilotMetricsProviderAdapter_RedactsPermissionDeniedScopeSecretAndTokenText()
+    {
+        var descriptor = ProviderDescriptors.Get(ProviderId.GitHubCopilot);
+        var metricsClient = new FixedGitHubCopilotMetricsClient(GitHubCopilotMetricsFetchResult.Failure(
+            "Permission denied for org octo-org with patSecretName=github-copilot-pat token=sample-github-token",
+            ProviderHealth.AuthRequired,
+            "HTTP 403 org=octo-org patSecretName=github-copilot-pat token=sample-github-token"));
+        var adapter = new GitHubCopilotMetricsProviderAdapter(
+            descriptor,
+            new FixedSecretResolver("sample-github-token"),
+            metricsClient);
+        var config = ProviderConfig.CreateDefault(descriptor);
+        config.SourceKind = DataSourceKind.OfficialApi;
+        config.GitHubCopilot.Organization = "octo-org";
+        config.GitHubCopilot.PatSecretName = "github-copilot-pat";
+
+        var result = await adapter.FetchAsync(
+            new ProviderFetchContext(config, DateTimeOffset.UtcNow, "test"),
+            CancellationToken.None);
+
+        var visibleText = string.Join('\n', result.ErrorMessage, result.Snapshot?.StatusMessage, result.Snapshot?.ErrorMessage, string.Join('\n', result.Diagnostics));
+        Assert.False(result.Success);
+        Assert.Equal(ProviderHealth.AuthRequired, result.Snapshot?.Health);
+        Assert.Contains("permissions", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("valid PAT secret reference", result.ErrorMessage, StringComparison.Ordinal);
+        Assert.Contains("Manual mode", result.ErrorMessage, StringComparison.Ordinal);
+        Assert.DoesNotContain("octo-org", visibleText, StringComparison.Ordinal);
+        Assert.DoesNotContain("github-copilot-pat", visibleText, StringComparison.Ordinal);
+        Assert.DoesNotContain("sample-github-token", visibleText, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task GitHubCopilotMetricsProviderAdapter_ReturnsReportSnapshotWithoutLeakingToken()
     {
         var descriptor = ProviderDescriptors.Get(ProviderId.GitHubCopilot);
@@ -528,6 +612,29 @@ public sealed class ProviderAdapterTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult(secret);
+        }
+    }
+
+    private sealed class CountingSecretResolver(string? secret) : ISecretResolver
+    {
+        public int ResolveCount { get; private set; }
+
+        public Task<string?> ResolveSecretAsync(string name, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ResolveCount++;
+            return Task.FromResult(secret);
+        }
+    }
+
+    private sealed class FixedGitHubCopilotMetricsClient(GitHubCopilotMetricsFetchResult result) : IGitHubCopilotMetricsClient
+    {
+        public Task<GitHubCopilotMetricsFetchResult> FetchLatestReportAsync(
+            GitHubCopilotMetricsRequest request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(result);
         }
     }
 

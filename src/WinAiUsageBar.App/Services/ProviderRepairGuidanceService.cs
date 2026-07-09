@@ -44,7 +44,7 @@ public static class ProviderRepairGuidanceService
             && snapshot.SourceKind == DataSourceKind.OfficialApi
             && snapshot.Health == ProviderHealth.AuthRequired)
         {
-            lines.Add("For GitHub Copilot metrics, confirm organization or enterprise mode and a PAT secret reference in provider settings.");
+            lines.Add("For GitHub Copilot metrics, confirm organization or enterprise mode, verify the account has metrics permissions, and store only a PAT secret reference in provider settings. Personal Copilot users can stay in Manual mode.");
         }
 
         return lines;

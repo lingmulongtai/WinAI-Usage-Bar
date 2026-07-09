@@ -57,3 +57,34 @@ Use Manual mode for usage values today. If checking CLI readiness, save only a l
 ```powershell
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --set-provider-cli-override --provider ClaudeCode --command C:\Tools\claude.cmd
 ```
+
+## GitHub Copilot Metrics Failure States
+
+Result expectation: personal users stay in Manual mode; organization or enterprise metrics failures are auth-required and non-secret.
+
+What to check:
+
+- Leave GitHub Copilot in `Manual` mode for personal-only tracking.
+- Switch GitHub Copilot to `OfficialApi` only when testing organization or enterprise metrics.
+- Test missing scope with a PAT secret reference configured.
+- Test missing PAT secret name with an organization or enterprise scope configured.
+- Test a PAT secret name whose value is absent from the secret store.
+- Test a permission-denied metrics response with organization/enterprise scope and PAT configured.
+
+Product expectation:
+
+- Missing organization/enterprise scope reports `AuthRequired`, explains that personal users can stay in Manual mode, and does not resolve or require the PAT secret.
+- Missing PAT secret name reports `AuthRequired` only after a scope is configured and tells the user to keep only a secret-name reference in provider settings.
+- Missing PAT secret value routes the user to Privacy & Data without echoing the secret reference.
+- Permission denied, missing permissions, 401, 403, and 404 metrics responses report `AuthRequired` with generic scope/PAT guidance.
+- Provider Details, `--refresh-once`, diagnostics, and dogfood notes must not echo tokens, PAT secret names, organization names, enterprise slugs, signed download links, or raw API response bodies.
+
+Safe dogfood examples:
+
+```powershell
+# Missing scope: should not require or resolve the configured PAT reference.
+.\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --refresh-once --provider GitHubCopilot --source OfficialApi
+
+# Personal tracking: stay in Manual mode unless organization/enterprise metrics are explicitly being tested.
+.\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --refresh-once --provider GitHubCopilot --source Manual
+```

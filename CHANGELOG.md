@@ -14,6 +14,7 @@ All notable changes to WinAI Usage Bar are documented here.
 - First-run setup now offers safe inline provider source actions for Manual, Mock, and local app-server choices without applying API or secret setup inline.
 - Added a same-install update dogfooding checklist and report generator for real installed-copy update runs.
 - Claude and Claude Code CLI sources now report unsupported placeholder usage states with safer repair guidance and non-echoed command override diagnostics.
+- GitHub Copilot metrics failures now keep personal users on Manual mode by default and report missing scope, missing PAT, and permission failures without echoing configured values.
 
 ### Fixed
 

@@ -15,22 +15,26 @@ public sealed class GitHubCopilotMetricsProviderAdapter(
         CancellationToken cancellationToken)
     {
         var settings = context.ProviderConfig.GitHubCopilot;
+        var scope = ResolveScope(settings.Organization, settings.EnterpriseSlug);
+        if (scope is null)
+        {
+            return AuthRequired(
+                context.Now,
+                "GitHub Copilot API mode needs an organization or enterprise slug. Personal Copilot users can stay in Manual mode.");
+        }
+
         var secretName = TrimToNull(settings.PatSecretName);
         if (secretName is null)
         {
-            return AuthRequired(context.Now, "GitHub Copilot API mode needs a PAT secret name.");
+            return AuthRequired(
+                context.Now,
+                "GitHub Copilot API mode needs a PAT secret name. Store the token in Privacy & Data and keep only a secret-name reference in provider settings.");
         }
 
         var token = await secretResolver.ResolveSecretAsync(secretName, cancellationToken).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(token))
         {
             return AuthRequired(context.Now, "GitHub Copilot PAT secret was not found. Save the secret value from Privacy & Data.");
-        }
-
-        var scope = ResolveScope(settings.Organization, settings.EnterpriseSlug);
-        if (scope is null)
-        {
-            return AuthRequired(context.Now, "GitHub Copilot API mode needs an organization or enterprise slug.");
         }
 
         var result = await metricsClient.FetchLatestReportAsync(
@@ -44,8 +48,8 @@ public sealed class GitHubCopilotMetricsProviderAdapter(
                 result.Health,
                 DataSourceKind.OfficialApi,
                 context.Now,
-                result.ErrorMessage ?? "GitHub Copilot metrics report could not be fetched.",
-                result.Diagnostics.ToArray());
+                FailureMessage(result),
+                FailureDiagnostics(result));
         }
 
         var report = result.Report;
@@ -86,6 +90,29 @@ public sealed class GitHubCopilotMetricsProviderAdapter(
             DataSourceKind.OfficialApi,
             now,
             message);
+    }
+
+    private static string FailureMessage(GitHubCopilotMetricsFetchResult result)
+    {
+        if (result.Health == ProviderHealth.AuthRequired)
+        {
+            return "GitHub Copilot metrics require organization or enterprise permissions and a valid PAT secret reference. Personal Copilot users can stay in Manual mode.";
+        }
+
+        return result.ErrorMessage ?? "GitHub Copilot metrics report could not be fetched.";
+    }
+
+    private static string[] FailureDiagnostics(GitHubCopilotMetricsFetchResult result)
+    {
+        if (result.Health == ProviderHealth.AuthRequired)
+        {
+            return
+            [
+                "GitHub Copilot metrics auth or permission failure. Scope names, secret references, and token details are omitted."
+            ];
+        }
+
+        return result.Diagnostics.ToArray();
     }
 
     private static (GitHubCopilotMetricsScope Scope, string Slug)? ResolveScope(
