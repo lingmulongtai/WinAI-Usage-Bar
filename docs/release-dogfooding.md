@@ -53,10 +53,26 @@ Add `-AssertNormalAppDataUnchanged` to snapshot the normal `%AppData%\WinAiUsage
 Add `-StartupPolicy` to exercise the normal startup update policy entrypoint instead of the explicit update commands:
 
 ```powershell
-.\scripts\test-published-update-flow.ps1 -FromTag v0.1.4 -ExpectedLatestTag v0.1.5 -StartupPolicy -Apply -AssertNormalAppDataUnchanged
+.\scripts\test-published-update-flow.ps1 -FromTag v0.1.5 -ExpectedLatestTag v0.1.6 -StartupPolicy -Apply -AssertNormalAppDataUnchanged
 ```
 
-The startup-policy mode requires a source release that exposes `--run-startup-update-check` (`v0.1.4` or newer). It creates isolated app data, enables startup update checks, automatic download, and guarded automatic install launch in the extracted release's `config.json`, then runs the startup policy command. With `-Apply`, it waits for the startup policy-launched script to update only the disposable extracted install directory, verifies the updated version, checks `install-result.json` when the source release reports a result path, requires `validationStatus: Passed` when the source release writes it, verifies validation log metadata when the source release writes it, runs `--health-report`, and verifies the reconciled install result status when the target release supports that newer reconciliation behavior.
+The startup-policy mode requires a source release that exposes `--run-startup-update-check` (`v0.1.5` or newer). The example above is for the next release after `v0.1.5`; replace `v0.1.6` with the actual latest tag once it exists. It creates isolated app data, enables startup update checks, automatic download, and guarded automatic install launch in the extracted release's `config.json`, then runs the startup policy command. With `-Apply`, it waits for the startup policy-launched script to update only the disposable extracted install directory, verifies the updated version, checks `install-result.json` when the source release reports a result path, requires `validationStatus: Passed` when the source release writes it, verifies validation log metadata when the source release writes it, runs `--health-report`, and verifies the reconciled install result status when the target release supports that newer reconciliation behavior.
+
+## 2026-07-09 - Published v0.1.4 Startup Policy Guard
+
+Result: guard corrected.
+
+What was checked:
+
+- Tried the startup-policy dogfood path against published `v0.1.4` after publishing `v0.1.5`.
+- Confirmed `v0.1.4` does not expose `--run-startup-update-check`.
+- Updated the helper to reject `-StartupPolicy` for source releases older than `v0.1.5` before downloading any artifact.
+
+Observed output summary:
+
+```text
+Unknown command-line argument(s): --run-startup-update-check
+```
 
 ## 2026-07-09 - Published v0.1.3 Startup Policy Guard
 
@@ -66,12 +82,12 @@ What was checked:
 
 - Tried the startup-policy dogfood path against published `v0.1.3`.
 - Confirmed `v0.1.3` does not expose `--run-startup-update-check`.
-- Updated the helper to reject `-StartupPolicy` for source releases older than `v0.1.4` before downloading any artifact.
+- Updated the helper to reject `-StartupPolicy` for source releases older than `v0.1.5` before downloading any artifact.
 
 Observed output summary:
 
 ```text
-Startup policy dogfooding requires a source release v0.1.4 or newer because earlier releases do not expose --run-startup-update-check.
+Startup policy dogfooding requires a source release v0.1.5 or newer because earlier releases do not expose --run-startup-update-check.
 ```
 
 ## 2026-07-08 - Prepared Apply Script Handles Unicode Workspace Path

@@ -4,6 +4,10 @@ All notable changes to WinAI Usage Bar are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- Corrected published startup-policy dogfood guidance and guards to require a source release that actually exposes `--run-startup-update-check`.
+
 ## 0.1.5 - 2026-07-09
 
 ### Added

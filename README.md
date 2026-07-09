@@ -137,10 +137,10 @@ Add `-AssertNormalAppDataUnchanged` when you want the helper to snapshot the nor
 Dogfood the published startup update policy path with isolated app data:
 
 ```powershell
-.\scripts\test-published-update-flow.ps1 -FromTag v0.1.4 -ExpectedLatestTag v0.1.5 -StartupPolicy -Apply -AssertNormalAppDataUnchanged
+.\scripts\test-published-update-flow.ps1 -FromTag v0.1.5 -ExpectedLatestTag v0.1.6 -StartupPolicy -Apply -AssertNormalAppDataUnchanged
 ```
 
-`-StartupPolicy` requires a source release that exposes `--run-startup-update-check` (`v0.1.4` or newer). It configures the extracted older release to enable startup update checks, verified automatic download, and guarded automatic install launch, then runs the startup policy command. With `-Apply`, the helper waits for the startup policy-launched script to update only the disposable extracted install directory, checks the updated version, checks `install-result.json` when the source release reports a result path, checks post-install validation status and validation log metadata when the source release writes them, and checks `--health-report` reconciliation when the target release supports it.
+`-StartupPolicy` requires a source release that exposes `--run-startup-update-check` (`v0.1.5` or newer). The example above is for the next release after `v0.1.5`; replace `v0.1.6` with the actual latest tag once it exists. It configures the extracted older release to enable startup update checks, verified automatic download, and guarded automatic install launch, then runs the startup policy command. With `-Apply`, the helper waits for the startup policy-launched script to update only the disposable extracted install directory, checks the updated version, checks `install-result.json` when the source release reports a result path, checks post-install validation status and validation log metadata when the source release writes them, and checks `--health-report` reconciliation when the target release supports it.
 
 Dogfood the current updater implementation as if it were an older installed version:
 

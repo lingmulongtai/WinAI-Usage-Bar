@@ -126,7 +126,7 @@ public sealed class VersionDocumentationTests
         Assert.Contains("Assert-PathInside -ChildPath $installRoot", script, StringComparison.Ordinal);
         Assert.Contains("--check-for-updates", script, StringComparison.Ordinal);
         Assert.Contains("--run-startup-update-check", script, StringComparison.Ordinal);
-        Assert.Contains("source release v0.1.4 or newer", script, StringComparison.Ordinal);
+        Assert.Contains("source release v0.1.5 or newer", script, StringComparison.Ordinal);
         Assert.Contains("--download-update", script, StringComparison.Ordinal);
         Assert.Contains("--prepare-update-install", script, StringComparison.Ordinal);
         Assert.Contains("Enable-StartupUpdatePolicy", script, StringComparison.Ordinal);

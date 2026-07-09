@@ -445,8 +445,8 @@ else {
 }
 $supportsIsolatedAppData = [version]$fromVersion -ge [version]"0.1.3"
 
-if ($StartupPolicy -and [version]$fromVersion -lt [version]"0.1.4") {
-    throw "Startup policy dogfooding requires a source release v0.1.4 or newer because earlier releases do not expose --run-startup-update-check. Value: v$fromVersion"
+if ($StartupPolicy -and [version]$fromVersion -lt [version]"0.1.5") {
+    throw "Startup policy dogfooding requires a source release v0.1.5 or newer because earlier releases do not expose --run-startup-update-check. Value: v$fromVersion"
 }
 
 if ([string]::IsNullOrWhiteSpace($WorkDirectory)) {
