@@ -80,7 +80,13 @@ public static class CodexJsonRpcParser
         "usedQuota",
         "used_quota",
         "usageUsed",
-        "usage_used"
+        "usage_used",
+        "usedTokens",
+        "used_tokens",
+        "tokensUsed",
+        "tokens_used",
+        "consumedTokens",
+        "consumed_tokens"
     ];
     private static readonly string[] LimitFields =
     [
@@ -96,7 +102,15 @@ public static class CodexJsonRpcParser
         "limitAmount",
         "limit_amount",
         "usageLimit",
-        "usage_limit"
+        "usage_limit",
+        "maxTokens",
+        "max_tokens",
+        "tokenLimit",
+        "token_limit",
+        "limitTokens",
+        "limit_tokens",
+        "tokenQuota",
+        "token_quota"
     ];
     private static readonly string[] RemainingFields =
     [
@@ -109,7 +123,11 @@ public static class CodexJsonRpcParser
         "quota_remaining",
         "available",
         "availableQuota",
-        "available_quota"
+        "available_quota",
+        "remainingTokens",
+        "remaining_tokens",
+        "tokensRemaining",
+        "tokens_remaining"
     ];
     private static readonly string[] UnitFields = ["unit", "units"];
     private static readonly string[] ResetDescriptionFields = ["resetDescription", "resetsIn", "reset"];
@@ -822,9 +840,31 @@ public static class CodexJsonRpcParser
         {
             "tokens",
             "inputTokens",
+            "input_tokens",
             "outputTokens",
+            "output_tokens",
             "totalTokens",
-            "tokensLast31Days"
+            "total_tokens",
+            "tokensLast31Days",
+            "tokens_last_31_days",
+            "usedTokens",
+            "used_tokens",
+            "tokensUsed",
+            "tokens_used",
+            "consumedTokens",
+            "consumed_tokens",
+            "maxTokens",
+            "max_tokens",
+            "tokenLimit",
+            "token_limit",
+            "limitTokens",
+            "limit_tokens",
+            "tokenQuota",
+            "token_quota",
+            "remainingTokens",
+            "remaining_tokens",
+            "tokensRemaining",
+            "tokens_remaining"
         };
 
         if (safeTokenCounters.Contains(name, StringComparer.OrdinalIgnoreCase))

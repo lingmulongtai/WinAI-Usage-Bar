@@ -648,6 +648,55 @@ public sealed class CodexJsonRpcParserTests
     }
 
     [Fact]
+    public void ParseUsageWindow_ParsesTokenCounterAliases()
+    {
+        const string json = """
+        {
+          "result": {
+            "usage": {
+              "usedTokens": "2500",
+              "maxTokens": 10000,
+              "tokensRemaining": 7500,
+              "unit": "tokens"
+            }
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json);
+
+        Assert.Equal(2500, window?.Used);
+        Assert.Equal(10000, window?.Limit);
+        Assert.Equal(25, window?.UsedPercent);
+        Assert.Equal(75, window?.RemainingPercent);
+        Assert.Equal("tokens", window?.Unit);
+    }
+
+    [Fact]
+    public void ParseUsageWindow_IgnoresSecretTokenNamesWhileParsingTokenCounters()
+    {
+        const string json = """
+        {
+          "result": {
+            "usage": {
+              "accessToken": "not-a-counter",
+              "authTokenLimit": 999,
+              "used_tokens": 20,
+              "token_limit": 100
+            }
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json);
+
+        Assert.Equal(20, window?.Used);
+        Assert.Equal(100, window?.Limit);
+        Assert.Equal(20, window?.UsedPercent);
+        Assert.Equal(80, window?.RemainingPercent);
+    }
+
+    [Fact]
     public void ParseUsageWindow_IgnoresSensitiveLookingResetDurationFields()
     {
         const string json = """
