@@ -30,11 +30,11 @@ Create a timestamped same-install update report with `.\scripts\new-same-install
 - Refresh settings include interval, notification enablement, history retention limits, a manual update check button, a confirmation-gated latest-update install action, startup update checks, optional verified auto-download/auto-install launch policy with explicit save-time confirmation for automatic install launch, and the last non-secret update status including the observed GitHub Release page, zip package/checksum assets, staged package/checksum/script/result paths, setup installer assets, and reconciled install result plus post-install validation status when present.
 - Provider notifications redact snapshot-derived titles and body text before display.
 - Appearance settings apply System, Light, or Dark theme to app windows.
-- Privacy & Data shows a diagnostics summary with local file paths, config version, cached snapshot count, latest update time, diagnostics export counts, crash report counts, recent crash report metadata, and tracked file sizes.
+- Privacy & Data shows a diagnostics summary with local file paths, config version, cached snapshot count, latest update time, diagnostics export counts, crash report counts, recent crash report metadata, redacted crash report message previews, and tracked file sizes.
 - Privacy & Data shows storage pressure guidance for retained history, config backups, diagnostics exports, crash reports, and diagnostics log growth.
 - Privacy & Data shows recovery guidance for choosing config backup export, latest-backup restore, reset-to-default recovery, or diagnostics export.
 - Diagnostics exports include a safe manifest summary with file counts, categories, included/missing status, and redaction notes without local app-data roots, usernames, paths, or secret names.
-- Unexpected startup and WinUI failures write local redacted JSON crash reports under `%AppData%\WinAiUsageBar\crash-reports`; reports are pruned to a bounded recent set and are never sent anywhere automatically.
+- Unexpected startup and WinUI failures write local redacted JSON crash reports under `%AppData%\WinAiUsageBar\crash-reports`; reports are pruned to a bounded recent set, can be previewed locally with a bounded redacted message, and are never sent anywhere automatically.
 - Privacy & Data can clear cached snapshots and retained history without deleting config or saved secrets.
 - Privacy & Data can export a timestamped `config.json` backup without copying secret values.
 - Privacy & Data can validate and restore the latest config backup after explicit confirmation.
@@ -266,7 +266,7 @@ The release workflow builds, tests, publishes, smoke-tests, packages the app, bu
 - Privacy & Data shows non-secret diagnostics metadata only; it does not list secret names or values.
 - Privacy & Data recovery guidance is derived from non-secret diagnostics metadata only.
 - Diagnostics can be exported from Privacy & Data; exports redact common secret shapes, account identifiers, scope/reference fields, local user profile paths, and CLI override paths, use bounded redaction context when truncating large files, omit local app-data and secret-store root paths, never include files under `secrets/`, and avoid overwriting same-second exports by adding a numeric suffix when needed.
-- Crash reports are local JSON files only. They include timestamp, source, exception type, redacted message, redacted stack trace, app version, and optional redacted context; payload text also redacts local user profile paths. Privacy & Data lists recent crash report metadata only; it does not display message or stack trace contents.
+- Crash reports are local JSON files only. They include timestamp, source, exception type, redacted message, redacted stack trace, app version, and optional redacted context; payload text also redacts local user profile paths. Privacy & Data lists recent crash report metadata and can show a bounded redacted message preview for app-generated reports; it does not display stack trace or context contents.
 - Secret values can be saved or deleted by secret name from Privacy & Data; values are never displayed back.
 - Provider snapshots are sanitized before cache/history persistence, and legacy history summaries are sanitized before aggregation.
 - Snapshot cache and retained history can be cleared from Privacy & Data; `config.json` and `secrets/` are left untouched.

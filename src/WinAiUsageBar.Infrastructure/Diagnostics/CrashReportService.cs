@@ -13,6 +13,10 @@ public interface ICrashReportService
         CrashReportRequest request,
         CancellationToken cancellationToken);
 
+    Task<CrashReportDetail> ReadDetailAsync(
+        string path,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<CrashReportFile>> ListAsync(
         int limit,
         CancellationToken cancellationToken);
@@ -42,6 +46,29 @@ public sealed record CrashReportFile(
     bool MetadataAvailable = false,
     string MetadataStatus = "Metadata not read");
 
+public enum CrashReportDetailStatus
+{
+    Available,
+    InvalidPath,
+    Missing,
+    TooLarge,
+    Malformed,
+    Unavailable
+}
+
+public sealed record CrashReportDetail(
+    string Path,
+    string FileName,
+    CrashReportDetailStatus Status,
+    string StatusMessage,
+    DateTimeOffset? CreatedAt,
+    long SizeBytes,
+    string Source = "Unknown",
+    string ExceptionType = "Unknown",
+    string? AppVersion = null,
+    string? MessagePreview = null,
+    bool MessageTruncated = false);
+
 public sealed record CrashReportPruneResult(
     string DirectoryPath,
     int KeepNewest,
@@ -63,6 +90,7 @@ public sealed class CrashReportService(
         "^crash-report-[0-9]{8}-[0-9]{6}-[0-9a-fA-F]{32}\\.json$",
         RegexOptions.CultureInvariant | RegexOptions.Compiled);
     private const long MaxMetadataReadBytes = 256_000;
+    private const int MaxMessagePreviewLength = 1_000;
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true
@@ -95,6 +123,102 @@ public sealed class CrashReportService(
             .ConfigureAwait(false);
 
         return new CrashReportWriteResult(path, createdAt);
+    }
+
+    public async Task<CrashReportDetail> ReadDetailAsync(
+        string path,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        paths.EnsureCreated();
+
+        var safePath = ResolveSafeCrashReportPath(path);
+        if (safePath is null)
+        {
+            return CreateUnavailableDetail(
+                path,
+                CrashReportDetailStatus.InvalidPath,
+                "Crash report details can only be read from app-generated top-level crash report files.");
+        }
+
+        var file = new FileInfo(safePath);
+        if (!file.Exists)
+        {
+            return CreateUnavailableDetail(
+                safePath,
+                CrashReportDetailStatus.Missing,
+                "Crash report file is missing.");
+        }
+
+        if (file.Length > MaxMetadataReadBytes)
+        {
+            return new CrashReportDetail(
+                file.FullName,
+                file.Name,
+                CrashReportDetailStatus.TooLarge,
+                "Crash report is too large to preview safely.",
+                CreatedAt: null,
+                file.Length);
+        }
+
+        try
+        {
+            await using var stream = new FileStream(
+                file.FullName,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete,
+                bufferSize: 4096,
+                useAsync: true);
+            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            var root = document.RootElement;
+            var fallbackCreatedAt = new DateTimeOffset(file.LastWriteTime);
+            var message = SafeDetailMessage(ReadString(root, "Message"), out var messageTruncated);
+
+            return new CrashReportDetail(
+                file.FullName,
+                file.Name,
+                CrashReportDetailStatus.Available,
+                "Crash report detail parsed.",
+                ReadDateTimeOffset(root, "CreatedAt") ?? fallbackCreatedAt,
+                file.Length,
+                SafeDetailMetadata(ReadString(root, "Source") ?? "Unknown"),
+                SafeDetailMetadata(ReadString(root, "ExceptionType") ?? "Unknown"),
+                SafeNullableDetailMetadata(ReadString(root, "AppVersion")),
+                message,
+                messageTruncated);
+        }
+        catch (JsonException)
+        {
+            return new CrashReportDetail(
+                file.FullName,
+                file.Name,
+                CrashReportDetailStatus.Malformed,
+                "Crash report JSON is malformed.",
+                CreatedAt: null,
+                file.Length);
+        }
+        catch (IOException)
+        {
+            return new CrashReportDetail(
+                file.FullName,
+                file.Name,
+                CrashReportDetailStatus.Unavailable,
+                "Crash report file is currently unavailable.",
+                CreatedAt: null,
+                file.Length);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return new CrashReportDetail(
+                file.FullName,
+                file.Name,
+                CrashReportDetailStatus.Unavailable,
+                "Crash report file is currently unavailable.",
+                CreatedAt: null,
+                file.Length);
+        }
     }
 
     public async Task<IReadOnlyList<CrashReportFile>> ListAsync(
@@ -208,6 +332,52 @@ public sealed class CrashReportService(
         return CrashReportFileNameRegex.IsMatch(fileName);
     }
 
+    private string? ResolveSafeCrashReportPath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        try
+        {
+            var fullPath = Path.GetFullPath(path);
+            var reportDirectory = Path.GetFullPath(paths.CrashReportsDirectory);
+            var directory = Path.GetDirectoryName(fullPath);
+            var fileName = Path.GetFileName(fullPath);
+
+            if (!string.Equals(directory, reportDirectory, StringComparison.OrdinalIgnoreCase)
+                || string.IsNullOrWhiteSpace(fileName)
+                || !IsGeneratedCrashReportFileName(fileName))
+            {
+                return null;
+            }
+
+            return fullPath;
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return null;
+        }
+    }
+
+    private static CrashReportDetail CreateUnavailableDetail(
+        string path,
+        CrashReportDetailStatus status,
+        string statusMessage)
+    {
+        var fileName = string.IsNullOrWhiteSpace(path)
+            ? "n/a"
+            : Path.GetFileName(path);
+        return new CrashReportDetail(
+            path,
+            string.IsNullOrWhiteSpace(fileName) ? "n/a" : fileName,
+            status,
+            statusMessage,
+            CreatedAt: null,
+            SizeBytes: 0);
+    }
+
     private static async Task<CrashReportFile> ReadMetadataAsync(
         FileInfo file,
         CancellationToken cancellationToken)
@@ -306,6 +476,40 @@ public sealed class CrashReportService(
         return redacted.Length <= 240
             ? redacted
             : redacted[..240] + "...[truncated]";
+    }
+
+    private static string? SafeNullableDetailMetadata(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? null
+            : SafeDetailMetadata(value);
+    }
+
+    private static string SafeDetailMetadata(string value)
+    {
+        var redacted = DiagnosticRedactor.RedactForSupportExport(value).Trim();
+        redacted = DiagnosticRedactor.RedactForDisplay(redacted).Trim();
+        return redacted.Length <= 240
+            ? redacted
+            : redacted[..240] + "...[truncated]";
+    }
+
+    private static string? SafeDetailMessage(string? value, out bool truncated)
+    {
+        truncated = false;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var redacted = DiagnosticRedactor.RedactForSupportExport(value).Trim();
+        if (redacted.Length <= MaxMessagePreviewLength)
+        {
+            return redacted;
+        }
+
+        truncated = true;
+        return redacted[..MaxMessagePreviewLength] + "...[truncated]";
     }
 
     private IReadOnlyDictionary<string, string>? SafeContext(IReadOnlyDictionary<string, string?>? context)

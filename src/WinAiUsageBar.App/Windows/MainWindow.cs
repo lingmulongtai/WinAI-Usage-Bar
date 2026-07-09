@@ -1161,6 +1161,12 @@ public sealed class MainWindow : Window
         }
 
         panel.Children.Add(UiFactory.Text("Recent crash reports", 16, FontWeights.SemiBold));
+        var crashDetailInfo = new SimpleInfoBar
+        {
+            IsOpen = false,
+            IsClosable = true
+        };
+        panel.Children.Add(crashDetailInfo);
         if (diagnosticsSummary.RecentCrashReports.Count == 0)
         {
             panel.Children.Add(UiFactory.Text("No recent crash report metadata.", 12));
@@ -1172,6 +1178,27 @@ public sealed class MainWindow : Window
                 panel.Children.Add(UiFactory.Text(report.FileName, 13, FontWeights.SemiBold));
                 panel.Children.Add(UiFactory.Text(report.SummaryText, 12));
                 panel.Children.Add(UiFactory.Text(report.Path, 12));
+                var detailButton = new Button { Content = "View Details" };
+                detailButton.Click += async (_, _) =>
+                {
+                    try
+                    {
+                        var detail = await host.GetCrashReportDetailAsync(report.Path, CancellationToken.None);
+                        var detailViewModel = new CrashReportDetailViewModel(detail);
+                        crashDetailInfo.Severity = SeverityForCrashReportDetail(detail.Status);
+                        crashDetailInfo.Title = $"Crash report: {detailViewModel.FileName}";
+                        crashDetailInfo.Message = FormatCrashReportDetail(detailViewModel);
+                        crashDetailInfo.IsOpen = true;
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        crashDetailInfo.Severity = InfoBarSeverity.Error;
+                        crashDetailInfo.Title = "Crash report detail failed";
+                        crashDetailInfo.Message = ex.Message;
+                        crashDetailInfo.IsOpen = true;
+                    }
+                };
+                panel.Children.Add(detailButton);
             }
         }
 
@@ -1733,6 +1760,24 @@ public sealed class MainWindow : Window
             $"Deleted: {result.DeletedCount}",
             $"Freed: {DiagnosticsSummaryViewModel.FormatBytes(result.DeletedBytes)}",
             $"Directory: {result.DirectoryPath}");
+    }
+
+    private static string FormatCrashReportDetail(CrashReportDetailViewModel detail)
+    {
+        var lines = detail.MetadataLines.ToList();
+        lines.Add($"Detail: {detail.StatusText}");
+        lines.Add($"Message: {detail.MessageText}");
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static InfoBarSeverity SeverityForCrashReportDetail(CrashReportDetailStatus status)
+    {
+        return status switch
+        {
+            CrashReportDetailStatus.Available => InfoBarSeverity.Informational,
+            CrashReportDetailStatus.Missing or CrashReportDetailStatus.TooLarge => InfoBarSeverity.Warning,
+            _ => InfoBarSeverity.Error
+        };
     }
 
     private static InfoBarSeverity SeverityForUpdateCheck(ReleaseUpdateCheckResult result)

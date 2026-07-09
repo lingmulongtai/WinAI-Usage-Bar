@@ -49,6 +49,7 @@ public static class AppCompositionRoot
             ?? new WindowsAppNotificationService(new WindowsAppNotificationTransport());
         var diagnosticsExportService = new DiagnosticsExportService(paths);
         var diagnosticsSummaryService = new DiagnosticsSummaryService(paths, configStore, snapshotStore);
+        var crashReportService = new CrashReportService(paths);
         var historySummaryService = new HistorySummaryService(paths);
         var dataMaintenanceService = new DataMaintenanceService(paths, configStore);
         var configBackupValidationService = new ConfigBackupValidationService();
@@ -109,7 +110,8 @@ public static class AppCompositionRoot
             configResetService,
             startupUpdateService,
             updateCheck,
-            latestUpdateInstallService);
+            latestUpdateInstallService,
+            crashReportService);
     }
 }
 

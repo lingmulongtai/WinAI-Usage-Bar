@@ -204,6 +204,188 @@ public sealed class CrashReportServiceTests
     }
 
     [Fact]
+    public async Task ReadDetailAsync_ReturnsRedactedBoundedMessageWithoutStackTrace()
+    {
+        var root = TestRoot();
+        var paths = new AppDataPaths(root);
+        paths.EnsureCreated();
+        var path = GeneratedReportPath(paths, "20260709-121500", "44444444444444444444444444444444");
+        var githubToken = "gh" + "p_" + new string('a', 12);
+        var longSuffix = new string('x', 1_200);
+        var report = new
+        {
+            CreatedAt = "2026-07-09T12:15:00+00:00",
+            Source = "startup token=source-secret",
+            ExceptionType = "System.InvalidOperationException",
+            AppVersion = @"0.1.6 C:\Users\person\AppData\Local\WinAI",
+            Message = $@"failed at C:\Users\person\Tools\codex.cmd authorization: bearer message-secret {githubToken} {longSuffix}",
+            StackTrace = "stack trace must not be displayed stack-secret"
+        };
+        await File.WriteAllTextAsync(path, JsonSerializer.Serialize(report));
+        var service = new CrashReportService(paths);
+
+        try
+        {
+            var detail = await service.ReadDetailAsync(path, CancellationToken.None);
+            var visibleText = string.Join(
+                Environment.NewLine,
+                detail.Source,
+                detail.ExceptionType,
+                detail.AppVersion,
+                detail.MessagePreview,
+                detail.StatusMessage);
+
+            Assert.Equal(CrashReportDetailStatus.Available, detail.Status);
+            Assert.Equal(Path.GetFileName(path), detail.FileName);
+            Assert.Equal(new DateTimeOffset(2026, 7, 9, 12, 15, 0, TimeSpan.Zero), detail.CreatedAt);
+            Assert.True(detail.SizeBytes > 0);
+            Assert.True(detail.MessageTruncated);
+            Assert.Contains("[REDACTED]", visibleText, StringComparison.Ordinal);
+            Assert.Contains("[LOCAL_PATH]", visibleText, StringComparison.Ordinal);
+            Assert.Contains("System.InvalidOperationException", visibleText, StringComparison.Ordinal);
+            Assert.DoesNotContain("source-secret", visibleText, StringComparison.Ordinal);
+            Assert.DoesNotContain("message-secret", visibleText, StringComparison.Ordinal);
+            Assert.DoesNotContain(githubToken, visibleText, StringComparison.Ordinal);
+            Assert.DoesNotContain("stack-secret", visibleText, StringComparison.Ordinal);
+            Assert.DoesNotContain("StackTrace", visibleText, StringComparison.Ordinal);
+            Assert.DoesNotContain(@"C:\Users", visibleText, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("person", visibleText, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            DeleteRoot(root);
+        }
+    }
+
+    [Fact]
+    public async Task ReadDetailAsync_ReturnsMissingForDeletedGeneratedReport()
+    {
+        var root = TestRoot();
+        var paths = new AppDataPaths(root);
+        paths.EnsureCreated();
+        var path = GeneratedReportPath(paths, "20260709-123000", "55555555555555555555555555555555");
+        var service = new CrashReportService(paths);
+
+        try
+        {
+            var detail = await service.ReadDetailAsync(path, CancellationToken.None);
+
+            Assert.Equal(CrashReportDetailStatus.Missing, detail.Status);
+            Assert.Equal("Crash report file is missing.", detail.StatusMessage);
+            Assert.Equal(Path.GetFileName(path), detail.FileName);
+            Assert.Null(detail.MessagePreview);
+        }
+        finally
+        {
+            DeleteRoot(root);
+        }
+    }
+
+    [Fact]
+    public async Task ReadDetailAsync_ReturnsMalformedForInvalidJson()
+    {
+        var root = TestRoot();
+        var paths = new AppDataPaths(root);
+        paths.EnsureCreated();
+        var path = GeneratedReportPath(paths, "20260709-124500", "66666666666666666666666666666666");
+        await File.WriteAllTextAsync(path, "{ malformed");
+        var service = new CrashReportService(paths);
+
+        try
+        {
+            var detail = await service.ReadDetailAsync(path, CancellationToken.None);
+
+            Assert.Equal(CrashReportDetailStatus.Malformed, detail.Status);
+            Assert.Equal("Crash report JSON is malformed.", detail.StatusMessage);
+            Assert.Equal(Path.GetFileName(path), detail.FileName);
+            Assert.Null(detail.MessagePreview);
+        }
+        finally
+        {
+            DeleteRoot(root);
+        }
+    }
+
+    [Fact]
+    public async Task ReadDetailAsync_ReturnsTooLargeForOversizedReport()
+    {
+        var root = TestRoot();
+        var paths = new AppDataPaths(root);
+        paths.EnsureCreated();
+        var path = GeneratedReportPath(paths, "20260709-130000", "77777777777777777777777777777777");
+        await File.WriteAllTextAsync(path, new string('x', 256_001));
+        var service = new CrashReportService(paths);
+
+        try
+        {
+            var detail = await service.ReadDetailAsync(path, CancellationToken.None);
+
+            Assert.Equal(CrashReportDetailStatus.TooLarge, detail.Status);
+            Assert.Equal("Crash report is too large to preview safely.", detail.StatusMessage);
+            Assert.Equal(256_001, detail.SizeBytes);
+            Assert.Null(detail.MessagePreview);
+        }
+        finally
+        {
+            DeleteRoot(root);
+        }
+    }
+
+    [Fact]
+    public async Task ReadDetailAsync_ReturnsUnavailableForLockedReport()
+    {
+        var root = TestRoot();
+        var paths = new AppDataPaths(root);
+        paths.EnsureCreated();
+        var path = GeneratedReportPath(paths, "20260709-131500", "88888888888888888888888888888888");
+        await File.WriteAllTextAsync(path, """{"Message":"locked"}""");
+        var service = new CrashReportService(paths);
+
+        try
+        {
+            await using var locked = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+
+            var detail = await service.ReadDetailAsync(path, CancellationToken.None);
+
+            Assert.Equal(CrashReportDetailStatus.Unavailable, detail.Status);
+            Assert.Equal("Crash report file is currently unavailable.", detail.StatusMessage);
+            Assert.Equal(Path.GetFileName(path), detail.FileName);
+        }
+        finally
+        {
+            DeleteRoot(root);
+        }
+    }
+
+    [Fact]
+    public async Task ReadDetailAsync_RejectsUnsafeOrNestedReportPath()
+    {
+        var root = TestRoot();
+        var paths = new AppDataPaths(root);
+        paths.EnsureCreated();
+        var nestedDirectory = Path.Combine(paths.CrashReportsDirectory, "nested");
+        Directory.CreateDirectory(nestedDirectory);
+        var nestedPath = Path.Combine(
+            nestedDirectory,
+            "crash-report-20260709-133000-99999999999999999999999999999999.json");
+        await File.WriteAllTextAsync(nestedPath, """{"Message":"nested"}""");
+        var service = new CrashReportService(paths);
+
+        try
+        {
+            var detail = await service.ReadDetailAsync(nestedPath, CancellationToken.None);
+
+            Assert.Equal(CrashReportDetailStatus.InvalidPath, detail.Status);
+            Assert.Contains("app-generated top-level", detail.StatusMessage, StringComparison.Ordinal);
+            Assert.Null(detail.MessagePreview);
+        }
+        finally
+        {
+            DeleteRoot(root);
+        }
+    }
+
+    [Fact]
     public async Task PruneAsync_DeletesOnlyOldMatchedTopLevelReports()
     {
         var root = TestRoot();
@@ -326,5 +508,10 @@ public sealed class CrashReportServiceTests
         await File.WriteAllTextAsync(path, content);
         File.SetLastWriteTimeUtc(path, lastWriteTimeUtc);
         return path;
+    }
+
+    private static string GeneratedReportPath(AppDataPaths paths, string timestamp, string id)
+    {
+        return Path.Combine(paths.CrashReportsDirectory, $"crash-report-{timestamp}-{id}.json");
     }
 }

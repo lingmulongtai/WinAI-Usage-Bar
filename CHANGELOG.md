@@ -4,6 +4,10 @@ All notable changes to WinAI Usage Bar are documented here.
 
 ## Unreleased
 
+### Added
+
+- Added a Privacy & Data crash report detail preview that reads only app-generated top-level reports, shows redacted metadata plus a bounded redacted message preview, and avoids stack trace/context display.
+
 ### Security
 
 - Expanded diagnostics redaction coverage for mixed-case secret keys, fine-grained GitHub PATs, Google API key-shaped values, provider scope aliases, PAT reference aliases, and command override paths.

@@ -210,6 +210,13 @@ public sealed class AppHost : IAsyncDisposable
         return await crashReportService.ListAsync(limit, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<CrashReportDetail> GetCrashReportDetailAsync(
+        string path,
+        CancellationToken cancellationToken)
+    {
+        return await crashReportService.ReadDetailAsync(path, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<HistorySummary> GetHistorySummaryAsync(CancellationToken cancellationToken)
     {
         return await historySummaryService.GetSummaryAsync(cancellationToken).ConfigureAwait(false);

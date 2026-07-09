@@ -1,4 +1,5 @@
 using WinAiUsageBar.Infrastructure.Diagnostics;
+using WinAiUsageBar.Infrastructure.Security;
 
 namespace WinAiUsageBar.App.ViewModels;
 
@@ -181,4 +182,57 @@ public sealed class CrashReportMetadataViewModel
     public string StatusText { get; }
 
     public string SummaryText { get; }
+}
+
+public sealed class CrashReportDetailViewModel
+{
+    public CrashReportDetailViewModel(CrashReportDetail detail)
+    {
+        FileName = string.IsNullOrWhiteSpace(detail.FileName) ? "n/a" : detail.FileName;
+        StatusText = SafeDisplay(detail.StatusMessage);
+        IsAvailable = detail.Status is CrashReportDetailStatus.Available;
+        MessageText = string.IsNullOrWhiteSpace(detail.MessagePreview)
+            ? "No redacted message preview is available."
+            : SafeDisplay(detail.MessagePreview);
+        HasMessage = !string.IsNullOrWhiteSpace(detail.MessagePreview);
+
+        var lines = new List<string>
+        {
+            $"File: {FileName}",
+            $"Status: {detail.Status}",
+            detail.CreatedAt is null
+                ? "Created: n/a"
+                : $"Created: {detail.CreatedAt:yyyy-MM-dd HH:mm:ss zzz}",
+            $"Source: {SafeDisplay(detail.Source)}",
+            $"Exception: {SafeDisplay(detail.ExceptionType)}",
+            $"App version: {SafeDisplay(string.IsNullOrWhiteSpace(detail.AppVersion) ? "n/a" : detail.AppVersion)}",
+            $"Size: {DiagnosticsSummaryViewModel.FormatBytes(detail.SizeBytes)}"
+        };
+
+        if (detail.MessageTruncated)
+        {
+            lines.Add("Message preview: truncated");
+        }
+
+        MetadataLines = lines;
+    }
+
+    public string FileName { get; }
+
+    public bool IsAvailable { get; }
+
+    public string StatusText { get; }
+
+    public bool HasMessage { get; }
+
+    public string MessageText { get; }
+
+    public IReadOnlyList<string> MetadataLines { get; }
+
+    private static string SafeDisplay(string? text)
+    {
+        return string.IsNullOrWhiteSpace(text)
+            ? "n/a"
+            : DiagnosticRedactor.RedactForDisplay(text);
+    }
 }
