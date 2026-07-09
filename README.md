@@ -7,8 +7,10 @@ Current app version: `0.1.5`.
 For a strict status check, see [docs/current-state-audit.md](docs/current-state-audit.md).
 For Windows shell dogfooding checks, see [docs/windows-manual-verification.md](docs/windows-manual-verification.md).
 For release-to-release dogfooding notes, see [docs/release-dogfooding.md](docs/release-dogfooding.md).
+For same-install update dogfooding checks, see [docs/same-install-update-dogfooding.md](docs/same-install-update-dogfooding.md).
 For provider integration dogfooding notes, see [docs/provider-dogfooding.md](docs/provider-dogfooding.md).
 Create a timestamped local verification report with `.\scripts\new-windows-verification-report.ps1`.
+Create a timestamped same-install update report with `.\scripts\new-same-install-update-report.ps1`.
 
 ## Features
 
@@ -151,6 +153,14 @@ Dogfood the current updater implementation as if it were an older installed vers
 ```
 
 This copies the current build to a disposable install directory, uses isolated app data, runs update check/download with `--current-version`, prepares an update script for the disposable install directory, and only applies it there when `-Apply` is passed. The helper verifies validation stdout/stderr log metadata for current generated scripts.
+
+Create a same-install update dogfood report before touching a normal installed copy:
+
+```powershell
+.\scripts\new-same-install-update-report.ps1 -SourceVersion 0.1.5 -TargetVersion 0.1.6
+```
+
+Use [docs/same-install-update-dogfooding.md](docs/same-install-update-dogfooding.md) after disposable update helpers pass for the same target release. Keep automatic install disabled unless the run explicitly confirms startup-policy install launch. The checklist covers backup/rollback, process shutdown, restart, validation logs, and normal app-data assertions.
 
 Run the published-app smoke test without opening UI:
 

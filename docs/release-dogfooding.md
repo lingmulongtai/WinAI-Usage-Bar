@@ -58,6 +58,16 @@ Add `-StartupPolicy` to exercise the normal startup update policy entrypoint ins
 
 The startup-policy mode requires a source release that exposes `--run-startup-update-check` (`v0.1.5` or newer). The example above is for the next release after `v0.1.5`; replace `v0.1.6` with the actual latest tag once it exists. It creates isolated app data, enables startup update checks, automatic download, and guarded automatic install launch in the extracted release's `config.json`, then runs the startup policy command. With `-Apply`, it waits for the startup policy-launched script to update only the disposable extracted install directory, verifies the updated version, checks `install-result.json` when the source release reports a result path, requires `validationStatus: Passed` when the source release writes it, verifies validation log metadata when the source release writes it, runs `--health-report`, and verifies the reconciled install result status when the target release supports that newer reconciliation behavior.
 
+## Same-Install Update Dogfooding
+
+Use the same-install checklist only after disposable update helpers pass for the same target release:
+
+```powershell
+.\scripts\new-same-install-update-report.ps1 -SourceVersion 0.1.5 -TargetVersion 0.1.6
+```
+
+Then follow `docs/same-install-update-dogfooding.md` against the normal installed app and normal `%AppData%\WinAiUsageBar` root. Keep automatic install disabled unless the run explicitly confirms startup-policy install launch. Same-install reports should cover backup/rollback, process shutdown, restart behavior, validation logs, install result reconciliation, and normal app-data assertions. Do not paste secrets or local account identifiers into the report.
+
 ## 2026-07-09 - Published v0.1.4 Startup Policy Guard
 
 Result: guard corrected.

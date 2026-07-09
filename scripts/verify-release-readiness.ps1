@@ -5,6 +5,8 @@ param(
     [string]$ChangelogPath = "",
     [string]$AuditPath = "",
     [string]$SpecPath = "",
+    [string]$SameInstallDogfoodPath = "",
+    [string]$SameInstallReportScriptPath = "",
     [string]$PublishedAppPath = "",
     [string]$PackageDirectory = "",
     [string]$InstallerDirectory = "",
@@ -36,6 +38,14 @@ if ([string]::IsNullOrWhiteSpace($AuditPath)) {
 
 if ([string]::IsNullOrWhiteSpace($SpecPath)) {
     $SpecPath = Join-Path $repoRoot "docs\spec.md"
+}
+
+if ([string]::IsNullOrWhiteSpace($SameInstallDogfoodPath)) {
+    $SameInstallDogfoodPath = Join-Path $repoRoot "docs\same-install-update-dogfooding.md"
+}
+
+if ([string]::IsNullOrWhiteSpace($SameInstallReportScriptPath)) {
+    $SameInstallReportScriptPath = Join-Path $repoRoot "scripts\new-same-install-update-report.ps1"
 }
 
 if ([string]::IsNullOrWhiteSpace($PublishedAppPath)) {
@@ -164,14 +174,23 @@ $releaseDate = Get-ChangelogReleaseDate -Path $ChangelogPath -Version $version
 Assert-FileExists -Path $AuditPath -Description "Current state audit"
 Assert-ContainsText -Path $AuditPath -Text "Date: $releaseDate" -Description "Current state audit date for release"
 Assert-FileExists -Path $SpecPath -Description "Product spec"
+Assert-FileExists -Path $SameInstallDogfoodPath -Description "Same-install update dogfooding checklist"
+Assert-FileExists -Path $SameInstallReportScriptPath -Description "Same-install update report script"
 Assert-ContainsText -Path $ReadmePath -Text "### Unsigned installer notice" -Description "README unsigned installer notice heading"
 Assert-ContainsText -Path $ReadmePath -Text "WinAI Usage Bar setup installer and executable are currently unsigned." -Description "README unsigned installer warning"
 Assert-ContainsText -Path $ReadmePath -Text "Windows SmartScreen or unknown publisher warnings" -Description "README Windows trust warning"
 Assert-ContainsText -Path $ReadmePath -Text "Download only from GitHub Releases" -Description "README GitHub Releases download warning"
 Assert-ContainsText -Path $ReadmePath -Text "Verify the published SHA256 checksum" -Description "README SHA256 verification warning"
+Assert-ContainsText -Path $ReadmePath -Text "docs/same-install-update-dogfooding.md" -Description "README same-install update dogfood link"
+Assert-ContainsText -Path $ReadmePath -Text ".\scripts\new-same-install-update-report.ps1" -Description "README same-install update report script"
 Assert-ContainsText -Path $SpecPath -Text "Signing remains future work" -Description "Spec unsigned installer future signing statement"
 Assert-ContainsText -Path $SpecPath -Text "while the app is still unsigned, release readiness verification must fail if this warning disappears" -Description "Spec unsigned installer readiness gate"
 Assert-ContainsText -Path $AuditPath -Text "unsigned installer notice" -Description "Current state audit unsigned installer notice tracking"
+Assert-ContainsText -Path $SameInstallDogfoodPath -Text "Keep automatic install disabled unless explicitly confirmed." -Description "Same-install automatic install safety statement"
+Assert-ContainsText -Path $SameInstallDogfoodPath -Text "## Process Shutdown And Install" -Description "Same-install process shutdown checklist"
+Assert-ContainsText -Path $SameInstallDogfoodPath -Text "## Normal App-Data Assertions" -Description "Same-install normal app-data checklist"
+Assert-ContainsText -Path $SameInstallDogfoodPath -Text "validation.out.txt" -Description "Same-install validation log checklist"
+Assert-ContainsText -Path $SameInstallReportScriptPath -Text "same-install-update" -Description "Same-install report filename stem"
 
 Assert-FileExists -Path $PublishedAppPath -Description "Published app executable"
 $smokeProcess = Start-Process `
