@@ -5,6 +5,7 @@ param(
     [string]$ChangelogPath = "",
     [string]$AuditPath = "",
     [string]$SpecPath = "",
+    [string]$ProviderDogfoodPath = "",
     [string]$SameInstallDogfoodPath = "",
     [string]$SameInstallReportScriptPath = "",
     [string]$PublishedAppPath = "",
@@ -38,6 +39,10 @@ if ([string]::IsNullOrWhiteSpace($AuditPath)) {
 
 if ([string]::IsNullOrWhiteSpace($SpecPath)) {
     $SpecPath = Join-Path $repoRoot "docs\spec.md"
+}
+
+if ([string]::IsNullOrWhiteSpace($ProviderDogfoodPath)) {
+    $ProviderDogfoodPath = Join-Path $repoRoot "docs\provider-dogfooding.md"
 }
 
 if ([string]::IsNullOrWhiteSpace($SameInstallDogfoodPath)) {
@@ -174,6 +179,7 @@ $releaseDate = Get-ChangelogReleaseDate -Path $ChangelogPath -Version $version
 Assert-FileExists -Path $AuditPath -Description "Current state audit"
 Assert-ContainsText -Path $AuditPath -Text "Date: $releaseDate" -Description "Current state audit date for release"
 Assert-FileExists -Path $SpecPath -Description "Product spec"
+Assert-FileExists -Path $ProviderDogfoodPath -Description "Provider dogfooding notes"
 Assert-FileExists -Path $SameInstallDogfoodPath -Description "Same-install update dogfooding checklist"
 Assert-FileExists -Path $SameInstallReportScriptPath -Description "Same-install update report script"
 Assert-ContainsText -Path $ReadmePath -Text "### Unsigned installer notice" -Description "README unsigned installer notice heading"
@@ -185,7 +191,11 @@ Assert-ContainsText -Path $ReadmePath -Text "docs/same-install-update-dogfooding
 Assert-ContainsText -Path $ReadmePath -Text ".\scripts\new-same-install-update-report.ps1" -Description "README same-install update report script"
 Assert-ContainsText -Path $SpecPath -Text "Signing remains future work" -Description "Spec unsigned installer future signing statement"
 Assert-ContainsText -Path $SpecPath -Text "while the app is still unsigned, release readiness verification must fail if this warning disappears" -Description "Spec unsigned installer readiness gate"
+Assert-ContainsText -Path $SpecPath -Text 'The CLI `--refresh-once` command runs the same enabled-provider refresh pipeline once without launching WinUI windows, composing tray/window/update services, or sending local notifications.' -Description "Spec CLI-only refresh-once composition"
+Assert-ContainsText -Path $SpecPath -Text 'GitHub Copilot OfficialApi missing-scope dogfood should return quickly with a safe AuthRequired report' -Description "Spec Copilot refresh-once missing-scope dogfood expectation"
 Assert-ContainsText -Path $AuditPath -Text "unsigned installer notice" -Description "Current state audit unsigned installer notice tracking"
+Assert-ContainsText -Path $ProviderDogfoodPath -Text "## GitHub Copilot Metrics Failure States" -Description "Provider dogfooding Copilot metrics section"
+Assert-ContainsText -Path $ProviderDogfoodPath -Text 'Process-level `--refresh-once` dogfood for missing scope should return quickly' -Description "Provider dogfooding Copilot refresh-once process expectation"
 Assert-ContainsText -Path $SameInstallDogfoodPath -Text "Keep automatic install disabled unless explicitly confirmed." -Description "Same-install automatic install safety statement"
 Assert-ContainsText -Path $SameInstallDogfoodPath -Text "## Process Shutdown And Install" -Description "Same-install process shutdown checklist"
 Assert-ContainsText -Path $SameInstallDogfoodPath -Text "## Normal App-Data Assertions" -Description "Same-install normal app-data checklist"

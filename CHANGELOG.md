@@ -4,6 +4,10 @@ All notable changes to WinAI Usage Bar are documented here.
 
 ## Unreleased
 
+- No unreleased changes.
+
+## 0.1.6 - 2026-07-09
+
 ### Added
 
 - Codex/ChatGPT app-server snapshots now promote the recognized usage or rate-limit window with the lowest remaining percent to the primary display slot.
@@ -15,6 +19,7 @@ All notable changes to WinAI Usage Bar are documented here.
 - Added a same-install update dogfooding checklist and report generator for real installed-copy update runs.
 - Claude and Claude Code CLI sources now report unsupported placeholder usage states with safer repair guidance and non-echoed command override diagnostics.
 - GitHub Copilot metrics failures now keep personal users on Manual mode by default and report missing scope, missing PAT, and permission failures without echoing configured values.
+- Release readiness checks now require Copilot refresh-once dogfooding documentation and CLI-only refresh-once spec coverage.
 
 ### Fixed
 

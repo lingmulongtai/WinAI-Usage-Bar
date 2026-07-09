@@ -2,7 +2,7 @@
 
 WinAI Usage Bar is a personal Windows notification-area app for watching AI provider usage. It is inspired by the idea of a compact usage bar, but the implementation is native Windows: C#, WinUI 3, Windows App SDK, MVVM-style view models, and a clean provider architecture.
 
-Current app version: `0.1.5`.
+Current app version: `0.1.6`.
 
 For a strict status check, see [docs/current-state-audit.md](docs/current-state-audit.md).
 For Windows shell dogfooding checks, see [docs/windows-manual-verification.md](docs/windows-manual-verification.md).

@@ -4,7 +4,7 @@ Date: 2026-07-09
 
 This audit is intentionally strict. The repository has moved past a throwaway scaffold, but it is still an MVP. The design foundation is much stronger than the product completeness.
 
-Latest published release: `v0.1.5`. It adds safer update-install confirmation, less noisy update status display, stronger visible redaction, broader Codex/ChatGPT app-server parsing, and more durable snapshot and diagnostics redaction backstops. `main` also contains post-`v0.1.5` Copilot metrics failure-state hardening and a CLI-only `--refresh-once` composition fix that have not yet been released.
+Latest published release: `v0.1.5`. It adds safer update-install confirmation, less noisy update status display, stronger visible redaction, broader Codex/ChatGPT app-server parsing, and more durable snapshot and diagnostics redaction backstops. `main` is now preparing `v0.1.6` with post-`v0.1.5` Copilot metrics failure-state hardening and a CLI-only `--refresh-once` composition fix.
 
 ## Scorecard
 
