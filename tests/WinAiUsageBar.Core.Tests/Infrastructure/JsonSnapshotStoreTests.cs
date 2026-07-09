@@ -71,6 +71,51 @@ public sealed class JsonSnapshotStoreTests
     }
 
     [Fact]
+    public async Task SaveAsync_PersistsAuthRequiredSnapshotWithoutUsageWindows()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));
+        var paths = new AppDataPaths(root);
+        var store = new JsonSnapshotStore(paths);
+        var now = new DateTimeOffset(2026, 7, 9, 13, 30, 0, TimeSpan.FromHours(9));
+        var snapshots = new[]
+        {
+            new UsageSnapshot(
+                ProviderId.GitHubCopilot,
+                "GitHub Copilot",
+                ProviderHealth.AuthRequired,
+                Identity: null,
+                PrimaryWindow: null,
+                SecondaryWindow: null,
+                Credits: null,
+                DataSourceKind.OfficialApi,
+                now,
+                "GitHub Copilot API mode needs an organization or enterprise slug. Personal Copilot users can stay in Manual mode.",
+                "GitHub Copilot API mode needs an organization or enterprise slug. Personal Copilot users can stay in Manual mode.")
+        };
+
+        try
+        {
+            await store.SaveAsync(snapshots, CancellationToken.None);
+            await store.AppendHistoryAsync(
+                snapshots,
+                new HistoryRetentionSettings { MaxDays = 30, MaxBytes = 1_000_000 },
+                CancellationToken.None);
+
+            Assert.True(File.Exists(paths.SnapshotsPath));
+            Assert.True(File.Exists(paths.HistoryPath));
+            Assert.Empty(Directory.GetFiles(paths.RootDirectory, "snapshots.*.tmp"));
+            Assert.Empty(Directory.GetFiles(paths.RootDirectory, "history.*.tmp"));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task AppendHistoryAsync_SanitizesSnapshotsBeforeWritingAndRetentionRewrite()
     {
         var root = Path.Combine(Path.GetTempPath(), "WinAiUsageBarTests", Guid.NewGuid().ToString("N"));

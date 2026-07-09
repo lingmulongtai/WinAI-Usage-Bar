@@ -1,3 +1,4 @@
+using WinAiUsageBar.Core.Abstractions;
 using WinAiUsageBar.Core.Configuration;
 using WinAiUsageBar.Core.Models;
 using WinAiUsageBar.Core.Providers;
@@ -307,6 +308,32 @@ public sealed class UsageRefreshServiceTests
         Assert.Contains(diagnostics.InfoMessages, message => message.Contains("started local app-server", StringComparison.Ordinal));
         Assert.DoesNotContain(diagnostics.InfoMessages, message => message.Contains("sample-provider-secret", StringComparison.Ordinal));
         Assert.Contains(diagnostics.InfoMessages, message => message.Contains("[REDACTED]", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task RefreshNowAsync_GitHubCopilotOfficialApiMissingScopeCompletesWithRealSnapshotStore()
+    {
+        var config = DisabledDefaultConfig();
+        var copilot = Enable(config, ProviderId.GitHubCopilot);
+        copilot.SourceKind = DataSourceKind.OfficialApi;
+        var paths = TestPaths();
+        var refreshService = new UsageRefreshService(
+            new InMemoryConfigStore(config),
+            new JsonSnapshotStore(paths),
+            new ProviderRegistry(
+                secretResolver: new NullSecretResolver(),
+                gitHubCopilotMetricsClient: new UnusedGitHubCopilotMetricsClient()),
+            paths,
+            new NoOpAppNotificationService(),
+            diagnosticsLog: new FileAppDiagnosticsLog(paths));
+
+        await refreshService.RefreshNowAsync(CancellationToken.None)
+            .WaitAsync(TimeSpan.FromSeconds(5));
+
+        var snapshot = Assert.Single(refreshService.CurrentSnapshots);
+        Assert.Equal(ProviderId.GitHubCopilot, snapshot.ProviderId);
+        Assert.Equal(ProviderHealth.AuthRequired, snapshot.Health);
+        Assert.Contains("Manual mode", snapshot.ErrorMessage, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -761,6 +788,25 @@ public sealed class UsageRefreshServiceTests
         public Task ErrorAsync(string message, Exception exception, CancellationToken cancellationToken)
         {
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class NullSecretResolver : ISecretResolver
+    {
+        public Task<string?> ResolveSecretAsync(string name, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult<string?>(null);
+        }
+    }
+
+    private sealed class UnusedGitHubCopilotMetricsClient : IGitHubCopilotMetricsClient
+    {
+        public Task<GitHubCopilotMetricsFetchResult> FetchLatestReportAsync(
+            GitHubCopilotMetricsRequest request,
+            CancellationToken cancellationToken)
+        {
+            throw new InvalidOperationException("Missing scope should not call the GitHub Copilot metrics client.");
         }
     }
 }

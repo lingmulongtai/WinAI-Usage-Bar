@@ -77,6 +77,7 @@ Product expectation:
 - Missing PAT secret name reports `AuthRequired` only after a scope is configured and tells the user to keep only a secret-name reference in provider settings.
 - Missing PAT secret value routes the user to Privacy & Data without echoing the secret reference.
 - Permission denied, missing permissions, 401, 403, and 404 metrics responses report `AuthRequired` with generic scope/PAT guidance.
+- Process-level `--refresh-once` dogfood for missing scope should return quickly, write `snapshots.json` and `history.ndjson`, and leave no `snapshots.*.tmp` or `history.*.tmp` files behind.
 - Provider Details, `--refresh-once`, diagnostics, and dogfood notes must not echo tokens, PAT secret names, organization names, enterprise slugs, signed download links, or raw API response bodies.
 
 Safe dogfood examples:

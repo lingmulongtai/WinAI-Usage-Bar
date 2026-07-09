@@ -4,6 +4,8 @@ using WinAiUsageBar.Core.Providers;
 using WinAiUsageBar.Infrastructure.Diagnostics;
 using WinAiUsageBar.Infrastructure.Notifications;
 using WinAiUsageBar.Infrastructure.Process;
+using WinAiUsageBar.Infrastructure.Scheduling;
+using WinAiUsageBar.Infrastructure.Security;
 using WinAiUsageBar.Infrastructure.Storage;
 using WinAiUsageBar.Infrastructure.Updates;
 
@@ -770,6 +772,7 @@ public static class CommandLineActions
         CancellationToken cancellationToken,
         AppDataPaths paths)
     {
+        paths.EnsureCreated();
         var baseConfigStore = new JsonAppConfigStore(paths);
         var config = await baseConfigStore.LoadAsync(cancellationToken).ConfigureAwait(false);
         var overrideResult = ApplyRefreshOnceOverrides(config, options);
@@ -778,11 +781,7 @@ public static class CommandLineActions
             return new CommandLineActionResult(overrideResult.ErrorMessage, 2);
         }
 
-        var services = AppCompositionRoot.CreateServices(
-            paths,
-            new NoOpAppNotificationService(),
-            new OneShotConfigStore(config));
-        var refreshService = services.RefreshService;
+        var refreshService = CreateRefreshOnceService(paths, config);
 
         try
         {
@@ -798,6 +797,25 @@ public static class CommandLineActions
         {
             await refreshService.DisposeAsync().ConfigureAwait(false);
         }
+    }
+
+    private static IUsageRefreshService CreateRefreshOnceService(AppDataPaths paths, AppConfig config)
+    {
+        var appInfo = AppInfoProvider.Get();
+        var secretStore = new DpapiSecretStore(paths);
+        var registry = new ProviderRegistry(
+            new CliCommandProbe(),
+            new CodexAppServerClient(clientVersion: appInfo.InformationalVersion),
+            new SecretStoreResolver(secretStore),
+            new GitHubCopilotMetricsHttpClient(new HttpClient()));
+
+        return new UsageRefreshService(
+            new OneShotConfigStore(config),
+            new JsonSnapshotStore(paths),
+            registry,
+            paths,
+            new NoOpAppNotificationService(),
+            diagnosticsLog: new FileAppDiagnosticsLog(paths));
     }
 
     private static RefreshOnceOverrideResult ApplyRefreshOnceOverrides(

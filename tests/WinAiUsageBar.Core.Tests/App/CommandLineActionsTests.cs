@@ -68,6 +68,21 @@ public sealed class CommandLineActionsTests
     }
 
     [Fact]
+    public async Task RefreshOnceAsync_GitHubCopilotOfficialApiMissingScopeReturnsAuthRequiredQuickly()
+    {
+        var result = await CommandLineActions.RefreshOnceAsync(
+                new CommandLineRefreshOnceOptions("GitHubCopilot", "OfficialApi"),
+                CancellationToken.None,
+                TestPaths())
+            .WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("GitHub Copilot", result.Output, StringComparison.Ordinal);
+        Assert.Contains("AuthRequired", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Manual mode", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task SetProviderCliOverrideAsync_SavesNormalizedOverrideWithoutEchoingValue()
     {
         var paths = TestPaths();

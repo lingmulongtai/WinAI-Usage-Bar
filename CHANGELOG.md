@@ -18,6 +18,7 @@ All notable changes to WinAI Usage Bar are documented here.
 
 ### Fixed
 
+- `--refresh-once --provider GitHubCopilot --source OfficialApi` now uses a CLI-only refresh composition and returns a safe AuthRequired report quickly when organization/enterprise scope is missing.
 - Corrected published startup-policy dogfood guidance and guards to require a source release that actually exposes `--run-startup-update-check`.
 - Settings navigation now uses a simpler WinUI `ListView` shell and lightweight status/usage controls to avoid native `NavigationView`, `InfoBar`, and `ProgressBar` failures seen during local Settings activation dogfooding.
 
