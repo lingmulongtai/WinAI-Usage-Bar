@@ -56,6 +56,8 @@ public sealed class ProviderDetailsPageViewModelTests
         Assert.Contains("[REDACTED]", provider.ErrorText, StringComparison.Ordinal);
         Assert.DoesNotContain("sample-api-key-value", provider.StatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("sample-token-value", provider.ErrorText, StringComparison.Ordinal);
+        Assert.DoesNotContain("authorization", provider.StatusText, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("token", provider.ErrorText, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

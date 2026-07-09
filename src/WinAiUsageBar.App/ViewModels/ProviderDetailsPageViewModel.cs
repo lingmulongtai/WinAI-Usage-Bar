@@ -184,7 +184,7 @@ public sealed class ProviderDetailsRowViewModel
 
     private static string Safe(string? value)
     {
-        return DiagnosticRedactor.Redact(value).Trim();
+        return DiagnosticRedactor.RedactForDisplay(value).Trim();
     }
 
     private static string FormatUnit(string? unit)
