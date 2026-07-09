@@ -8,7 +8,7 @@ using WinAiUsageBar.Infrastructure.Storage;
 
 namespace WinAiUsageBar.App;
 
-public sealed class App : Application
+public sealed partial class App : Application
 {
     private AppHost? host;
     private Window? uiLaunchSmokeWindow;
@@ -17,6 +17,7 @@ public sealed class App : Application
 
     public App()
     {
+        InitializeComponent();
         AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
         UnhandledException += OnUnhandledException;
     }
@@ -60,6 +61,16 @@ public sealed class App : Application
         AppHost appHost,
         UiLaunchSmokeOptions options)
     {
+        if (options.Target is UiLaunchSmokeTarget.Settings)
+        {
+            appHost.ShowSettings();
+            await appHost.DiagnosticsLog.InfoAsync(
+                "UI launch smoke activated the Settings window.",
+                CancellationToken.None);
+            _ = CompleteUiLaunchSmokeAsync(appHost, options.HoldDuration);
+            return;
+        }
+
         var smokeWindow = new Window
         {
             Title = "WinAI Usage Bar UI Smoke",

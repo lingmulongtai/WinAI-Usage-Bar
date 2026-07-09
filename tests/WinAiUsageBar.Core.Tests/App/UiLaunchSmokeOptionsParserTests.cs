@@ -22,6 +22,7 @@ public sealed class UiLaunchSmokeOptionsParserTests
         Assert.True(result.IsMatch);
         Assert.True(result.IsValid);
         Assert.Equal(TimeSpan.FromSeconds(5), result.Options?.HoldDuration);
+        Assert.Equal(UiLaunchSmokeTarget.Minimal, result.Options?.Target);
     }
 
     [Fact]
@@ -32,6 +33,17 @@ public sealed class UiLaunchSmokeOptionsParserTests
         Assert.True(result.IsMatch);
         Assert.True(result.IsValid);
         Assert.Equal(TimeSpan.FromSeconds(12), result.Options?.HoldDuration);
+        Assert.Equal(UiLaunchSmokeTarget.Minimal, result.Options?.Target);
+    }
+
+    [Fact]
+    public void Parse_AcceptsSettingsTarget()
+    {
+        var result = UiLaunchSmokeOptionsParser.Parse(["--ui-launch-smoke", "--target", "settings"]);
+
+        Assert.True(result.IsMatch);
+        Assert.True(result.IsValid);
+        Assert.Equal(UiLaunchSmokeTarget.Settings, result.Options?.Target);
     }
 
     [Theory]
@@ -40,6 +52,8 @@ public sealed class UiLaunchSmokeOptionsParserTests
     [InlineData("--ui-launch-smoke", "--hold-seconds", "abc")]
     [InlineData("--ui-launch-smoke", "--hold-seconds")]
     [InlineData("--ui-launch-smoke", "--hold-seconds", "5", "--hold-seconds", "6")]
+    [InlineData("--ui-launch-smoke", "--target")]
+    [InlineData("--ui-launch-smoke", "--target", "tray")]
     [InlineData("--ui-launch-smoke", "--unexpected")]
     public void Parse_RejectsInvalidUiLaunchSmokeOptions(params string[] args)
     {

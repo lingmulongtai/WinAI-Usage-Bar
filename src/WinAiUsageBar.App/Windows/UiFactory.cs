@@ -33,10 +33,11 @@ public static class UiFactory
         };
     }
 
-    public static Border ProviderCard(ProviderCardViewModel provider)
+    public static UIElement ProviderCard(ProviderCardViewModel provider)
     {
         var root = new StackPanel
         {
+            Margin = new Thickness(0, 0, 0, 12),
             Spacing = 6
         };
 
@@ -55,14 +56,7 @@ public static class UiFactory
         header.Children.Add(health);
 
         root.Children.Add(header);
-        root.Children.Add(new ProgressBar
-        {
-            Minimum = 0,
-            Maximum = 100,
-            Value = provider.ProgressValue,
-            Height = 8
-        });
-        root.Children.Add(Text(provider.PercentText, 13));
+        root.Children.Add(Text($"{provider.PercentText} ({provider.ProgressValue:0}% used)", 13));
         root.Children.Add(Text(provider.ResetText, 12));
 
         if (provider.HasStatusMessage)
@@ -83,7 +77,7 @@ public static class UiFactory
 
         if (provider.HasError)
         {
-            root.Children.Add(new InfoBar
+            root.Children.Add(new SimpleInfoBar
             {
                 Severity = InfoBarSeverity.Error,
                 IsOpen = true,
@@ -92,14 +86,6 @@ public static class UiFactory
             });
         }
 
-        return new Border
-        {
-            Padding = new Thickness(12),
-            Margin = new Thickness(0, 0, 0, 8),
-            CornerRadius = new CornerRadius(6),
-            BorderThickness = new Thickness(1),
-            BorderBrush = new SolidColorBrush(Color.FromArgb(80, 120, 120, 120)),
-            Child = root
-        };
+        return root;
     }
 }

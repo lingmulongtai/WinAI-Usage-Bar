@@ -20,30 +20,23 @@ public sealed class MainWindow : Window
     private const int SupportArtifactPruneKeepNewest = 5;
 
     private readonly AppHost host;
-    private readonly NavigationView navigationView = new()
+    private readonly Grid settingsShell = new();
+    private readonly ListView navigationList = new()
     {
-        IsBackButtonVisible = NavigationViewBackButtonVisible.Collapsed,
-        PaneDisplayMode = NavigationViewPaneDisplayMode.LeftCompact
+        SelectionMode = ListViewSelectionMode.Single,
+        MinWidth = 220
     };
+    private UIElement? contentElement;
     private string selectedNavigationTag = "Overview";
 
     public MainWindow(AppHost host)
     {
         this.host = host;
         Title = "WinAI Usage Bar Settings";
-        Content = navigationView;
+        Content = settingsShell;
         WindowHelpers.Resize(this, 920, 640);
 
-        navigationView.MenuItems.Add(CreateItem("Overview", Symbol.Home));
-        navigationView.MenuItems.Add(CreateItem("Providers", Symbol.AllApps));
-        navigationView.MenuItems.Add(CreateItem("Provider Details", Symbol.ContactInfo));
-        navigationView.MenuItems.Add(CreateItem("Appearance", Symbol.View));
-        navigationView.MenuItems.Add(CreateItem("Widget", Symbol.PreviewLink));
-        navigationView.MenuItems.Add(CreateItem("History", Symbol.Calendar));
-        navigationView.MenuItems.Add(CreateItem("Refresh", Symbol.Refresh));
-        navigationView.MenuItems.Add(CreateItem("Privacy & Data", Symbol.Setting));
-        navigationView.MenuItems.Add(CreateItem("About", Symbol.Help));
-        navigationView.SelectionChanged += OnSelectionChanged;
+        BuildSettingsShell();
 
         host.ViewModel.Providers.CollectionChanged += OnProvidersChanged;
         Closed += (_, _) =>
@@ -56,19 +49,56 @@ public sealed class MainWindow : Window
         RunNavigation(selectedNavigationTag);
     }
 
-    private static NavigationViewItem CreateItem(string text, Symbol symbol)
+    private void BuildSettingsShell()
     {
-        return new NavigationViewItem
+        settingsShell.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        settingsShell.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        AddNavigationItem("Overview", Symbol.Home);
+        AddNavigationItem("Providers", Symbol.AllApps);
+        AddNavigationItem("Provider Details", Symbol.ContactInfo);
+        AddNavigationItem("Appearance", Symbol.View);
+        AddNavigationItem("Widget", Symbol.PreviewLink);
+        AddNavigationItem("History", Symbol.Calendar);
+        AddNavigationItem("Refresh", Symbol.Refresh);
+        AddNavigationItem("Privacy & Data", Symbol.Setting);
+        AddNavigationItem("About", Symbol.Help);
+        navigationList.SelectedIndex = 0;
+        navigationList.SelectionChanged += OnSelectionChanged;
+
+        settingsShell.Children.Add(navigationList);
+    }
+
+    private void AddNavigationItem(string text, Symbol symbol)
+    {
+        navigationList.Items.Add(CreateItem(text, symbol));
+    }
+
+    private static ListViewItem CreateItem(string text, Symbol symbol)
+    {
+        var row = new StackPanel
         {
-            Content = text,
+            Orientation = Orientation.Horizontal,
+            Spacing = 10
+        };
+        row.Children.Add(new SymbolIcon(symbol));
+        row.Children.Add(new TextBlock
+        {
+            Text = text,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+
+        return new ListViewItem
+        {
+            Content = row,
             Tag = text,
-            Icon = new SymbolIcon(symbol)
+            HorizontalContentAlignment = HorizontalAlignment.Stretch
         };
     }
 
-    private async void OnSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
+    private async void OnSelectionChanged(object sender, SelectionChangedEventArgs args)
     {
-        if (args.SelectedItem is NavigationViewItem item && item.Tag is string tag)
+        if (navigationList.SelectedItem is ListViewItem item && item.Tag is string tag)
         {
             selectedNavigationTag = tag;
             await NavigateWithDiagnosticsAsync(tag);
@@ -85,7 +115,7 @@ public sealed class MainWindow : Window
 
     private async Task NavigateAsync(string tag)
     {
-        navigationView.Content = tag switch
+        var page = tag switch
         {
             "Overview" => await BuildOverviewPageAsync(),
             "Providers" => await BuildProvidersPageAsync(),
@@ -98,6 +128,7 @@ public sealed class MainWindow : Window
             "About" => BuildAboutPage(),
             _ => await BuildOverviewPageAsync()
         };
+        ShowContent(page);
     }
 
     private async Task<UIElement> BuildOverviewPageAsync()
@@ -111,7 +142,7 @@ public sealed class MainWindow : Window
             panel.Children.Add(CreateFirstRunSetupPanel(firstRun, config));
         }
 
-        panel.Children.Add(new InfoBar
+        panel.Children.Add(new SimpleInfoBar
         {
             Severity = InfoBarSeverity.Informational,
             IsOpen = true,
@@ -203,7 +234,7 @@ public sealed class MainWindow : Window
         {
             viewModel.MarkComplete();
             await host.SaveConfigAsync(config, CancellationToken.None);
-            navigationView.Content = await BuildOverviewPageAsync();
+            ShowContent(await BuildOverviewPageAsync());
         };
         actions.Children.Add(completeButton);
         stack.Children.Add(actions);
@@ -222,7 +253,46 @@ public sealed class MainWindow : Window
     private void SelectNavigationItem(string tag)
     {
         selectedNavigationTag = tag;
-        RunNavigation(tag);
+        if (!SelectNavigationListItem(tag))
+        {
+            RunNavigation(tag);
+        }
+    }
+
+    private void ShowContent(UIElement element)
+    {
+        if (contentElement is not null)
+        {
+            settingsShell.Children.Remove(contentElement);
+        }
+
+        contentElement = element;
+        if (contentElement is FrameworkElement frameworkElement)
+        {
+            Grid.SetColumn(frameworkElement, 1);
+        }
+
+        settingsShell.Children.Add(contentElement);
+    }
+
+    private bool SelectNavigationListItem(string tag)
+    {
+        for (var index = 0; index < navigationList.Items.Count; index++)
+        {
+            if (navigationList.Items[index] is ListViewItem item
+                && string.Equals(item.Tag as string, tag, StringComparison.Ordinal))
+            {
+                if (navigationList.SelectedIndex == index)
+                {
+                    return false;
+                }
+
+                navigationList.SelectedIndex = index;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void RunNavigation(string tag)
@@ -242,7 +312,7 @@ public sealed class MainWindow : Window
                 $"Settings navigation failed for {tag}.",
                 ex,
                 CancellationToken.None);
-            navigationView.Content = BuildNavigationFailurePage(tag);
+            ShowContent(BuildNavigationFailurePage(tag));
         }
     }
 
@@ -291,7 +361,7 @@ public sealed class MainWindow : Window
 
         if (provider.HasStatusText)
         {
-            stack.Children.Add(new InfoBar
+            stack.Children.Add(new SimpleInfoBar
             {
                 Severity = InfoBarSeverity.Informational,
                 IsOpen = true,
@@ -303,7 +373,7 @@ public sealed class MainWindow : Window
 
         if (provider.HasErrorText)
         {
-            stack.Children.Add(new InfoBar
+            stack.Children.Add(new SimpleInfoBar
             {
                 Severity = InfoBarSeverity.Error,
                 IsOpen = true,
@@ -350,7 +420,7 @@ public sealed class MainWindow : Window
         var viewModel = new ProviderSettingsPageViewModel(config, ProviderDescriptors.All);
         var panel = PageStack("Providers");
         var editors = new List<ProviderEditor>();
-        var validationInfo = new InfoBar
+        var validationInfo = new SimpleInfoBar
         {
             Severity = InfoBarSeverity.Error,
             IsOpen = false,
@@ -384,7 +454,7 @@ public sealed class MainWindow : Window
 
             await host.SaveConfigAsync(config, CancellationToken.None);
             await host.RefreshNowAsync(CancellationToken.None);
-            navigationView.Content = await BuildProvidersPageAsync();
+            ShowContent(await BuildProvidersPageAsync());
         };
         panel.Children.Add(saveButton);
 
@@ -468,9 +538,9 @@ public sealed class MainWindow : Window
         TextBox? gitHubOrganizationBox = null;
         TextBox? gitHubEnterpriseBox = null;
         TextBox? gitHubPatSecretNameBox = null;
-        InfoBar? apiKeyInfo = null;
-        InfoBar? cliCommandInfo = null;
-        InfoBar? gitHubCopilotInfo = null;
+        SimpleInfoBar? apiKeyInfo = null;
+        SimpleInfoBar? cliCommandInfo = null;
+        SimpleInfoBar? gitHubCopilotInfo = null;
 
         if (provider.HasCliCommandSettings)
         {
@@ -479,7 +549,7 @@ public sealed class MainWindow : Window
                 provider.CliCommandPathOverrideText);
             stack.Children.Add(cliCommandPathOverrideBox);
 
-            cliCommandInfo = new InfoBar
+            cliCommandInfo = new SimpleInfoBar
             {
                 Severity = InfoBarSeverity.Informational,
                 IsOpen = true,
@@ -494,7 +564,7 @@ public sealed class MainWindow : Window
             apiKeySecretNameBox = TextBox("API key secret name", provider.ApiKeySecretNameText);
             stack.Children.Add(apiKeySecretNameBox);
 
-            apiKeyInfo = new InfoBar
+            apiKeyInfo = new SimpleInfoBar
             {
                 Severity = InfoBarSeverity.Informational,
                 IsOpen = true,
@@ -522,7 +592,7 @@ public sealed class MainWindow : Window
             AddToGrid(copilotGrid, gitHubPatSecretNameBox, 1, 0);
             stack.Children.Add(copilotGrid);
 
-            gitHubCopilotInfo = new InfoBar
+            gitHubCopilotInfo = new SimpleInfoBar
             {
                 Severity = InfoBarSeverity.Informational,
                 IsOpen = true,
@@ -638,7 +708,7 @@ public sealed class MainWindow : Window
         };
         panel.Children.Add(startupToggle);
 
-        var startupInfo = new InfoBar
+        var startupInfo = new SimpleInfoBar
         {
             Severity = startupStatus.IsSupported ? InfoBarSeverity.Informational : InfoBarSeverity.Warning,
             IsOpen = true,
@@ -685,7 +755,7 @@ public sealed class MainWindow : Window
 
     private void ApplyTheme(string theme)
     {
-        ThemeHelper.Apply(navigationView, theme);
+        ThemeHelper.Apply(settingsShell, theme);
     }
 
     private async Task<UIElement> BuildRefreshPageAsync()
@@ -693,7 +763,7 @@ public sealed class MainWindow : Window
         var config = await host.LoadConfigAsync(CancellationToken.None);
         var viewModel = new RefreshSettingsPageViewModel(config);
         var panel = PageStack("Refresh");
-        var validationInfo = new InfoBar
+        var validationInfo = new SimpleInfoBar
         {
             IsOpen = false,
             IsClosable = true
@@ -721,7 +791,7 @@ public sealed class MainWindow : Window
         };
         panel.Children.Add(notifications);
 
-        panel.Children.Add(new InfoBar
+        panel.Children.Add(new SimpleInfoBar
         {
             Severity = InfoBarSeverity.Informational,
             IsOpen = true,
@@ -885,7 +955,7 @@ public sealed class MainWindow : Window
         var viewModel = new HistorySummaryViewModel(
             await host.GetHistorySummaryAsync(CancellationToken.None));
         var panel = PageStack("History");
-        panel.Children.Add(new InfoBar
+        panel.Children.Add(new SimpleInfoBar
         {
             Severity = InfoBarSeverity.Informational,
             IsOpen = true,
@@ -894,7 +964,7 @@ public sealed class MainWindow : Window
             Message = viewModel.SummaryText
         });
 
-        panel.Children.Add(new InfoBar
+        panel.Children.Add(new SimpleInfoBar
         {
             Severity = viewModel.InvalidLines == 0 ? InfoBarSeverity.Informational : InfoBarSeverity.Warning,
             IsOpen = true,
@@ -944,7 +1014,7 @@ public sealed class MainWindow : Window
         var config = await host.LoadConfigAsync(CancellationToken.None);
         var viewModel = new WidgetSettingsPageViewModel(config.Widget, ProviderDescriptors.All);
         var panel = PageStack("Widget");
-        var validationInfo = new InfoBar
+        var validationInfo = new SimpleInfoBar
         {
             Severity = InfoBarSeverity.Error,
             IsOpen = false,
@@ -1028,7 +1098,7 @@ public sealed class MainWindow : Window
         var recoveryGuidance = new RecoveryGuidanceService().CreateGuidance(summary);
         var storagePressure = new StoragePressureGuidanceService().CreateGuidance(summary);
         var panel = PageStack("Privacy & Data");
-        panel.Children.Add(new InfoBar
+        panel.Children.Add(new SimpleInfoBar
         {
             Severity = InfoBarSeverity.Informational,
             IsOpen = true,
@@ -1090,7 +1160,7 @@ public sealed class MainWindow : Window
         panel.Children.Add(UiFactory.Text("Browser cookie scraping is not implemented in this MVP.", 14));
 
         var secretEditor = new SecretEditorViewModel();
-        var secretInfo = new InfoBar
+        var secretInfo = new SimpleInfoBar
         {
             IsOpen = false,
             IsClosable = true
@@ -1223,7 +1293,7 @@ public sealed class MainWindow : Window
 
         panel.Children.Add(UiFactory.Text("Data maintenance", 16, FontWeights.SemiBold));
         panel.Children.Add(UiFactory.Text("Clear local cache files without deleting config.json or saved secrets.", 14));
-        var maintenanceInfo = new InfoBar
+        var maintenanceInfo = new SimpleInfoBar
         {
             IsOpen = false,
             IsClosable = true
@@ -1495,7 +1565,7 @@ public sealed class MainWindow : Window
         resetActions.Children.Add(resetConfigButton);
         panel.Children.Add(resetActions);
 
-        var exportInfo = new InfoBar
+        var exportInfo = new SimpleInfoBar
         {
             IsOpen = false,
             IsClosable = true

@@ -3,6 +3,8 @@ param(
     [switch]$Publish,
     [int]$HoldSeconds = 5,
     [int]$TimeoutSeconds = 20,
+    [ValidateSet("Minimal", "Settings")]
+    [string]$Target = "Minimal",
     [string]$AppDataRoot = "",
     [switch]$SyntaxOnly
 )
@@ -51,7 +53,7 @@ New-Item -ItemType Directory -Force -Path $resolvedAppDataRoot | Out-Null
 
 $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
 $startInfo.FileName = $resolvedAppExe
-$startInfo.Arguments = "--ui-launch-smoke --hold-seconds $HoldSeconds"
+$startInfo.Arguments = "--ui-launch-smoke --hold-seconds $HoldSeconds --target $Target"
 $startInfo.UseShellExecute = $false
 $startInfo.CreateNoWindow = $true
 $startInfo.EnvironmentVariables["WINAIUSAGEBAR_APPDATA"] = $resolvedAppDataRoot
@@ -60,6 +62,7 @@ $process = [System.Diagnostics.Process]::new()
 $process.StartInfo = $startInfo
 
 Write-Host "Launching UI smoke: $resolvedAppExe"
+Write-Host "Target: $Target"
 Write-Host "Isolated app data: $resolvedAppDataRoot"
 
 if (-not $process.Start()) {

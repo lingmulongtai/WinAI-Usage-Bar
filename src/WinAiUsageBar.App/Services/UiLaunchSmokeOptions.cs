@@ -1,6 +1,14 @@
 namespace WinAiUsageBar.App.Services;
 
-public sealed record UiLaunchSmokeOptions(TimeSpan HoldDuration);
+public enum UiLaunchSmokeTarget
+{
+    Minimal,
+    Settings
+}
+
+public sealed record UiLaunchSmokeOptions(
+    TimeSpan HoldDuration,
+    UiLaunchSmokeTarget Target);
 
 public sealed record UiLaunchSmokeParseResult(
     bool IsMatch,
@@ -39,6 +47,7 @@ public static class UiLaunchSmokeOptionsParser
         }
 
         int? holdSeconds = null;
+        var target = UiLaunchSmokeTarget.Minimal;
         for (var index = 1; index < args.Count; index++)
         {
             var option = args[index].Trim();
@@ -65,10 +74,26 @@ public static class UiLaunchSmokeOptionsParser
                 continue;
             }
 
+            if (string.Equals(option, "--target", StringComparison.OrdinalIgnoreCase))
+            {
+                if (++index >= args.Count || string.IsNullOrWhiteSpace(args[index]))
+                {
+                    return UiLaunchSmokeParseResult.Invalid("Missing value for --target.");
+                }
+
+                if (!Enum.TryParse<UiLaunchSmokeTarget>(args[index].Trim(), ignoreCase: true, out var parsedTarget))
+                {
+                    return UiLaunchSmokeParseResult.Invalid("--target must be Minimal or Settings.");
+                }
+
+                target = parsedTarget;
+                continue;
+            }
+
             return UiLaunchSmokeParseResult.Invalid($"Unknown --ui-launch-smoke option: {option}");
         }
 
         return UiLaunchSmokeParseResult.Valid(
-            new UiLaunchSmokeOptions(TimeSpan.FromSeconds(holdSeconds ?? DefaultHoldSeconds)));
+            new UiLaunchSmokeOptions(TimeSpan.FromSeconds(holdSeconds ?? DefaultHoldSeconds), target));
     }
 }
