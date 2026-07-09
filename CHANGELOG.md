@@ -4,6 +4,10 @@ All notable changes to WinAI Usage Bar are documented here.
 
 ## Unreleased
 
+### Added
+
+- Codex/ChatGPT app-server snapshots now promote the recognized usage or rate-limit window with the lowest remaining percent to the primary display slot.
+
 ### Fixed
 
 - Corrected published startup-policy dogfood guidance and guards to require a source release that actually exposes `--run-startup-update-check`.

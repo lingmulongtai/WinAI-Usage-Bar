@@ -288,12 +288,15 @@ public static class CodexJsonRpcParser
         DataSourceKind sourceKind = DataSourceKind.LocalAppServer)
     {
         var account = ParseAccount(data.AccountJson);
-        var usageWindow = ParseUsageWindow(data.UsageJson, $"{descriptor.DisplayName} usage", now);
-        var rateLimitWindow = ParseUsageWindow(data.RateLimitsJson, $"{descriptor.DisplayName} rate limit", now);
-        var primaryWindow = usageWindow ?? rateLimitWindow;
-        var secondaryWindow = usageWindow is not null && rateLimitWindow is not null
-            ? rateLimitWindow
-            : null;
+        var windows = ParseUsageWindows(data.UsageJson, $"{descriptor.DisplayName} usage", now)
+            .Concat(ParseUsageWindows(data.RateLimitsJson, $"{descriptor.DisplayName} rate limit", now))
+            .Select((Window, Index) => new RankedUsageWindow(Window, Index))
+            .OrderBy(window => window.Window.RemainingPercent ?? double.MaxValue)
+            .ThenBy(window => window.Index)
+            .Select(window => window.Window)
+            .ToArray();
+        var primaryWindow = windows.FirstOrDefault();
+        var secondaryWindow = windows.Skip(1).FirstOrDefault();
         var credits = ParseCredits(data.UsageJson);
 
         var health = primaryWindow?.RemainingPercent switch
@@ -366,21 +369,30 @@ public static class CodexJsonRpcParser
         string label = "Codex usage",
         DateTimeOffset? now = null)
     {
+        return ParseUsageWindows(json, label, now).FirstOrDefault();
+    }
+
+    public static IReadOnlyList<UsageWindow> ParseUsageWindows(
+        string? json,
+        string label = "Codex usage",
+        DateTimeOffset? now = null)
+    {
         if (!TryGetResult(json, out var result))
         {
-            return null;
+            return [];
         }
 
+        var windows = new List<UsageWindow>();
         foreach (var candidate in EnumerateUsageWindowCandidates(result))
         {
             var window = TryParseUsageWindowCandidate(candidate, label, now);
             if (window is not null)
             {
-                return window;
+                windows.Add(window);
             }
         }
 
-        return null;
+        return windows;
     }
 
     private static UsageWindow? TryParseUsageWindowCandidate(
@@ -952,6 +964,8 @@ public static class CodexJsonRpcParser
     }
 
     private sealed record JsonRpcRequest(string Jsonrpc, int Id, string Method, object? Params);
+
+    private sealed record RankedUsageWindow(UsageWindow Window, int Index);
 }
 
 public sealed record JsonRpcEnvelope(int? Id, string? Method, bool HasError, string? ErrorMessage);

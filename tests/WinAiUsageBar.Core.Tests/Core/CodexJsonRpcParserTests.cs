@@ -135,7 +135,7 @@ public sealed class CodexJsonRpcParserTests
     }
 
     [Fact]
-    public void CreateSnapshot_MapsRateLimitsAsSecondaryWindow()
+    public void CreateSnapshot_PromotesMostConstrainedRateLimitWindow()
     {
         const string usage = """
         {
@@ -170,11 +170,11 @@ public sealed class CodexJsonRpcParserTests
             data,
             new DateTimeOffset(2026, 7, 8, 0, 0, 0, TimeSpan.Zero));
 
-        Assert.Equal("Codex usage", snapshot.PrimaryWindow?.Label);
-        Assert.Equal(75, snapshot.PrimaryWindow?.RemainingPercent);
-        Assert.Equal("Codex rate limit", snapshot.SecondaryWindow?.Label);
-        Assert.Equal(20, snapshot.SecondaryWindow?.RemainingPercent);
-        Assert.Equal("daily", snapshot.SecondaryWindow?.ResetDescription);
+        Assert.Equal("Codex rate limit", snapshot.PrimaryWindow?.Label);
+        Assert.Equal(20, snapshot.PrimaryWindow?.RemainingPercent);
+        Assert.Equal("daily", snapshot.PrimaryWindow?.ResetDescription);
+        Assert.Equal("Codex usage", snapshot.SecondaryWindow?.Label);
+        Assert.Equal(75, snapshot.SecondaryWindow?.RemainingPercent);
     }
 
     [Fact]
@@ -208,8 +208,8 @@ public sealed class CodexJsonRpcParserTests
             data,
             new DateTimeOffset(2026, 7, 8, 0, 0, 0, TimeSpan.Zero));
 
-        Assert.Equal("ChatGPT usage", snapshot.PrimaryWindow?.Label);
-        Assert.Equal("ChatGPT rate limit", snapshot.SecondaryWindow?.Label);
+        Assert.Equal("ChatGPT rate limit", snapshot.PrimaryWindow?.Label);
+        Assert.Equal("ChatGPT usage", snapshot.SecondaryWindow?.Label);
     }
 
     [Fact]
@@ -479,6 +479,46 @@ public sealed class CodexJsonRpcParserTests
     }
 
     [Fact]
+    public void CreateSnapshot_PromotesLowestRemainingWindowFromNestedArrays()
+    {
+        const string usage = """
+        {
+          "result": {
+            "usageWindows": [
+              {
+                "used": 20,
+                "limit": 100,
+                "unit": "daily"
+              },
+              {
+                "used": 95,
+                "limit": 100,
+                "unit": "weekly"
+              }
+            ]
+          }
+        }
+        """;
+
+        var data = new CodexAppServerData(
+            AccountJson: null,
+            RateLimitsJson: null,
+            UsageJson: usage,
+            Diagnostics: []);
+
+        var snapshot = CodexJsonRpcParser.CreateSnapshot(
+            ProviderDescriptors.Get(ProviderId.Codex),
+            data,
+            new DateTimeOffset(2026, 7, 8, 0, 0, 0, TimeSpan.Zero));
+
+        Assert.Equal("weekly", snapshot.PrimaryWindow?.Unit);
+        Assert.Equal(5, snapshot.PrimaryWindow?.RemainingPercent);
+        Assert.Equal("daily", snapshot.SecondaryWindow?.Unit);
+        Assert.Equal(80, snapshot.SecondaryWindow?.RemainingPercent);
+        Assert.Equal(ProviderHealth.Error, snapshot.Health);
+    }
+
+    [Fact]
     public void ParseUsageWindow_ParsesPluralNestedArrayWindow()
     {
         const string json = """
@@ -644,11 +684,11 @@ public sealed class CodexJsonRpcParserTests
             data,
             new DateTimeOffset(2026, 7, 8, 0, 0, 0, TimeSpan.Zero));
 
-        Assert.Equal(70, snapshot.PrimaryWindow?.RemainingPercent);
-        Assert.Equal("Codex rate limit", snapshot.SecondaryWindow?.Label);
-        Assert.Equal(82, snapshot.SecondaryWindow?.Used);
-        Assert.Equal(18, snapshot.SecondaryWindow?.RemainingPercent);
-        Assert.Equal("rolling", snapshot.SecondaryWindow?.ResetDescription);
+        Assert.Equal("Codex rate limit", snapshot.PrimaryWindow?.Label);
+        Assert.Equal(82, snapshot.PrimaryWindow?.Used);
+        Assert.Equal(18, snapshot.PrimaryWindow?.RemainingPercent);
+        Assert.Equal("rolling", snapshot.PrimaryWindow?.ResetDescription);
+        Assert.Equal(70, snapshot.SecondaryWindow?.RemainingPercent);
     }
 
     [Fact]
