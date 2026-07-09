@@ -152,6 +152,14 @@ public static class CodexJsonRpcParser
     ];
     private static readonly string[] ResetDurationFields =
     [
+        "resetsIn",
+        "resetIn",
+        "resetAfter",
+        "retryAfter",
+        "resets_in",
+        "reset_in",
+        "reset_after",
+        "retry_after",
         "resetsInSeconds",
         "resetInSeconds",
         "resetSeconds",
@@ -431,7 +439,10 @@ public static class CodexJsonRpcParser
         if (resetsAt is null && resetDuration is not null && now is not null)
         {
             resetsAt = now.Value.Add(resetDuration.Value);
-            resetDescription ??= FormatResetDuration(resetDuration.Value);
+            if (resetDescription is null || IsPlainNumberText(resetDescription))
+            {
+                resetDescription = FormatResetDuration(resetDuration.Value);
+            }
         }
 
         return new UsageWindow(
@@ -791,6 +802,15 @@ public static class CodexJsonRpcParser
         }
 
         return $"resets in {Math.Round(duration.TotalSeconds, 1)}s";
+    }
+
+    private static bool IsPlainNumberText(string text)
+    {
+        return double.TryParse(
+            text,
+            NumberStyles.Float,
+            CultureInfo.InvariantCulture,
+            out _);
     }
 
     private static IEnumerable<(string Name, JsonElement Value)> Flatten(JsonElement element)

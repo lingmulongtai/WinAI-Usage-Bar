@@ -347,6 +347,46 @@ public sealed class CodexJsonRpcParserTests
     }
 
     [Fact]
+    public void ParseUsageWindow_ParsesGenericRetryAfterAliasAsSeconds()
+    {
+        var now = new DateTimeOffset(2026, 7, 8, 10, 0, 0, TimeSpan.Zero);
+        const string json = """
+        {
+          "result": {
+            "used": 5,
+            "limit": 10,
+            "retry_after": "900"
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json, now: now);
+
+        Assert.Equal(now.AddMinutes(15), window?.ResetsAt);
+        Assert.Equal("resets in 15m", window?.ResetDescription);
+    }
+
+    [Fact]
+    public void ParseUsageWindow_FormatsNumericResetsInDescriptionWhenUsedAsDuration()
+    {
+        var now = new DateTimeOffset(2026, 7, 8, 10, 0, 0, TimeSpan.Zero);
+        const string json = """
+        {
+          "result": {
+            "used": 5,
+            "limit": 10,
+            "resetsIn": "3600"
+          }
+        }
+        """;
+
+        var window = CodexJsonRpcParser.ParseUsageWindow(json, now: now);
+
+        Assert.Equal(now.AddHours(1), window?.ResetsAt);
+        Assert.Equal("resets in 1h", window?.ResetDescription);
+    }
+
+    [Fact]
     public void ParseUsageWindow_ParsesNestedQuotaAliases()
     {
         var now = new DateTimeOffset(2026, 7, 8, 10, 0, 0, TimeSpan.Zero);
