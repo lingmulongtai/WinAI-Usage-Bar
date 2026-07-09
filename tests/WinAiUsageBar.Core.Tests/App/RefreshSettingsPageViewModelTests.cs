@@ -212,6 +212,7 @@ public sealed class RefreshSettingsPageViewModelTests
         Assert.Contains("Status: NoUpdate", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("Current version:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("Release page:", viewModel.UpdateStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("Last launched install:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("Package asset:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("Package checksum asset:", viewModel.UpdateStatusText, StringComparison.Ordinal);
         Assert.DoesNotContain("Package path:", viewModel.UpdateStatusText, StringComparison.Ordinal);

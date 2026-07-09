@@ -109,10 +109,6 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
         var interval = updates.MinimumCheckIntervalHours <= 0
             ? "Startup interval: every startup"
             : $"Startup interval: at most every {updates.MinimumCheckIntervalHours} hour(s)";
-        var launchedVersion = string.IsNullOrWhiteSpace(updates.LastInstallLaunchedVersion)
-            ? "Last launched install: n/a"
-            : $"Last launched install: {SafeValue(updates.LastInstallLaunchedVersion)}";
-
         var lines = new List<string>
         {
             checkedText,
@@ -131,7 +127,10 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
             lines.Add($"Release page: {SafeValue(updates.LastReleasePageUrl)}");
         }
 
-        lines.Add(launchedVersion);
+        if (!string.IsNullOrWhiteSpace(updates.LastInstallLaunchedVersion))
+        {
+            lines.Add($"Last launched install: {SafeValue(updates.LastInstallLaunchedVersion)}");
+        }
 
         if (!string.IsNullOrWhiteSpace(updates.LastPackageAssetName))
         {
