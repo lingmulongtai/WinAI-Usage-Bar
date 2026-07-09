@@ -8,10 +8,12 @@ All notable changes to WinAI Usage Bar are documented here.
 
 - Codex/ChatGPT app-server snapshots now promote the recognized usage or rate-limit window with the lowest remaining percent to the primary display slot.
 - Codex app-server diagnostics now record safe optional method success status without logging response bodies.
+- Added an opt-in UI launch smoke mode and script for local packaged-app window activation checks.
 
 ### Fixed
 
 - Corrected published startup-policy dogfood guidance and guards to require a source release that actually exposes `--run-startup-update-check`.
+- Settings navigation now avoids programmatic `NavigationView.SelectedItem` changes during startup and logs page navigation failures.
 
 ## 0.1.5 - 2026-07-09
 

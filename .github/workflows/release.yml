@@ -27,6 +27,9 @@ jobs:
       - name: Verify installer script
         run: .\scripts\verify-installer-script.ps1
 
+      - name: Verify UI launch smoke script
+        run: .\scripts\test-ui-launch-smoke.ps1 -SyntaxOnly
+
       - name: Restore
         run: .\scripts\restore.ps1 -SolutionPath .\WinAIUsageBar.sln
 

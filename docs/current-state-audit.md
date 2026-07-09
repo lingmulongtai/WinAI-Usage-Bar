@@ -13,10 +13,10 @@ Latest published release: `v0.1.5`. It adds safer update-install confirmation, l
 | Architecture foundation | 8/10 | The layer split is real, testable, and mostly respected. |
 | Provider extensibility | 7/10 | Descriptors, adapters, manual mode, and safe failure states are in place. Real provider depth is still thin. |
 | Security posture | 8/10 | Good defaults around DPAPI, display/notification redaction, no cookie scraping, checksum verification, guarded update launch, post-install validation, rollback, unsafe update zip rejection, and disposable update-apply dogfooding. Needs more adversarial review before wider distribution. |
-| Windows shell integration | 6/10 | Tray, windows, placement, startup registration, and notifications exist, with duplicate notification suppression, compact panel placement edge-case tests, a manual verification checklist, and report scaffold. Actual shell behavior still needs hands-on runs. |
+| Windows shell integration | 6/10 | Tray, windows, placement, startup registration, and notifications exist, with duplicate notification suppression, compact panel placement edge-case tests, a manual verification checklist, report scaffold, and an opt-in packaged-app UI launch smoke helper. Actual shell behavior still needs hands-on runs. |
 | Product usability | 6/10 | The app now has guided first-run checklist state, provider-specific setup decisions, provider details, backup export/restore, and recovery checks, but it is still mostly useful with Mock/Manual data today. |
 | Packaging and release | 9/10 | Self-contained publish, zip packaging, checksums, readiness gates, artifacts, release workflow, English release notes generated from the changelog, published setup assets, unsigned installer warning, update-check, verified download, install-script preparation, rollback-capable guarded script launch with post-install smoke validation, explicit latest-update install orchestration, setup installer artifact/release paths, throttled startup update policy, current-version update dogfooding, and published disposable release-to-release update dogfooding exist. No signing yet. |
-| Test confidence | 8/10 | Core, infrastructure, view model, CLI, storage, parser, refresh, app-composition smoke, headless UI composition smoke, and packaging smoke paths are covered without external CLIs. Visual UI runtime coverage remains limited. |
+| Test confidence | 8/10 | Core, infrastructure, view model, CLI, storage, parser, refresh, app-composition smoke, headless UI composition smoke, packaging smoke paths, and UI launch smoke parser/script syntax are covered without external CLIs. Visual UI runtime coverage remains limited. |
 | Observability and support | 8/10 | Diagnostics summary, provider repair guidance, recovery guidance, redacted export, health report, isolated app-data dogfooding, provider dogfooding notes, release dogfooding notes, validation log metadata, logs, recent crash report metadata UI, and local redacted crash reports are solid for an MVP. No remote crash reporting or crash-detail viewer yet. |
 
 Overall:
@@ -37,6 +37,7 @@ Overall:
 - Config, snapshots, history, diagnostics, and maintenance flows are all represented in code and tests.
 - CI now builds, tests, publishes, smoke-tests app service composition, packages, and uploads artifacts on `main`.
 - Headless UI composition smoke coverage now constructs the primary shell, provider, settings, widget, diagnostics, history, and secret editor view models from isolated app data without launching WinUI windows.
+- Local UI launch smoke coverage can now start the packaged app, activate a minimal WinUI smoke window briefly with isolated app data, verify the process stays alive, and wait for a clean exit. CI verifies the helper's syntax-only path so headless runners do not need interactive WinUI activation.
 - Compact panel placement tests now cover taskbar-edge work areas, negative-coordinate monitors, and oversized panel clamping in CI.
 - The CLI surface gives useful non-UI checks: help, version, smoke test with app service composition and refresh pipeline coverage, diagnostics export, config backup export/list/validation, health report with storage pressure guidance, recovery guidance, launch targets, and repair hints, provider catalog, provider CLI override setting, support artifact pruning, update checks, verified update downloads, staged install script preparation, guarded prepared-script launch, explicit latest-update install orchestration, headless startup update policy execution, and headless refresh-once.
 - Release readiness checks now cover version metadata, changelog, audit date, published-app smoke test, package presence, installer presence, and checksum validity.
@@ -80,7 +81,7 @@ Overall:
 - Config backup and reset recovery now exist with basic decision guidance, CLI backup inventory, path-based and latest-backup CLI validation/restore entries, and CLI reset-to-default recovery, but they still need repeated dogfooding before they can be treated as comfort features.
 - Local storage growth is visible for history, backups, diagnostics exports, and diagnostics logs, with basic pruning for backups and exports, but the maintenance flow still needs real-use tuning.
 - Local CLI discovery can still be messy on Windows. Provider Details has Codex WindowsApps and Claude CLI repair guidance, but deeper provider-specific repair checks are still needed for future CLI-backed providers.
-- There is no visual regression or automated WinUI window activation test yet. Headless UI composition coverage exists, but it cannot prove layout, focus, shell integration, or rendering behavior.
+- There is still no visual regression suite or CI-hosted interactive WinUI activation test. Headless UI composition coverage and the local opt-in launch smoke helper reduce risk, but they cannot prove layout, focus, shell integration, or rendering behavior across real desktops.
 
 ## Risk Register
 
@@ -134,8 +135,8 @@ The weak point is value density. A usage bar is only as useful as the data it ca
 7. Dogfood recovery decision guidance.
    The app can explain the basic backup, restore, reset, and diagnostics choices now, but the copy and placement still need real-use validation.
 
-8. Add one automated UI launch check if feasible.
-   Even a minimal app-start plus window activation check would catch major WinUI regressions.
+8. Dogfood the opt-in UI launch smoke check.
+   The helper can now open a minimal packaged WinUI smoke window briefly and exit cleanly on a local Windows desktop; it still needs repeated runs across real desktop states.
 
 9. Dogfood the startup update policy.
    The app can now check GitHub release metadata on startup with a cooldown and optionally download or launch a prepared install script without repeating the same release launch. A headless isolated no-update/cooldown run has passed, a published-release startup-policy dogfood helper exists, and the UI now requires explicit save-time confirmation before enabling automatic install launch. Next it needs repeated same-install release-to-release startup-policy testing before wider use.

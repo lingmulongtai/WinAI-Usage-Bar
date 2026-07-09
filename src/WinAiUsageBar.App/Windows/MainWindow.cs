@@ -25,6 +25,7 @@ public sealed class MainWindow : Window
         IsBackButtonVisible = NavigationViewBackButtonVisible.Collapsed,
         PaneDisplayMode = NavigationViewPaneDisplayMode.LeftCompact
     };
+    private string selectedNavigationTag = "Overview";
 
     public MainWindow(AppHost host)
     {
@@ -51,9 +52,8 @@ public sealed class MainWindow : Window
             host.OnSettingsClosed();
         };
 
-        navigationView.SelectedItem = navigationView.MenuItems[0];
         _ = ApplyConfiguredThemeAsync();
-        _ = NavigateAsync("Overview");
+        RunNavigation(selectedNavigationTag);
     }
 
     private static NavigationViewItem CreateItem(string text, Symbol symbol)
@@ -70,16 +70,16 @@ public sealed class MainWindow : Window
     {
         if (args.SelectedItem is NavigationViewItem item && item.Tag is string tag)
         {
-            await NavigateAsync(tag);
+            selectedNavigationTag = tag;
+            await NavigateWithDiagnosticsAsync(tag);
         }
     }
 
     private void OnProvidersChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        var tag = (navigationView.SelectedItem as NavigationViewItem)?.Tag as string;
-        if (tag is "Overview" or "Provider Details")
+        if (selectedNavigationTag is "Overview" or "Provider Details")
         {
-            _ = NavigateAsync(tag);
+            RunNavigation(selectedNavigationTag);
         }
     }
 
@@ -221,16 +221,38 @@ public sealed class MainWindow : Window
 
     private void SelectNavigationItem(string tag)
     {
-        foreach (var item in navigationView.MenuItems.OfType<NavigationViewItem>())
-        {
-            if (string.Equals(item.Tag as string, tag, StringComparison.Ordinal))
-            {
-                navigationView.SelectedItem = item;
-                return;
-            }
-        }
+        selectedNavigationTag = tag;
+        RunNavigation(tag);
+    }
 
-        _ = NavigateAsync(tag);
+    private void RunNavigation(string tag)
+    {
+        _ = NavigateWithDiagnosticsAsync(tag);
+    }
+
+    private async Task NavigateWithDiagnosticsAsync(string tag)
+    {
+        try
+        {
+            await NavigateAsync(tag);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await host.DiagnosticsLog.ErrorAsync(
+                $"Settings navigation failed for {tag}.",
+                ex,
+                CancellationToken.None);
+            navigationView.Content = BuildNavigationFailurePage(tag);
+        }
+    }
+
+    private static UIElement BuildNavigationFailurePage(string tag)
+    {
+        var panel = PageStack("Settings navigation failed");
+        panel.Children.Add(UiFactory.Text(
+            $"The {tag} page could not be opened. Check diagnostics for details.",
+            14));
+        return Wrap(panel);
     }
 
     private UIElement BuildProviderDetailsPage()

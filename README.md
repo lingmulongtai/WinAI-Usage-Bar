@@ -42,6 +42,7 @@ Create a timestamped local verification report with `.\scripts\new-windows-verif
 - Manual mode can track used/remaining percentage, reset datetime/description, credits, currency/unit, month cost, last-31-day tokens, and notes.
 - CLI `--refresh-once` can run one headless provider refresh and print a safe snapshot summary, including a redacted secondary usage/rate-limit window when available, without launching UI.
 - Tests include a headless UI composition smoke check that constructs the primary shell, provider, settings, widget, diagnostics, history, and secret editor view models without launching WinUI windows. This is not a visual UI automation substitute, but it catches broken non-window UI composition in CI.
+- A local opt-in UI launch smoke script can start the packaged WinUI app, activate a minimal smoke window briefly with isolated app data, then verify a clean exit. CI only checks the script's safe syntax-only path.
 - CLI `--set-provider-cli-override` can save a non-secret command override for CLI/local app-server providers without echoing the value, and `--clear-provider-cli-override` can remove it.
 - CLI `--prune-support-artifacts` can prune old config backups, diagnostics exports, and crash reports without launching UI.
 - CLI `--export-config-backup` can create a config-only backup without launching UI.
@@ -155,6 +156,14 @@ Run the published-app smoke test without opening UI:
 ```powershell
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --smoke-test
 ```
+
+Run the opt-in UI launch smoke check on a local Windows desktop:
+
+```powershell
+.\scripts\test-ui-launch-smoke.ps1 -Publish -HoldSeconds 5
+```
+
+This briefly opens a minimal WinUI smoke window using isolated app data under `artifacts\ui-launch-smoke`, verifies the process stays alive during the check, and then waits for the app to exit cleanly. Use `-SyntaxOnly` when you only want to validate the helper without launching WinUI.
 
 Published builds also support lightweight command-line checks:
 

@@ -1,6 +1,8 @@
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using WinAiUsageBar.App.Services;
+using WinAiUsageBar.App.Windows;
 using WinAiUsageBar.Infrastructure.Diagnostics;
 using WinAiUsageBar.Infrastructure.Storage;
 
@@ -9,6 +11,9 @@ namespace WinAiUsageBar.App;
 public sealed class App : Application
 {
     private AppHost? host;
+    private Window? uiLaunchSmokeWindow;
+
+    public static UiLaunchSmokeOptions? UiLaunchSmokeOptions { get; set; }
 
     public App()
     {
@@ -20,8 +25,13 @@ public sealed class App : Application
     {
         try
         {
-            host = await AppHost.CreateAsync(DispatcherQueue.GetForCurrentThread(), CancellationToken.None);
-            await host.StartAsync(CancellationToken.None);
+            var appHost = await AppHost.CreateAsync(DispatcherQueue.GetForCurrentThread(), CancellationToken.None);
+            host = appHost;
+            await appHost.StartAsync(CancellationToken.None);
+            if (UiLaunchSmokeOptions is { } options)
+            {
+                await RunUiLaunchSmokeAsync(appHost, options);
+            }
         }
         catch (Exception ex)
         {
@@ -44,6 +54,46 @@ public sealed class App : Application
         }
 
         host.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    }
+
+    private async Task RunUiLaunchSmokeAsync(
+        AppHost appHost,
+        UiLaunchSmokeOptions options)
+    {
+        var smokeWindow = new Window
+        {
+            Title = "WinAI Usage Bar UI Smoke",
+            Content = new Grid
+            {
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = "WinAI Usage Bar UI smoke",
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center
+                    }
+                }
+            }
+        };
+        uiLaunchSmokeWindow = smokeWindow;
+        WindowHelpers.Resize(smokeWindow, 360, 160);
+        smokeWindow.Activate();
+        await appHost.DiagnosticsLog.InfoAsync(
+            "UI launch smoke activated a minimal WinUI window.",
+            CancellationToken.None);
+        _ = CompleteUiLaunchSmokeAsync(appHost, options.HoldDuration);
+    }
+
+    private static async Task CompleteUiLaunchSmokeAsync(
+        AppHost host,
+        TimeSpan holdDuration)
+    {
+        await Task.Delay(holdDuration, CancellationToken.None).ConfigureAwait(false);
+        await host.DiagnosticsLog.InfoAsync(
+            "UI launch smoke completed.",
+            CancellationToken.None).ConfigureAwait(false);
+        Environment.Exit(0);
     }
 
     private Task LogUnhandledExceptionAsync(Exception exception)
