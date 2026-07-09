@@ -207,6 +207,92 @@ public sealed class FirstRunSetupViewModelTests
     }
 
     [Fact]
+    public void ProviderSetupDecisions_ExposeSafeInlineSourceActions()
+    {
+        var config = AppConfig.CreateDefault();
+        var codex = config.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.Codex));
+        codex.IsEnabled = true;
+        codex.SourceKind = DataSourceKind.Mock;
+        var gemini = config.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.Gemini));
+        gemini.IsEnabled = false;
+        gemini.SourceKind = DataSourceKind.Manual;
+
+        var viewModel = new FirstRunSetupViewModel(
+            config,
+            [ProviderDescriptors.Get(ProviderId.Codex), ProviderDescriptors.Get(ProviderId.Gemini)]);
+
+        var codexDecision = viewModel.ProviderSetupDecisions.Single(decision => decision.ProviderName == "Codex");
+        var geminiDecision = viewModel.ProviderSetupDecisions.Single(decision => decision.ProviderName == "Gemini");
+
+        Assert.Contains(codexDecision.Actions, action =>
+            action.Kind == FirstRunSetupActionKind.ApplyProviderSource
+            && action.ProviderId == ProviderId.Codex
+            && action.SourceKind == DataSourceKind.Manual
+            && action.ButtonText == "Use Manual");
+        Assert.Contains(codexDecision.Actions, action =>
+            action.Kind == FirstRunSetupActionKind.ApplyProviderSource
+            && action.ProviderId == ProviderId.Codex
+            && action.SourceKind == DataSourceKind.LocalAppServer
+            && action.ButtonText == "Use Local App Server");
+        Assert.Contains(geminiDecision.Actions, action =>
+            action.Kind == FirstRunSetupActionKind.Navigate
+            && action.NavigationTag == "Providers");
+        Assert.Contains(geminiDecision.Actions, action =>
+            action.Kind == FirstRunSetupActionKind.ApplyProviderSource
+            && action.ProviderId == ProviderId.Gemini
+            && action.SourceKind == DataSourceKind.Manual
+            && action.ButtonText == "Use Manual");
+        Assert.DoesNotContain(geminiDecision.Actions, action => action.SourceKind == DataSourceKind.OfficialApi);
+    }
+
+    [Fact]
+    public void ApplyAction_EnablesProviderWithSafeSource()
+    {
+        var config = AppConfig.CreateDefault();
+        var claude = config.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.Claude));
+        claude.IsEnabled = false;
+        claude.SourceKind = DataSourceKind.Cli;
+        var viewModel = new FirstRunSetupViewModel(
+            config,
+            [ProviderDescriptors.Get(ProviderId.Claude)]);
+        var action = viewModel.ProviderSetupDecisions
+            .Single()
+            .Actions
+            .Single(action => action.SourceKind == DataSourceKind.Manual);
+
+        var result = viewModel.ApplyAction(action);
+
+        Assert.True(result.Applied);
+        Assert.True(result.ShouldSave);
+        Assert.Null(result.NavigationTag);
+        Assert.True(claude.IsEnabled);
+        Assert.Equal(DataSourceKind.Manual, claude.SourceKind);
+    }
+
+    [Fact]
+    public void ApplyAction_RejectsApiSourceAsInlineAction()
+    {
+        var config = AppConfig.CreateDefault();
+        var gemini = config.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.Gemini));
+        gemini.IsEnabled = false;
+        gemini.SourceKind = DataSourceKind.Manual;
+        var viewModel = new FirstRunSetupViewModel(
+            config,
+            [ProviderDescriptors.Get(ProviderId.Gemini)]);
+
+        var result = viewModel.ApplyAction(FirstRunProviderSetupAction.ApplyProviderSource(
+            "Use API",
+            ProviderId.Gemini,
+            DataSourceKind.OfficialApi));
+
+        Assert.False(result.Applied);
+        Assert.False(result.ShouldSave);
+        Assert.Equal("Privacy & Data", result.NavigationTag);
+        Assert.False(gemini.IsEnabled);
+        Assert.Equal(DataSourceKind.Manual, gemini.SourceKind);
+    }
+
+    [Fact]
     public void ProviderSetupDecisions_RouteMissingApiReferencesToPrivacyWithoutLeakingNames()
     {
         var config = AppConfig.CreateDefault();

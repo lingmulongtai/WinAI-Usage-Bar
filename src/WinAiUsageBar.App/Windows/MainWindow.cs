@@ -209,9 +209,19 @@ public sealed class MainWindow : Window
         {
             stack.Children.Add(UiFactory.Text($"{decision.ProviderName}: {decision.StateText}", 12, FontWeights.SemiBold));
             stack.Children.Add(UiFactory.Text(decision.RecommendationText, 12));
-            var actionButton = new Button { Content = decision.ActionButtonText };
-            actionButton.Click += (_, _) => SelectNavigationItem(decision.ActionNavigationTag);
-            stack.Children.Add(actionButton);
+            var actionPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 8
+            };
+            foreach (var action in decision.Actions)
+            {
+                var actionButton = new Button { Content = action.ButtonText };
+                actionButton.Click += async (_, _) => await ApplyFirstRunSetupActionAsync(viewModel, config, action);
+                actionPanel.Children.Add(actionButton);
+            }
+
+            stack.Children.Add(actionPanel);
         }
 
         foreach (var line in viewModel.ProviderLines)
@@ -248,6 +258,37 @@ public sealed class MainWindow : Window
             BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(global::Windows.UI.Color.FromArgb(80, 120, 120, 120)),
             Child = stack
         };
+    }
+
+    private async Task ApplyFirstRunSetupActionAsync(
+        FirstRunSetupViewModel viewModel,
+        AppConfig config,
+        FirstRunProviderSetupAction action)
+    {
+        var result = viewModel.ApplyAction(action);
+        if (result.ShouldSave)
+        {
+            await host.SaveConfigAsync(config, CancellationToken.None);
+            try
+            {
+                await host.RefreshNowAsync(CancellationToken.None);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                await host.DiagnosticsLog.ErrorAsync(
+                    "First-run setup refresh failed after applying an inline action.",
+                    ex,
+                    CancellationToken.None);
+            }
+
+            ShowContent(await BuildOverviewPageAsync());
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.NavigationTag))
+        {
+            SelectNavigationItem(result.NavigationTag);
+        }
     }
 
     private void SelectNavigationItem(string tag)

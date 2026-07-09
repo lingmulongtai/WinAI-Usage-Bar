@@ -47,6 +47,7 @@ public sealed class UiCompositionSmokeTests
             Assert.True(firstRun.IsVisible);
             Assert.Equal(descriptors.Count, firstRun.ProviderLines.Count);
             Assert.Equal(3, firstRun.ChecklistItems.Count);
+            Assert.All(firstRun.ProviderSetupDecisions, decision => Assert.NotEmpty(decision.Actions));
             Assert.True(refreshSettings.TryApply().IsValid);
             Assert.Contains("Last checked:", refreshSettings.UpdateStatusText, StringComparison.Ordinal);
             Assert.Contains("Config v", diagnostics.ConfigText, StringComparison.Ordinal);
