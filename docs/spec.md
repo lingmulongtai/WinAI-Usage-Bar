@@ -195,7 +195,7 @@ The CLI `--refresh-once` command runs the same enabled-provider refresh pipeline
 
 `--refresh-once --provider <ProviderId>` limits the run to one provider. `--refresh-once --provider <ProviderId> --source <DataSourceKind>` temporarily overrides that provider's source for the one-shot run. These overrides must be validated against provider descriptors and must not be saved to `config.json`.
 
-Refresh settings also expose notification enablement, history retention limits, and startup update policy. History max days is clamped to 1-3650, max bytes is clamped to 100000-500000000, and startup update interval hours is clamped to 0-168 before saving. Automatic startup install must be rejected unless automatic startup download is enabled.
+Refresh settings also expose notification enablement, history retention limits, and startup update policy. History max days is clamped to 1-3650, max bytes is clamped to 100000-500000000, and startup update interval hours is clamped to 0-168 before saving. Automatic startup install must be rejected unless automatic startup download is enabled and the user checks a dedicated save-time confirmation box for automatic install launch.
 
 ## Notifications
 

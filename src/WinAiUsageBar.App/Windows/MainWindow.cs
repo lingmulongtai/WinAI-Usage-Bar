@@ -734,6 +734,12 @@ public sealed class MainWindow : Window
         };
         panel.Children.Add(installUpdatesAutomatically);
 
+        var confirmAutomaticInstall = new CheckBox
+        {
+            Content = "Confirm automatic startup install launch"
+        };
+        panel.Children.Add(confirmAutomaticInstall);
+
         var confirmManualInstall = new CheckBox
         {
             Content = "Confirm manual latest-update install launch"
@@ -769,6 +775,7 @@ public sealed class MainWindow : Window
             viewModel.UpdateCheckIntervalHoursText = updateCheckIntervalHoursBox.Text;
             viewModel.DownloadUpdatesAutomatically = downloadUpdatesAutomatically.IsOn;
             viewModel.InstallUpdatesAutomatically = installUpdatesAutomatically.IsOn;
+            viewModel.ConfirmAutomaticInstallLaunch = confirmAutomaticInstall.IsChecked == true;
 
             var result = viewModel.TryApply();
             if (!result.IsValid)

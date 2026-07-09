@@ -54,6 +54,7 @@ All notable changes to WinAI Usage Bar are documented here.
 
 ### Fixed
 
+- Refresh settings now require explicit save-time confirmation before enabling automatic startup update install launch.
 - Refresh settings now omit the last launched update install line until a launch version has actually been recorded.
 - Crash report payloads now redact local Windows user profile paths before writing local JSON reports.
 - Diagnostics support exports now redact raw and JSON-escaped local Windows user profile paths in bundled text.

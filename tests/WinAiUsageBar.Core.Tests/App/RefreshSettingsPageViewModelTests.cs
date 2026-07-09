@@ -76,13 +76,50 @@ public sealed class RefreshSettingsPageViewModelTests
         var viewModel = new RefreshSettingsPageViewModel(config)
         {
             DownloadUpdatesAutomatically = false,
-            InstallUpdatesAutomatically = true
+            InstallUpdatesAutomatically = true,
+            ConfirmAutomaticInstallLaunch = true
         };
 
         var result = viewModel.TryApply();
 
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, error => error.Contains("download", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void TryApply_RejectsAutomaticInstallWithoutConfirmation()
+    {
+        var config = AppConfig.CreateDefault();
+        var viewModel = new RefreshSettingsPageViewModel(config)
+        {
+            DownloadUpdatesAutomatically = true,
+            InstallUpdatesAutomatically = true,
+            ConfirmAutomaticInstallLaunch = false
+        };
+
+        var result = viewModel.TryApply();
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, error => error.Contains("confirm", StringComparison.OrdinalIgnoreCase));
+        Assert.False(config.Updates.InstallAutomatically);
+    }
+
+    [Fact]
+    public void TryApply_AppliesAutomaticInstallWhenDownloadAndConfirmationAreEnabled()
+    {
+        var config = AppConfig.CreateDefault();
+        var viewModel = new RefreshSettingsPageViewModel(config)
+        {
+            DownloadUpdatesAutomatically = true,
+            InstallUpdatesAutomatically = true,
+            ConfirmAutomaticInstallLaunch = true
+        };
+
+        var result = viewModel.TryApply();
+
+        Assert.True(result.IsValid);
+        Assert.True(config.Updates.DownloadAutomatically);
+        Assert.True(config.Updates.InstallAutomatically);
     }
 
     [Fact]

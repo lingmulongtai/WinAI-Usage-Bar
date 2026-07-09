@@ -23,6 +23,8 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
 
     public bool InstallUpdatesAutomatically { get; set; } = config.Updates.InstallAutomatically;
 
+    public bool ConfirmAutomaticInstallLaunch { get; set; }
+
     public string UpdateStatusText { get; } = FormatUpdateStatus(config.Updates);
 
     public RefreshSettingsApplyResult TryApply()
@@ -42,6 +44,11 @@ public sealed class RefreshSettingsPageViewModel(AppConfig config)
         if (InstallUpdatesAutomatically && !DownloadUpdatesAutomatically)
         {
             errors.Add("Automatic install requires automatic download.");
+        }
+
+        if (InstallUpdatesAutomatically && !ConfirmAutomaticInstallLaunch)
+        {
+            errors.Add("Confirm automatic update install launch before saving.");
         }
 
         if (errors.Count > 0 || maxDays is null || maxBytes is null || updateIntervalHours is null)
