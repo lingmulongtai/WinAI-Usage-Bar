@@ -2,6 +2,15 @@
 
 This file records small release-to-release checks that use published artifacts. Do not paste secrets, tokens, cookies, or local account data here.
 
+## 2026-07-09 - v0.1.6 Release Published
+
+Context:
+
+- Pushed tag `v0.1.6` from commit `4a45a73`.
+- Release workflow passed: https://github.com/lingmulongtai/WinAI-Usage-Bar/actions/runs/29013532614
+- Published `v0.1.6` with English release notes, zip package, zip checksum, setup executable, and setup checksum assets.
+- Next release-to-release dogfood target is `v0.1.5 -> v0.1.6`, especially startup-policy and same-install update paths.
+
 ## 2026-07-08 - v0.1.1 Sees v0.1.2
 
 Result: passed.
