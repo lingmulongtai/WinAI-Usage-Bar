@@ -315,7 +315,8 @@ public sealed class FirstRunSetupViewModelTests
                 decision.ProviderName,
                 decision.StateText,
                 decision.RecommendationText,
-                decision.ActionButtonText
+                decision.ActionButtonText,
+                string.Join(Environment.NewLine, decision.DetailLines)
             }));
 
         AssertDecision(
@@ -328,11 +329,64 @@ public sealed class FirstRunSetupViewModelTests
             viewModel,
             "GitHub Copilot",
             "Needs API references",
-            "Save the secret value",
+            "guided steps",
             "Privacy & Data");
         Assert.DoesNotContain("gemini-api-key", text, StringComparison.Ordinal);
         Assert.DoesNotContain("my-org", text, StringComparison.Ordinal);
         Assert.DoesNotContain("secret name", text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ProviderSetupDecisions_AddApiSetupStepsAndNavigationActionsWithoutLeakingValues()
+    {
+        var config = AppConfig.CreateDefault();
+        var copilot = config.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.GitHubCopilot));
+        copilot.IsEnabled = true;
+        copilot.SourceKind = DataSourceKind.OfficialApi;
+        copilot.GitHubCopilot.Organization = "private-org";
+        var gemini = config.GetOrCreateProvider(ProviderDescriptors.Get(ProviderId.Gemini));
+        gemini.IsEnabled = true;
+        gemini.SourceKind = DataSourceKind.OfficialApi;
+        gemini.ApiKey.SecretName = "gemini-secret-reference";
+
+        var viewModel = new FirstRunSetupViewModel(
+            config,
+            [ProviderDescriptors.Get(ProviderId.GitHubCopilot), ProviderDescriptors.Get(ProviderId.Gemini)]);
+        var copilotDecision = viewModel.ProviderSetupDecisions.Single(decision => decision.ProviderName == "GitHub Copilot");
+        var geminiDecision = viewModel.ProviderSetupDecisions.Single(decision => decision.ProviderName == "Gemini");
+        var visibleText = string.Join(
+            Environment.NewLine,
+            viewModel.ProviderSetupDecisions.SelectMany(decision => new[]
+            {
+                decision.ProviderName,
+                decision.StateText,
+                decision.RecommendationText,
+                string.Join(Environment.NewLine, decision.DetailLines),
+                string.Join(Environment.NewLine, decision.Actions.Select(action => action.ButtonText))
+            }));
+
+        Assert.Equal("Needs API references", copilotDecision.StateText);
+        Assert.Contains(copilotDecision.DetailLines, line => line.Contains("Privacy & Data", StringComparison.Ordinal));
+        Assert.Contains(copilotDecision.DetailLines, line => line.Contains("Providers", StringComparison.Ordinal));
+        Assert.Contains(copilotDecision.Actions, action =>
+            action.Kind == FirstRunSetupActionKind.Navigate
+            && action.NavigationTag == "Privacy & Data");
+        Assert.Contains(copilotDecision.Actions, action =>
+            action.Kind == FirstRunSetupActionKind.Navigate
+            && action.NavigationTag == "Providers");
+        Assert.Contains(copilotDecision.Actions, action =>
+            action.Kind == FirstRunSetupActionKind.ApplyProviderSource
+            && action.SourceKind == DataSourceKind.Manual);
+        Assert.DoesNotContain(copilotDecision.Actions, action => action.SourceKind == DataSourceKind.OfficialApi);
+
+        Assert.Equal("API references ready", geminiDecision.StateText);
+        Assert.Contains(geminiDecision.DetailLines, line => line.Contains("refresh the provider", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(geminiDecision.Actions, action =>
+            action.Kind == FirstRunSetupActionKind.Navigate
+            && action.NavigationTag == "Providers");
+
+        Assert.DoesNotContain("private-org", visibleText, StringComparison.Ordinal);
+        Assert.DoesNotContain("gemini-secret-reference", visibleText, StringComparison.Ordinal);
     }
 
     [Fact]

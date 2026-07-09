@@ -120,6 +120,7 @@ public sealed class FirstRunSetupViewModel(
         var provider = config.Providers.FirstOrDefault(provider => provider.ProviderId == descriptor.Id)
             ?? ProviderConfig.CreateDefault(descriptor);
         var openProviders = FirstRunProviderSetupAction.Navigate("Open Providers", "Providers");
+        var openPrivacy = FirstRunProviderSetupAction.Navigate("Open Privacy & Data", "Privacy & Data");
 
         if (!provider.IsEnabled)
         {
@@ -176,19 +177,21 @@ public sealed class FirstRunSetupViewModel(
             DataSourceKind.OfficialApi when NeedsApiReferences(provider) => Decision(
                 descriptor,
                 "Needs API references",
-                "Save the secret value in Privacy & Data first, then configure only non-secret references in Providers.",
+                "Use the guided steps below: save the value in Privacy & Data, then configure only non-secret references in Providers.",
                 "Open Privacy & Data",
                 "Privacy & Data",
                 CreateActions(
-                    FirstRunProviderSetupAction.Navigate("Open Privacy & Data", "Privacy & Data"),
-                    CreateSafeSourceActions(descriptor, provider.SourceKind))),
+                    openPrivacy,
+                    [openProviders, .. CreateSafeSourceActions(descriptor, provider.SourceKind)]),
+                CreateApiSetupDetailLines(descriptor, referencesReady: false)),
             DataSourceKind.OfficialApi => Decision(
                 descriptor,
                 "API references ready",
                 "API mode has the required non-secret references configured. Refresh can test the provider without exposing values.",
                 "Open Providers",
                 "Providers",
-                CreateActions(openProviders, CreateSafeSourceActions(descriptor, provider.SourceKind))),
+                CreateActions(openProviders, CreateSafeSourceActions(descriptor, provider.SourceKind)),
+                CreateApiSetupDetailLines(descriptor, referencesReady: true)),
             _ => Decision(
                 descriptor,
                 "Needs attention",
@@ -296,7 +299,8 @@ public sealed class FirstRunSetupViewModel(
         string recommendationText,
         string actionButtonText,
         string actionNavigationTag,
-        IReadOnlyList<FirstRunProviderSetupAction> actions)
+        IReadOnlyList<FirstRunProviderSetupAction> actions,
+        IReadOnlyList<string>? detailLines = null)
     {
         return new FirstRunProviderSetupDecision(
             descriptor.DisplayName,
@@ -304,7 +308,50 @@ public sealed class FirstRunSetupViewModel(
             recommendationText,
             actionButtonText,
             actionNavigationTag,
-            actions);
+            actions,
+            detailLines ?? []);
+    }
+
+    private static IReadOnlyList<string> CreateApiSetupDetailLines(
+        ProviderDescriptor descriptor,
+        bool referencesReady)
+    {
+        if (referencesReady)
+        {
+            return
+            [
+                "Step 1 done: a non-secret provider reference is configured.",
+                "Step 2: refresh the provider and review Provider Details for safe auth or permission guidance.",
+                "Step 3: rotate stored values only from Privacy & Data; first-run setup never collects or displays them."
+            ];
+        }
+
+        if (descriptor.Id == ProviderId.GitHubCopilot)
+        {
+            return
+            [
+                "Step 1: save the PAT value from Privacy & Data.",
+                "Step 2: open Providers and choose organization or enterprise metrics scope plus the saved PAT reference.",
+                "Step 3: keep GitHub Copilot in Manual mode while permissions are not ready."
+            ];
+        }
+
+        if (descriptor.Id is ProviderId.Gemini or ProviderId.OpenCodeZen)
+        {
+            return
+            [
+                "Step 1: save the API key value from Privacy & Data.",
+                "Step 2: open Providers and enter only the saved API key reference for this provider.",
+                "Step 3: keep Manual mode available while official usage endpoints are still being wired up."
+            ];
+        }
+
+        return
+        [
+            "Step 1: save the credential value from Privacy & Data.",
+            "Step 2: open Providers and enter only non-secret references required by this source.",
+            "Step 3: use Manual mode while API access is being prepared."
+        ];
     }
 
     private static bool NeedsApiReferences(ProviderConfig provider)
@@ -339,7 +386,8 @@ public sealed record FirstRunProviderSetupDecision(
     string RecommendationText,
     string ActionButtonText,
     string ActionNavigationTag,
-    IReadOnlyList<FirstRunProviderSetupAction> Actions);
+    IReadOnlyList<FirstRunProviderSetupAction> Actions,
+    IReadOnlyList<string> DetailLines);
 
 public enum FirstRunSetupActionKind
 {

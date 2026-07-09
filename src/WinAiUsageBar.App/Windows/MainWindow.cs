@@ -209,6 +209,11 @@ public sealed class MainWindow : Window
         {
             stack.Children.Add(UiFactory.Text($"{decision.ProviderName}: {decision.StateText}", 12, FontWeights.SemiBold));
             stack.Children.Add(UiFactory.Text(decision.RecommendationText, 12));
+            foreach (var line in decision.DetailLines)
+            {
+                stack.Children.Add(UiFactory.Text(line, 12));
+            }
+
             var actionPanel = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
