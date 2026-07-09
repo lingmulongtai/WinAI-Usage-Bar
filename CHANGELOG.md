@@ -7,6 +7,7 @@ All notable changes to WinAI Usage Bar are documented here.
 ### Added
 
 - Codex/ChatGPT app-server snapshots now promote the recognized usage or rate-limit window with the lowest remaining percent to the primary display slot.
+- Codex app-server diagnostics now record safe optional method success status without logging response bodies.
 
 ### Fixed
 

@@ -122,12 +122,15 @@ public sealed class CodexAppServerClient : ICodexAppServerClient
     {
         try
         {
-            return await SendAndReadAsync(
+            var response = await SendAndReadAsync(
                 transport,
                 pendingResponses,
                 expectedId,
                 request,
                 cancellationToken).ConfigureAwait(false);
+            diagnostics.Enqueue(DiagnosticRedactor.Redact(
+                $"Codex app-server method {methodName} succeeded."));
+            return response;
         }
         catch (CodexJsonRpcResponseException ex)
         {

@@ -28,6 +28,9 @@ public sealed class CodexAppServerClientTests
         Assert.Contains("\"id\":4", data.UsageJson);
         Assert.DoesNotContain("raw-secret", data.AccountJson);
         Assert.Contains(data.Diagnostics, line => line.Contains("[REDACTED]", StringComparison.Ordinal));
+        Assert.Contains(data.Diagnostics, line => line.Contains("account/read succeeded", StringComparison.Ordinal));
+        Assert.Contains(data.Diagnostics, line => line.Contains("account/rateLimits/read succeeded", StringComparison.Ordinal));
+        Assert.Contains(data.Diagnostics, line => line.Contains("account/usage/read succeeded", StringComparison.Ordinal));
         Assert.Equal(4, transport.Requests.Count);
         Assert.True(transport.Stopped);
     }
@@ -75,7 +78,9 @@ public sealed class CodexAppServerClientTests
         Assert.Contains("person@example.com", data.AccountJson);
         Assert.Null(data.RateLimitsJson);
         Assert.Contains("\"id\":4", data.UsageJson);
+        Assert.Contains(data.Diagnostics, line => line.Contains("account/read succeeded", StringComparison.Ordinal));
         Assert.Contains(data.Diagnostics, line => line.Contains("account/rateLimits/read failed", StringComparison.Ordinal));
+        Assert.Contains(data.Diagnostics, line => line.Contains("account/usage/read succeeded", StringComparison.Ordinal));
         Assert.DoesNotContain("rate-secret", string.Join('\n', data.Diagnostics), StringComparison.Ordinal);
         Assert.Equal(4, transport.Requests.Count);
         Assert.True(transport.Stopped);
@@ -93,6 +98,8 @@ public sealed class CodexAppServerClientTests
         Assert.Contains("\"id\":3", data.RateLimitsJson);
         Assert.Contains("\"id\":4", data.UsageJson);
         Assert.Contains(data.Diagnostics, line => line.Contains("account/read timed out", StringComparison.Ordinal));
+        Assert.Contains(data.Diagnostics, line => line.Contains("account/rateLimits/read succeeded", StringComparison.Ordinal));
+        Assert.Contains(data.Diagnostics, line => line.Contains("account/usage/read succeeded", StringComparison.Ordinal));
         Assert.Equal(4, transport.Requests.Count);
         Assert.True(transport.Stopped);
     }
