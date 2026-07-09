@@ -4,6 +4,8 @@ All notable changes to WinAI Usage Bar are documented here.
 
 ## Unreleased
 
+## 0.1.5 - 2026-07-09
+
 ### Added
 
 - Added a confirmation-gated `--restore-latest-config-backup` CLI recovery command.
