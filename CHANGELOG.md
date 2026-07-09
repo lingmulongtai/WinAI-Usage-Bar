@@ -10,6 +10,7 @@ All notable changes to WinAI Usage Bar are documented here.
 - Codex app-server diagnostics now record safe optional method success status without logging response bodies.
 - Added an opt-in UI launch smoke mode and script for local packaged-app window activation checks.
 - The UI launch smoke helper can now target the real Settings window for local dogfooding.
+- Diagnostics exports now include a safe manifest summary with file counts, categories, included/missing states, and redaction notes.
 
 ### Fixed
 

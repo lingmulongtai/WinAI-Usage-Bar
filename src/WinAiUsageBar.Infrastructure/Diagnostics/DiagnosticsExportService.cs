@@ -29,6 +29,7 @@ public sealed class DiagnosticsExportService(
         paths.EnsureCreated();
         var createdAt = nowProvider();
         var sections = new List<string>();
+        var exportTargets = CreateExportTargets();
 
         var export = CreateUniqueExportStream(createdAt);
         var exportPath = export.Path;
@@ -40,13 +41,56 @@ public sealed class DiagnosticsExportService(
         await writer.WriteLineAsync("RootDirectory: [omitted]").ConfigureAwait(false);
         await writer.WriteLineAsync("SecretsDirectory: [omitted]").ConfigureAwait(false);
         await writer.WriteLineAsync("Note: file contents are redacted at export time; local root paths and secret files are never included.").ConfigureAwait(false);
+        await WriteManifestSummaryAsync(writer, exportTargets).ConfigureAwait(false);
 
-        await AppendFileSectionAsync(writer, sections, "config.json", paths.ConfigPath, cancellationToken).ConfigureAwait(false);
-        await AppendFileSectionAsync(writer, sections, "snapshots.json", paths.SnapshotsPath, cancellationToken).ConfigureAwait(false);
-        await AppendFileSectionAsync(writer, sections, "history.ndjson", paths.HistoryPath, cancellationToken).ConfigureAwait(false);
-        await AppendFileSectionAsync(writer, sections, "diagnostics.log", paths.DiagnosticsLogPath, cancellationToken).ConfigureAwait(false);
+        foreach (var target in exportTargets)
+        {
+            await AppendFileSectionAsync(writer, sections, target, cancellationToken).ConfigureAwait(false);
+        }
 
         return new DiagnosticsExportResult(exportPath, createdAt, sections);
+    }
+
+    private IReadOnlyList<DiagnosticsExportTarget> CreateExportTargets()
+    {
+        return
+        [
+            new DiagnosticsExportTarget("config.json", "Configuration", paths.ConfigPath),
+            new DiagnosticsExportTarget("snapshots.json", "Snapshot cache", paths.SnapshotsPath),
+            new DiagnosticsExportTarget("history.ndjson", "Usage history", paths.HistoryPath),
+            new DiagnosticsExportTarget("diagnostics.log", "Diagnostics log", paths.DiagnosticsLogPath)
+        ];
+    }
+
+    private static async Task WriteManifestSummaryAsync(
+        TextWriter writer,
+        IReadOnlyList<DiagnosticsExportTarget> targets)
+    {
+        var statuses = targets
+            .Select(target => new DiagnosticsExportTargetStatus(
+                target.Label,
+                target.Category,
+                File.Exists(target.Path)))
+            .ToList();
+        var includedCount = statuses.Count(status => status.Exists);
+        var missingCount = statuses.Count - includedCount;
+
+        await writer.WriteLineAsync().ConfigureAwait(false);
+        await writer.WriteLineAsync("--- manifest-summary ---").ConfigureAwait(false);
+        await writer.WriteLineAsync($"Files: {statuses.Count}").ConfigureAwait(false);
+        await writer.WriteLineAsync($"IncludedFiles: {includedCount}").ConfigureAwait(false);
+        await writer.WriteLineAsync($"MissingFiles: {missingCount}").ConfigureAwait(false);
+        await writer.WriteLineAsync("Categories: Configuration, Snapshot cache, Usage history, Diagnostics log").ConfigureAwait(false);
+        await writer.WriteLineAsync("Entries:").ConfigureAwait(false);
+        foreach (var status in statuses)
+        {
+            var state = status.Exists ? "included" : "missing";
+            await writer.WriteLineAsync($"- {status.Label} | {status.Category} | {state}").ConfigureAwait(false);
+        }
+
+        await writer.WriteLineAsync("RedactionNotes:").ConfigureAwait(false);
+        await writer.WriteLineAsync("- Local app data roots, user profile paths, account identifiers, provider scopes, secret references, API keys, tokens, cookies, and auth values are redacted or omitted.").ConfigureAwait(false);
+        await writer.WriteLineAsync("- Secret store files and provider auth file contents are excluded.").ConfigureAwait(false);
     }
 
     private DiagnosticsExportStream CreateUniqueExportStream(DateTimeOffset createdAt)
@@ -79,26 +123,35 @@ public sealed class DiagnosticsExportService(
         string Path,
         FileStream Stream);
 
+    private sealed record DiagnosticsExportTarget(
+        string Label,
+        string Category,
+        string Path);
+
+    private sealed record DiagnosticsExportTargetStatus(
+        string Label,
+        string Category,
+        bool Exists);
+
     private async Task AppendFileSectionAsync(
         TextWriter writer,
         ICollection<string> sections,
-        string label,
-        string path,
+        DiagnosticsExportTarget target,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        sections.Add(label);
+        sections.Add(target.Label);
 
         await writer.WriteLineAsync().ConfigureAwait(false);
-        await writer.WriteLineAsync($"--- {label} ---").ConfigureAwait(false);
+        await writer.WriteLineAsync($"--- {target.Label} ---").ConfigureAwait(false);
 
-        if (!File.Exists(path))
+        if (!File.Exists(target.Path))
         {
             await writer.WriteLineAsync("[missing]").ConfigureAwait(false);
             return;
         }
 
-        var content = await ReadTailAsync(path, cancellationToken).ConfigureAwait(false);
+        var content = await ReadTailAsync(target.Path, cancellationToken).ConfigureAwait(false);
         await writer.WriteLineAsync(DiagnosticRedactor.RedactForSupportExport(content)).ConfigureAwait(false);
     }
 

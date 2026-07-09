@@ -41,6 +41,16 @@ public sealed class DiagnosticsExportServiceTests
 
             Assert.True(File.Exists(result.Path));
             Assert.Equal(["config.json", "snapshots.json", "history.ndjson", "diagnostics.log"], result.IncludedSections);
+            Assert.Contains("--- manifest-summary ---", export);
+            Assert.Contains("Files: 4", export);
+            Assert.Contains("IncludedFiles: 4", export);
+            Assert.Contains("MissingFiles: 0", export);
+            Assert.Contains("Categories: Configuration, Snapshot cache, Usage history, Diagnostics log", export);
+            Assert.Contains("- config.json | Configuration | included", export);
+            Assert.Contains("- snapshots.json | Snapshot cache | included", export);
+            Assert.Contains("- history.ndjson | Usage history | included", export);
+            Assert.Contains("- diagnostics.log | Diagnostics log | included", export);
+            Assert.Contains("RedactionNotes:", export);
             Assert.Contains("--- config.json ---", export);
             Assert.Contains("keep this", export);
             Assert.Contains("RootDirectory: [omitted]", export);
@@ -88,6 +98,11 @@ public sealed class DiagnosticsExportServiceTests
             var export = await File.ReadAllTextAsync(result.Path);
 
             Assert.Contains("[missing]", export);
+            Assert.Contains("Files: 4", export);
+            Assert.Contains("IncludedFiles: 1", export);
+            Assert.Contains("MissingFiles: 3", export);
+            Assert.Contains("- config.json | Configuration | missing", export);
+            Assert.Contains("- diagnostics.log | Diagnostics log | included", export);
             Assert.Contains("[truncated to last 8 bytes]", export);
             Assert.Contains("89abcdef", export);
             Assert.DoesNotContain("01234567", export);
