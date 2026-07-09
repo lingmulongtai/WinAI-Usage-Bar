@@ -10,6 +10,10 @@ All notable changes to WinAI Usage Bar are documented here.
 - Added first-run API setup steps and safe Privacy & Data/Providers navigation actions for API-backed sources without inline secret entry.
 - Added recovery dogfooding notes for isolated config backup, latest-backup restore, and reset-to-defaults flows.
 
+### Fixed
+
+- Config backup CLI output now initializes redirected stdout/stderr as UTF-8 and prints ASCII-safe file-name and relative-path fields so scripts can consume backups when app-data paths contain non-ASCII characters.
+
 ### Security
 
 - Expanded diagnostics redaction coverage for mixed-case secret keys, fine-grained GitHub PATs, Google API key-shaped values, provider scope aliases, PAT reference aliases, and command override paths.

@@ -21,6 +21,7 @@ public sealed class CommandLineConfigBackupValidationFormatterTests
         var text = CommandLineConfigBackupValidationFormatter.Format(result);
 
         Assert.Contains("valid", text, StringComparison.Ordinal);
+        Assert.Contains("File name: config-backup.json", text, StringComparison.Ordinal);
         Assert.Contains("Providers: 2 enabled / 7 configured", text, StringComparison.Ordinal);
         Assert.Contains("Defaulted providers after migration: 1", text, StringComparison.Ordinal);
         Assert.DoesNotContain("secret", text, StringComparison.OrdinalIgnoreCase);

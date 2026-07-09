@@ -12,6 +12,7 @@ public static class CommandLineConfigBackupValidationFormatter
             ? "Config backup validation: valid"
             : "Config backup validation: invalid");
         builder.AppendLine($"Path: {result.Path}");
+        CommandLinePathMetadataFormatter.AppendFileName(builder, "File name", result.Path);
 
         if (result.IsValid)
         {

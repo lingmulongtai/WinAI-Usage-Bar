@@ -10,6 +10,11 @@ public static class CommandLineConfigResetFormatter
         var builder = new StringBuilder();
         builder.AppendLine(result.Reset ? "Config reset: reset" : "Config reset: not reset");
         builder.AppendLine($"Rollback backup: {result.RollbackBackupPath}");
+        CommandLinePathMetadataFormatter.AppendFileName(builder, "Rollback backup file", result.RollbackBackupPath);
+        CommandLinePathMetadataFormatter.AppendConfigBackupRelativePath(
+            builder,
+            "Rollback relative path",
+            result.RollbackBackupPath);
         builder.AppendLine($"Config version: {result.ConfigVersion}");
         builder.AppendLine($"Providers: {result.EnabledProviderCount} enabled / {result.ProviderCount} configured");
 

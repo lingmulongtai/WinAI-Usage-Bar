@@ -208,7 +208,7 @@ Published builds also support lightweight command-line checks:
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --reset-config-to-defaults --confirm
 ```
 
-The published app is a Windows GUI executable, so PowerShell scripts that need to wait for command-line completion should launch it with `Start-Process -Wait -PassThru` and redirect output if needed.
+The published app is a Windows GUI executable, so PowerShell scripts that need to wait for command-line completion should launch it with `Start-Process -Wait -PassThru` and redirect output if needed. Backup CLI output includes both the full `Path:` and ASCII-safe `File name:` / `Relative path:` lines; scripts should prefer those file metadata lines when app-data or workspace directories may contain non-ASCII characters.
 
 Set `WINAIUSAGEBAR_APPDATA` to an isolated directory when dogfooding update, diagnostics, backup, or refresh CLI flows without touching the normal `%AppData%\WinAiUsageBar` data:
 
@@ -272,7 +272,7 @@ The release workflow builds, tests, publishes, smoke-tests, packages the app, bu
 - Provider snapshots are sanitized before cache/history persistence, and legacy history summaries are sanitized before aggregation.
 - Snapshot cache and retained history can be cleared from Privacy & Data; `config.json` and `secrets/` are left untouched.
 - `config.json` can be backed up from Privacy & Data; backup files include non-secret settings only and do not copy `secrets/`.
-- Config backups can be listed from the CLI with `--list-config-backups`; backups can be validated from the CLI with an explicit path or with `--validate-latest-config-backup`; backups can be restored from the CLI with an explicit path and `--confirm`, from the CLI using the latest app-owned backup with `--restore-latest-config-backup --confirm`, or from Privacy & Data using the latest backup and an in-app confirmation checkbox; restore creates a collision-resistant rollback backup first and does not copy or modify files under `secrets/`.
+- Config backups can be listed from the CLI with `--list-config-backups`; backup CLI output includes ASCII-safe file-name and relative-path lines for script consumption when parent directories contain non-ASCII characters; backups can be validated from the CLI with an explicit path or with `--validate-latest-config-backup`; backups can be restored from the CLI with an explicit path and `--confirm`, from the CLI using the latest app-owned backup with `--restore-latest-config-backup --confirm`, or from Privacy & Data using the latest backup and an in-app confirmation checkbox; restore creates a collision-resistant rollback backup first and does not copy or modify files under `secrets/`.
 - `config.json` can be reset to defaults from the CLI with `--reset-config-to-defaults --confirm` or from Privacy & Data after an in-app confirmation checkbox; reset creates a collision-resistant rollback backup first and does not delete or modify files under `secrets/`.
 - Old config backups, diagnostics exports, and crash reports can be pruned from Privacy & Data or the CLI; pruning only matches app-owned top-level filename patterns, keeps the newest 5 files by default, and never touches `config.json`, snapshots, history, diagnostics logs, updates, or `secrets/`.
 - Browser cookie scraping is intentionally not implemented in this MVP.

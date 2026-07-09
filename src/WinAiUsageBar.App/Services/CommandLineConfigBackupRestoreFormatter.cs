@@ -12,10 +12,16 @@ public static class CommandLineConfigBackupRestoreFormatter
             ? "Config backup restore: restored"
             : "Config backup restore: not restored");
         builder.AppendLine($"Path: {result.Path}");
+        CommandLinePathMetadataFormatter.AppendFileName(builder, "File name", result.Path);
 
         if (result.Restored)
         {
             builder.AppendLine($"Rollback backup: {result.RollbackBackupPath}");
+            CommandLinePathMetadataFormatter.AppendFileName(builder, "Rollback backup file", result.RollbackBackupPath);
+            CommandLinePathMetadataFormatter.AppendConfigBackupRelativePath(
+                builder,
+                "Rollback relative path",
+                result.RollbackBackupPath);
             builder.AppendLine($"Config version: {result.ConfigVersion}");
             builder.AppendLine($"Providers: {result.EnabledProviderCount} enabled / {result.ProviderCount} configured");
         }

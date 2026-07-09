@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using WinAiUsageBar.App.Services;
@@ -10,6 +11,11 @@ public static class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        if (args.Length > 0)
+        {
+            ConfigureCommandLineEncoding();
+        }
+
         var uiLaunchSmokeResult = UiLaunchSmokeOptionsParser.Parse(args);
         if (uiLaunchSmokeResult.IsMatch)
         {
@@ -74,5 +80,28 @@ public static class Program
             SynchronizationContext.SetSynchronizationContext(context);
             new App();
         });
+    }
+
+    private static void ConfigureCommandLineEncoding()
+    {
+        var utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
+        try
+        {
+            Console.SetOut(new StreamWriter(Console.OpenStandardOutput(), utf8) { AutoFlush = true });
+            Console.SetError(new StreamWriter(Console.OpenStandardError(), utf8) { AutoFlush = true });
+        }
+        catch (Exception ex) when (ex is IOException or NotSupportedException or UnauthorizedAccessException)
+        {
+        }
+
+        try
+        {
+            Console.OutputEncoding = utf8;
+            Console.InputEncoding = utf8;
+        }
+        catch (Exception ex) when (ex is IOException or NotSupportedException or UnauthorizedAccessException)
+        {
+        }
     }
 }

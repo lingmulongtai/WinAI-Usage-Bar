@@ -48,4 +48,40 @@ Product expectation:
 
 - Backup, latest-backup validation, latest-backup restore, and reset-to-defaults are safe to dogfood with isolated app data.
 - These flows must not copy, delete, modify, or print files under `secrets/`.
-- Scripts should avoid relying on redirected GUI stdout for non-ASCII paths until #209 is fixed.
+- Scripts should prefer `File name:` and `Relative path:` metadata from backup CLI output when app-data or workspace parent directories contain non-ASCII characters.
+
+## 2026-07-09 - Non-ASCII Backup CLI Output
+
+Result: passed.
+
+Context:
+
+- Issue: #209
+- App build: local issue #209 publish from the working tree
+- Isolated app data: `artifacts/recovery-dogfood/issue-209-20260709-213228-<non-ascii>/appdata`
+- Logs: `artifacts/recovery-dogfood/issue-209-20260709-213228-<non-ascii>/logs`
+- Backup file: `config-backup-20260709-213229.json`
+
+What was checked:
+
+- Published the current working tree to `artifacts/publish/WinAIUsageBar-win-x64`.
+- Ran `--export-config-backup` with `WINAIUSAGEBAR_APPDATA` pointing at a path containing non-ASCII characters.
+- Read redirected GUI stdout as UTF-8 and confirmed the full `Path:` line was readable.
+- Parsed the ASCII-safe `File name:` line and reconstructed the backup path from the known app-data root plus `config-backups`.
+- Confirmed the reconstructed backup path existed.
+- Ran `--validate-config-backup <backup>` against the reconstructed path and confirmed it reported valid.
+
+Observed result:
+
+```text
+BackupPathExists: true
+ExportOutputContainsFileName: true
+ExportOutputContainsRelativePath: true
+ExportOutputUtf8PathReadable: true
+ValidateExitCode: 0
+```
+
+Product expectation:
+
+- Backup/list/validate/restore/reset CLI output should keep full paths for humans, but scripts should consume the ASCII-safe file metadata where possible.
+- Redirected stdout/stderr should be initialized as UTF-8 for command-line runs.

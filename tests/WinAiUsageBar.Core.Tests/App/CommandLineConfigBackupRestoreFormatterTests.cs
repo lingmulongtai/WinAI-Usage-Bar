@@ -22,6 +22,11 @@ public sealed class CommandLineConfigBackupRestoreFormatterTests
 
         Assert.Contains("restored", text, StringComparison.Ordinal);
         Assert.Contains("Rollback backup: C:\\Temp\\config-backup-before-restore.json", text, StringComparison.Ordinal);
+        Assert.Contains("Rollback backup file: config-backup-before-restore.json", text, StringComparison.Ordinal);
+        Assert.Contains(
+            $"Rollback relative path: {Path.Combine("config-backups", "config-backup-before-restore.json")}",
+            text,
+            StringComparison.Ordinal);
         Assert.Contains("Providers: 2 enabled / 7 configured", text, StringComparison.Ordinal);
         Assert.DoesNotContain("secret", text, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("token", text, StringComparison.OrdinalIgnoreCase);

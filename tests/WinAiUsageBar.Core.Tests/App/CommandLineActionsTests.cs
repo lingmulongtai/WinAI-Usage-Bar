@@ -394,6 +394,11 @@ public sealed class CommandLineActionsTests
             Assert.Contains("Config backup export", result.Output, StringComparison.Ordinal);
             Assert.Contains("Path:", result.Output, StringComparison.Ordinal);
             Assert.Contains(backupPath, result.Output, StringComparison.Ordinal);
+            Assert.Contains($"File name: {Path.GetFileName(backupPath)}", result.Output, StringComparison.Ordinal);
+            Assert.Contains(
+                $"Relative path: {Path.Combine("config-backups", Path.GetFileName(backupPath))}",
+                result.Output,
+                StringComparison.Ordinal);
             Assert.Contains("\"theme\": \"Dark\"", backupText, StringComparison.OrdinalIgnoreCase);
             Assert.Contains("gemini-secret-ref", backupText, StringComparison.Ordinal);
             Assert.DoesNotContain("actual-secret-value", backupText, StringComparison.Ordinal);

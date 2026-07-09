@@ -29,6 +29,8 @@ public static class CommandLineConfigBackupCatalogFormatter
             builder.AppendLine();
             builder.AppendLine($"{index + 1}. {backup.FileName}");
             builder.AppendLine($"  Path: {backup.Path}");
+            CommandLinePathMetadataFormatter.AppendFileName(builder, "  File name", backup.FileName);
+            CommandLinePathMetadataFormatter.AppendConfigBackupRelativePath(builder, "  Relative path", backup.FileName);
             builder.AppendLine($"  Size: {FormatBytes(backup.SizeBytes)}");
             builder.AppendLine($"  Created: {backup.CreatedAt:yyyy-MM-dd HH:mm:ss zzz}");
             builder.AppendLine($"  Modified: {backup.ModifiedAt:yyyy-MM-dd HH:mm:ss zzz}");
