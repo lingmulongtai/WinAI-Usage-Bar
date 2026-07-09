@@ -4,7 +4,9 @@ All notable changes to WinAI Usage Bar are documented here.
 
 ## Unreleased
 
-- No unreleased changes.
+### Security
+
+- Expanded diagnostics redaction coverage for mixed-case secret keys, fine-grained GitHub PATs, Google API key-shaped values, provider scope aliases, PAT reference aliases, and command override paths.
 
 ## 0.1.6 - 2026-07-09
 
