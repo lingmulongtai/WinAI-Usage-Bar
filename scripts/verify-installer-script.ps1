@@ -53,6 +53,7 @@ $requiredBuildSnippets = @(
     "/DOutputDir=",
     "WinAiUsageBar.App.exe",
     "Get-FileHash",
+    "LOCALAPPDATA",
     ".sha256"
 )
 

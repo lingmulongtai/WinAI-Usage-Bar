@@ -4,6 +4,8 @@ All notable changes to WinAI Usage Bar are documented here.
 
 ## Unreleased
 
+## 0.1.7 - 2026-07-12
+
 ### Added
 
 - Added a Privacy & Data crash report detail preview that reads only app-generated top-level reports, shows redacted metadata plus a bounded redacted message preview, and avoids stack trace/context display.

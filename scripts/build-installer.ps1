@@ -70,6 +70,7 @@ if ([string]::IsNullOrWhiteSpace($iscc)) {
 
 if ([string]::IsNullOrWhiteSpace($iscc)) {
     $candidatePaths = @(
+        (Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 6\ISCC.exe"),
         (Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"),
         (Join-Path $env:ProgramFiles "Inno Setup 6\ISCC.exe")
     ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
