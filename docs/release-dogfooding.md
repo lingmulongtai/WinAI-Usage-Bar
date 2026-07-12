@@ -2,6 +2,49 @@
 
 This file records small release-to-release checks that use published artifacts. Do not paste secrets, tokens, cookies, or local account data here.
 
+## 2026-07-13 - v0.1.7 Release Published
+
+Context:
+
+- Pushed tag `v0.1.7` from commit `10e4434`.
+- Release workflow passed: https://github.com/lingmulongtai/WinAI-Usage-Bar/actions/runs/29197537032
+- Published `v0.1.7` with English release notes, zip package, zip checksum, setup executable, and setup checksum assets.
+- Confirmed a `0.1.6` update check sees `v0.1.7` through the real latest-release endpoint.
+
+## 2026-07-13 - v0.1.6 to v0.1.7 Update Dogfood
+
+Result: passed with a follow-up note.
+
+What was checked:
+
+- Ran `scripts/test-published-update-flow.ps1 -FromTag v0.1.6 -ExpectedLatestTag v0.1.7 -Apply -AssertNormalAppDataUnchanged`.
+- Ran `scripts/test-current-update-flow.ps1 -CurrentVersion 0.1.6 -ExpectedLatestTag v0.1.7 -Apply`.
+- Generated a same-install preflight report with `scripts/new-same-install-update-report.ps1 -Preflight`.
+- Ran the normal installed `v0.1.6` app's explicit latest-update install flow against the published `v0.1.7` release.
+- Confirmed the install result reconciled as `Succeeded` with post-install validation `Passed`.
+- Confirmed the updated installed app reports `WinAI Usage Bar 0.1.7+10e4434dcb27bbfb0e90cda50568f70590c95b14`.
+- Confirmed an update check from `0.1.7` reports `Status: UpToDate`.
+- Confirmed the updated app was running as a single `WinAiUsageBar.App` process after the update.
+
+Observed output summary:
+
+```text
+Baseline installed version: WinAI Usage Bar 0.1.6+4a45a7389245dbe74584154f2d73d58e6bf8799a
+Update status: UpdateAvailable
+Latest version: 0.1.7
+Launch status: Launched
+Install result status: Succeeded
+Install validation: Passed
+Post-update installed version: WinAI Usage Bar 0.1.7+10e4434dcb27bbfb0e90cda50568f70590c95b14
+Post-update check status: UpToDate
+Running app process count: 1
+```
+
+Caveat:
+
+- The ad hoc same-install orchestration wrapper timed out after launching the update and before writing its final summary. Follow-up timeout-bounded version, health, and update-check commands confirmed the update succeeded. The user-facing update path passed, but the local orchestration wrapper should be tightened before treating it as an unattended smoke script.
+- This did not test startup-policy automatic install launch against the normal installed app.
+
 ## 2026-07-09 - v0.1.6 Release Published
 
 Context:
@@ -9,7 +52,7 @@ Context:
 - Pushed tag `v0.1.6` from commit `4a45a73`.
 - Release workflow passed: https://github.com/lingmulongtai/WinAI-Usage-Bar/actions/runs/29013532614
 - Published `v0.1.6` with English release notes, zip package, zip checksum, setup executable, and setup checksum assets.
-- Next release-to-release dogfood target is `v0.1.5 -> v0.1.6`, especially startup-policy and same-install update paths.
+- Next release-to-release dogfood target is startup-policy automatic install launch on a real installed app.
 
 ## 2026-07-08 - v0.1.1 Sees v0.1.2
 
@@ -72,7 +115,7 @@ The startup-policy mode requires a source release that exposes `--run-startup-up
 Use the same-install checklist only after disposable update helpers pass for the same target release:
 
 ```powershell
-.\scripts\new-same-install-update-report.ps1 -SourceVersion 0.1.5 -TargetVersion 0.1.6
+.\scripts\new-same-install-update-report.ps1 -SourceVersion 0.1.6 -TargetVersion 0.1.7
 .\scripts\new-same-install-update-report.ps1 -Preflight
 ```
 
