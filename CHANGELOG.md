@@ -11,6 +11,7 @@ All notable changes to WinAI Usage Bar are documented here.
 - Added recovery dogfooding notes for isolated config backup, latest-backup restore, and reset-to-defaults flows.
 - Added a `SettingsPages` UI launch smoke target that opens Settings and visits the main Settings navigation pages during local desktop dogfooding.
 - Added same-install update report preflight metadata for non-secret installed-version, latest-release, app-data, updates, and process readiness checks.
+- Recorded a 2026-07-12 Windows shell verification run for hidden-overflow tray access, tray menu commands, compact panel, Settings, Widget display, and Exit, with #213 filed for Widget topmost persistence.
 
 ### Fixed
 
