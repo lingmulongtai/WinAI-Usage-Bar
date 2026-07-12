@@ -38,6 +38,55 @@ if (-not (Test-Path -LiteralPath $requiredExe)) {
     throw "Published app executable was not found: $requiredExe"
 }
 
+function Get-RelativeEntryName {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Root,
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $rootFullPath = [System.IO.Path]::GetFullPath($Root)
+    $rootPrefix = $rootFullPath
+    if (-not $rootPrefix.EndsWith([System.IO.Path]::DirectorySeparatorChar.ToString(), [StringComparison]::Ordinal)) {
+        $rootPrefix = "$rootPrefix$([System.IO.Path]::DirectorySeparatorChar)"
+    }
+
+    $fileFullPath = [System.IO.Path]::GetFullPath($Path)
+    if (-not $fileFullPath.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Package file is outside the publish root: $Path"
+    }
+
+    return $fileFullPath.Substring($rootPrefix.Length)
+}
+
+function Get-Sha256Hex {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $getFileHash = Get-Command "Get-FileHash" -ErrorAction SilentlyContinue
+    if ($getFileHash) {
+        return (Get-FileHash -Algorithm SHA256 -LiteralPath $Path).Hash.ToLowerInvariant()
+    }
+
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $stream = [System.IO.File]::OpenRead($Path)
+        try {
+            $hashBytes = $sha256.ComputeHash($stream)
+            return ([System.BitConverter]::ToString($hashBytes)).Replace("-", "").ToLowerInvariant()
+        }
+        finally {
+            $stream.Dispose()
+        }
+    }
+    finally {
+        $sha256.Dispose()
+    }
+}
+
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 $outputRoot = (Resolve-Path -LiteralPath $OutputDirectory).Path
 $zipPath = Join-Path $outputRoot "$PackageName.zip"
@@ -61,8 +110,8 @@ try {
             Sort-Object FullName
 
         foreach ($file in $files) {
-            $relativePath = [System.IO.Path]::GetRelativePath($publishRoot, $file.FullName)
-            $entryName = $relativePath.Replace([System.IO.Path]::DirectorySeparatorChar, "/")
+            $relativePath = Get-RelativeEntryName -Root $publishRoot -Path $file.FullName
+            $entryName = $relativePath.Replace([System.IO.Path]::DirectorySeparatorChar, "/").Replace([System.IO.Path]::AltDirectorySeparatorChar, "/")
             $entry = $archive.CreateEntry($entryName, [System.IO.Compression.CompressionLevel]::Optimal)
             $entry.LastWriteTime = $fixedTimestamp
 
@@ -89,8 +138,8 @@ finally {
     $zipStream.Dispose()
 }
 
-$hash = Get-FileHash -Algorithm SHA256 -LiteralPath $zipPath
-"$($hash.Hash.ToLowerInvariant())  $(Split-Path -Leaf $zipPath)" |
+$hash = Get-Sha256Hex -Path $zipPath
+"$hash  $(Split-Path -Leaf $zipPath)" |
     Set-Content -LiteralPath $checksumPath -Encoding ascii
 
 Write-Host "Created package $zipPath"
