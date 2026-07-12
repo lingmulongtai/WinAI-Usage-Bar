@@ -194,6 +194,29 @@ function ConvertTo-ReportPath {
     return $fullPath
 }
 
+function Get-RelativePathText {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Root,
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $rootFullPath = [System.IO.Path]::GetFullPath($Root)
+    $fileFullPath = [System.IO.Path]::GetFullPath($Path)
+    if ($fileFullPath.Equals($rootFullPath, [StringComparison]::OrdinalIgnoreCase)) {
+        return "."
+    }
+
+    $rootPrefix = $rootFullPath.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar) +
+        [System.IO.Path]::DirectorySeparatorChar
+    if ($fileFullPath.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        return $fileFullPath.Substring($rootPrefix.Length)
+    }
+
+    return $fileFullPath
+}
+
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     $OutputDirectory = Join-Path $repoRoot "artifacts\verification"
 }
@@ -207,7 +230,7 @@ if ([string]::IsNullOrWhiteSpace($NormalAppDataPath)) {
 }
 
 $checklistResolved = (Resolve-Path -LiteralPath $ChecklistPath).Path
-$relativeChecklist = [System.IO.Path]::GetRelativePath($repoRoot, $checklistResolved)
+$relativeChecklist = Get-RelativePathText -Root $repoRoot -Path $checklistResolved
 
 if ([string]::IsNullOrWhiteSpace($Commit)) {
     $Commit = (& git -C $repoRoot rev-parse --short HEAD 2>$null)
