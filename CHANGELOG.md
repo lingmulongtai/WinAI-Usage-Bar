@@ -10,6 +10,7 @@ All notable changes to WinAI Usage Bar are documented here.
 - Added first-run API setup steps and safe Privacy & Data/Providers navigation actions for API-backed sources without inline secret entry.
 - Added recovery dogfooding notes for isolated config backup, latest-backup restore, and reset-to-defaults flows.
 - Added a `SettingsPages` UI launch smoke target that opens Settings and visits the main Settings navigation pages during local desktop dogfooding.
+- Added same-install update report preflight metadata for non-secret installed-version, latest-release, app-data, updates, and process readiness checks.
 
 ### Fixed
 

@@ -8,9 +8,10 @@ Create a timestamped local report before a run:
 
 ```powershell
 .\scripts\new-same-install-update-report.ps1
+.\scripts\new-same-install-update-report.ps1 -Preflight
 ```
 
-Reports are written under `artifacts\verification` by default so local run notes do not become accidental source changes.
+Reports are written under `artifacts\verification` by default so local run notes do not become accidental source changes. `-Preflight` fills in non-secret readiness metadata and does not install, update, or modify the app.
 
 ## Preconditions
 
