@@ -8,7 +8,7 @@ Result: expected unsupported state.
 
 What was checked:
 
-- `where codex` resolved to the Codex Desktop packaged CLI under `C:\Program Files\WindowsApps\OpenAI.Codex_26.623.19656.0_x64__2p2nqsd0c76g0\app\resources\`.
+- `where codex` resolved to the Codex Desktop packaged CLI under the WindowsApps package directory.
 - `codex --version` failed from PowerShell with `Access is denied.`
 - `cmd.exe /d /c codex --version` failed with the same access denial.
 
@@ -31,6 +31,23 @@ Clear the workaround with:
 ```powershell
 .\artifacts\publish\WinAIUsageBar-win-x64\WinAiUsageBar.App.exe --clear-provider-cli-override --provider Codex
 ```
+
+## 2026-07-12 - Codex LocalAppServer Refresh Once
+
+Result: expected unsupported state with safer user-facing output.
+
+What was checked:
+
+- Ran a Release build with isolated `WINAIUSAGEBAR_APPDATA`.
+- Ran `--refresh-once --provider Codex --source LocalAppServer`.
+- The local Codex command was discovered, but Windows could not start the app-server command on this machine.
+
+Product expectation:
+
+- Refresh exits without crashing.
+- The snapshot reports `Unsupported` and preserves `LocalAppServer` as the selected source.
+- The CLI report shows generic Codex startup guidance, Manual fallback guidance, and provider CLI override guidance.
+- The CLI report must not print raw Codex app-server responses, account identifiers, auth files, token values, or the local command path from the startup exception.
 
 ## Claude And Claude Code CLI Placeholder
 

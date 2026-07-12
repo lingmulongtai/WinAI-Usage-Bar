@@ -11,6 +11,9 @@ public sealed class CodexAppServerProviderAdapter(
     ICodexAppServerClient client,
     DataSourceKind sourceKind = DataSourceKind.LocalAppServer) : IProviderAdapter
 {
+    private const string CodexCliCannotStartMessage =
+        "Codex CLI was found but Windows could not start it. Check the app execution alias, reinstall Codex outside WindowsApps, or set a provider CLI command override to a launchable path.";
+
     public ProviderDescriptor Descriptor { get; } = descriptor;
 
     public async Task<ProviderFetchResult> FetchAsync(
@@ -62,9 +65,9 @@ public sealed class CodexAppServerProviderAdapter(
                 ProviderHealth.Unsupported,
                 sourceKind,
                 context.Now,
-                $"Codex CLI was found but Windows could not start it. Check the app execution alias, reinstall Codex outside WindowsApps, or set a provider CLI command override to a launchable path. Details: {ex.Message}",
+                CodexCliCannotStartMessage,
                 probe.StatusMessage,
-                $"Codex startup failed: {ex.Message}");
+                $"Codex startup failed with Win32 error {ex.NativeErrorCode}.");
         }
         catch (Exception ex)
         {
