@@ -46,6 +46,16 @@ public sealed class UiLaunchSmokeOptionsParserTests
         Assert.Equal(UiLaunchSmokeTarget.Settings, result.Options?.Target);
     }
 
+    [Fact]
+    public void Parse_AcceptsSettingsPagesTarget()
+    {
+        var result = UiLaunchSmokeOptionsParser.Parse(["--ui-launch-smoke", "--target", "settingspages"]);
+
+        Assert.True(result.IsMatch);
+        Assert.True(result.IsValid);
+        Assert.Equal(UiLaunchSmokeTarget.SettingsPages, result.Options?.Target);
+    }
+
     [Theory]
     [InlineData("--ui-launch-smoke", "--hold-seconds", "0")]
     [InlineData("--ui-launch-smoke", "--hold-seconds", "61")]

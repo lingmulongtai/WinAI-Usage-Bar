@@ -9,6 +9,7 @@ All notable changes to WinAI Usage Bar are documented here.
 - Added a Privacy & Data crash report detail preview that reads only app-generated top-level reports, shows redacted metadata plus a bounded redacted message preview, and avoids stack trace/context display.
 - Added first-run API setup steps and safe Privacy & Data/Providers navigation actions for API-backed sources without inline secret entry.
 - Added recovery dogfooding notes for isolated config backup, latest-backup restore, and reset-to-defaults flows.
+- Added a `SettingsPages` UI launch smoke target that opens Settings and visits the main Settings navigation pages during local desktop dogfooding.
 
 ### Fixed
 

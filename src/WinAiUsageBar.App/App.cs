@@ -61,12 +61,21 @@ public sealed partial class App : Application
         AppHost appHost,
         UiLaunchSmokeOptions options)
     {
-        if (options.Target is UiLaunchSmokeTarget.Settings)
+        if (options.Target is UiLaunchSmokeTarget.Settings or UiLaunchSmokeTarget.SettingsPages)
         {
-            appHost.ShowSettings();
+            var settingsWindow = new MainWindow(appHost);
+            uiLaunchSmokeWindow = settingsWindow;
+            settingsWindow.Activate();
             await appHost.DiagnosticsLog.InfoAsync(
                 "UI launch smoke activated the Settings window.",
                 CancellationToken.None);
+
+            if (options.Target is UiLaunchSmokeTarget.SettingsPages)
+            {
+                _ = CompleteSettingsPagesSmokeAsync(appHost, settingsWindow, options.HoldDuration);
+                return;
+            }
+
             _ = CompleteUiLaunchSmokeAsync(appHost, options.HoldDuration);
             return;
         }
@@ -94,6 +103,35 @@ public sealed partial class App : Application
             "UI launch smoke activated a minimal WinUI window.",
             CancellationToken.None);
         _ = CompleteUiLaunchSmokeAsync(appHost, options.HoldDuration);
+    }
+
+    private static async Task CompleteSettingsPagesSmokeAsync(
+        AppHost host,
+        MainWindow settingsWindow,
+        TimeSpan holdDuration)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(250), CancellationToken.None);
+            foreach (var tag in MainWindow.UiLaunchSmokeNavigationTags)
+            {
+                await settingsWindow.NavigateForUiLaunchSmokeAsync(tag);
+                await host.DiagnosticsLog.InfoAsync(
+                    $"UI launch smoke visited Settings page: {tag}.",
+                    CancellationToken.None);
+                await Task.Delay(TimeSpan.FromMilliseconds(100), CancellationToken.None);
+            }
+
+            await CompleteUiLaunchSmokeAsync(host, holdDuration);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await host.DiagnosticsLog.ErrorAsync(
+                "UI launch smoke failed while visiting Settings pages.",
+                ex,
+                CancellationToken.None);
+            Environment.Exit(1);
+        }
     }
 
     private static async Task CompleteUiLaunchSmokeAsync(

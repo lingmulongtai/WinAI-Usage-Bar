@@ -18,6 +18,18 @@ namespace WinAiUsageBar.App.Windows;
 public sealed class MainWindow : Window
 {
     private const int SupportArtifactPruneKeepNewest = 5;
+    public static IReadOnlyList<string> UiLaunchSmokeNavigationTags { get; } =
+    [
+        "Overview",
+        "Providers",
+        "Provider Details",
+        "Appearance",
+        "Widget",
+        "History",
+        "Refresh",
+        "Privacy & Data",
+        "About"
+    ];
 
     private readonly AppHost host;
     private readonly Grid settingsShell = new();
@@ -47,6 +59,17 @@ public sealed class MainWindow : Window
 
         _ = ApplyConfiguredThemeAsync();
         RunNavigation(selectedNavigationTag);
+    }
+
+    public async Task NavigateForUiLaunchSmokeAsync(string tag)
+    {
+        if (!UiLaunchSmokeNavigationTags.Contains(tag, StringComparer.Ordinal))
+        {
+            throw new ArgumentOutOfRangeException(nameof(tag), tag, "Unknown Settings navigation tag.");
+        }
+
+        selectedNavigationTag = tag;
+        await NavigateAsync(tag);
     }
 
     private void BuildSettingsShell()
