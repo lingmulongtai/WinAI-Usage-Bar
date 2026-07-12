@@ -3,7 +3,8 @@ namespace WinAiUsageBar.App.Services;
 public enum UiLaunchSmokeTarget
 {
     Minimal,
-    Settings
+    Settings,
+    SettingsPages
 }
 
 public sealed record UiLaunchSmokeOptions(
@@ -83,7 +84,7 @@ public static class UiLaunchSmokeOptionsParser
 
                 if (!Enum.TryParse<UiLaunchSmokeTarget>(args[index].Trim(), ignoreCase: true, out var parsedTarget))
                 {
-                    return UiLaunchSmokeParseResult.Invalid("--target must be Minimal or Settings.");
+                    return UiLaunchSmokeParseResult.Invalid("--target must be Minimal, Settings, or SettingsPages.");
                 }
 
                 target = parsedTarget;

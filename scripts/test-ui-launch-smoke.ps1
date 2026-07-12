@@ -3,7 +3,7 @@ param(
     [switch]$Publish,
     [int]$HoldSeconds = 5,
     [int]$TimeoutSeconds = 20,
-    [ValidateSet("Minimal", "Settings")]
+    [ValidateSet("Minimal", "Settings", "SettingsPages")]
     [string]$Target = "Minimal",
     [string]$AppDataRoot = "",
     [switch]$SyntaxOnly
@@ -64,6 +64,9 @@ $process.StartInfo = $startInfo
 Write-Host "Launching UI smoke: $resolvedAppExe"
 Write-Host "Target: $Target"
 Write-Host "Isolated app data: $resolvedAppDataRoot"
+if ($Target -eq "SettingsPages") {
+    Write-Host "SettingsPages target will open Settings and visit the main navigation pages."
+}
 
 if (-not $process.Start()) {
     throw "UI launch smoke process could not be started."

@@ -174,9 +174,10 @@ Run the opt-in UI launch smoke check on a local Windows desktop:
 ```powershell
 .\scripts\test-ui-launch-smoke.ps1 -Publish -HoldSeconds 5
 .\scripts\test-ui-launch-smoke.ps1 -Publish -Target Settings -HoldSeconds 5
+.\scripts\test-ui-launch-smoke.ps1 -Publish -Target SettingsPages -HoldSeconds 5
 ```
 
-This briefly opens a minimal WinUI smoke window, or the real Settings window when `-Target Settings` is passed, using isolated app data under `artifacts\ui-launch-smoke`. The helper verifies the process stays alive during the check and then waits for the app to exit cleanly. Use `-SyntaxOnly` when you only want to validate the helper without launching WinUI.
+This briefly opens a minimal WinUI smoke window, the real Settings window when `-Target Settings` is passed, or Settings plus the main Settings navigation pages when `-Target SettingsPages` is passed, using isolated app data under `artifacts\ui-launch-smoke`. The helper verifies the process stays alive during the check and then waits for the app to exit cleanly. Use `-SyntaxOnly` when you only want to validate the helper without launching WinUI.
 
 Published builds also support lightweight command-line checks:
 
