@@ -320,9 +320,10 @@ public sealed class ProviderAdapterTests
     public async Task CodexAppServerProviderAdapter_ReturnsUnsupportedWhenCodexCliCannotStart()
     {
         var descriptor = ProviderDescriptors.Get(ProviderId.Codex);
+        const string codexPath = @"C:\Program Files\WindowsApps\Codex\codex.exe";
         var adapter = new CodexAppServerProviderAdapter(
             descriptor,
-            FixedCommandProbe.Found("codex", @"C:\Program Files\WindowsApps\Codex\codex.exe"),
+            FixedCommandProbe.Found("codex", codexPath),
             new ThrowingCodexClient(new Win32Exception(5, "Access is denied.")));
         var context = new ProviderFetchContext(
             ProviderConfig.CreateDefault(descriptor),
@@ -336,8 +337,12 @@ public sealed class ProviderAdapterTests
         Assert.Contains("could not start", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("app execution alias", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("provider CLI command override", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(codexPath, result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Access is denied", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Contains("found on PATH", StringComparison.OrdinalIgnoreCase));
-        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Contains("startup failed", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Contains("Win32 error 5", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Contains(codexPath, StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Contains("Access is denied", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
