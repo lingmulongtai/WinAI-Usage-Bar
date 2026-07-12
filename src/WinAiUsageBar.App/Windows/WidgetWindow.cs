@@ -1,6 +1,5 @@
 using System.Collections.Specialized;
 using Microsoft.UI.Text;
-using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using WinAiUsageBar.App.Services;
@@ -94,15 +93,14 @@ public sealed class WidgetWindow : Window
         host.ViewModel.Providers.CollectionChanged -= OnProvidersChanged;
 
         var appWindow = WindowHelpers.GetAppWindow(this);
-        var presenter = appWindow.Presenter as OverlappedPresenter;
         var placement = new WindowPlacement(
             appWindow.Position.X,
             appWindow.Position.Y,
             appWindow.Size.Width,
             appWindow.Size.Height,
-            presenter?.IsAlwaysOnTop ?? false);
+            TopMost: false);
 
-        await placementStore.SaveAsync(placement, CancellationToken.None);
+        await placementStore.SaveBoundsAsync(placement, CancellationToken.None);
         host.OnWidgetClosed();
     }
 

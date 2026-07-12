@@ -26,4 +26,14 @@ public sealed class WidgetPlacementStore(IAppConfigStore configStore)
         config.Widget.TopMost = placement.TopMost;
         await configStore.SaveAsync(config, cancellationToken).ConfigureAwait(false);
     }
+
+    public async Task SaveBoundsAsync(WindowPlacement placement, CancellationToken cancellationToken)
+    {
+        var config = await configStore.LoadAsync(cancellationToken).ConfigureAwait(false);
+        config.Widget.Left = placement.Left;
+        config.Widget.Top = placement.Top;
+        config.Widget.Width = Math.Max(280, placement.Width);
+        config.Widget.Height = Math.Max(160, placement.Height);
+        await configStore.SaveAsync(config, cancellationToken).ConfigureAwait(false);
+    }
 }

@@ -17,6 +17,7 @@ All notable changes to WinAI Usage Bar are documented here.
 
 - Config backup CLI output now initializes redirected stdout/stderr as UTF-8 and prints ASCII-safe file-name and relative-path fields so scripts can consume backups when app-data paths contain non-ASCII characters.
 - Codex LocalAppServer startup failures now keep `--refresh-once` Status/Error output generic instead of echoing the raw Windows process startup exception.
+- Closing an already-open widget no longer overwrites a newly saved Always on top preference with the old window presenter state.
 
 ### Security
 
