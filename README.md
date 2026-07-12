@@ -2,7 +2,7 @@
 
 WinAI Usage Bar is a personal Windows notification-area app for watching AI provider usage. It is inspired by the idea of a compact usage bar, but the implementation is native Windows: C#, WinUI 3, Windows App SDK, MVVM-style view models, and a clean provider architecture.
 
-Current app version: `0.1.6`.
+Current app version: `0.1.7`.
 
 For a strict status check, see [docs/current-state-audit.md](docs/current-state-audit.md).
 For Windows shell dogfooding checks, see [docs/windows-manual-verification.md](docs/windows-manual-verification.md).
@@ -142,10 +142,10 @@ Add `-AssertNormalAppDataUnchanged` when you want the helper to snapshot the nor
 Dogfood the published startup update policy path with isolated app data:
 
 ```powershell
-.\scripts\test-published-update-flow.ps1 -FromTag v0.1.5 -ExpectedLatestTag v0.1.6 -StartupPolicy -Apply -AssertNormalAppDataUnchanged
+.\scripts\test-published-update-flow.ps1 -FromTag v0.1.6 -ExpectedLatestTag v0.1.7 -StartupPolicy -Apply -AssertNormalAppDataUnchanged
 ```
 
-`-StartupPolicy` requires a source release that exposes `--run-startup-update-check` (`v0.1.5` or newer). The example above is for the next release after `v0.1.5`; replace `v0.1.6` with the actual latest tag once it exists. It configures the extracted older release to enable startup update checks, verified automatic download, and guarded automatic install launch, then runs the startup policy command. With `-Apply`, the helper waits for the startup policy-launched script to update only the disposable extracted install directory, checks the updated version, checks `install-result.json` when the source release reports a result path, checks post-install validation status and validation log metadata when the source release writes them, and checks `--health-report` reconciliation when the target release supports it.
+`-StartupPolicy` requires a source release that exposes `--run-startup-update-check` (`v0.1.5` or newer). The example above is for the next release after `v0.1.6`; replace `v0.1.7` with the actual latest tag once it exists. It configures the extracted older release to enable startup update checks, verified automatic download, and guarded automatic install launch, then runs the startup policy command. With `-Apply`, the helper waits for the startup policy-launched script to update only the disposable extracted install directory, checks the updated version, checks `install-result.json` when the source release reports a result path, checks post-install validation status and validation log metadata when the source release writes them, and checks `--health-report` reconciliation when the target release supports it.
 
 Dogfood the current updater implementation as if it were an older installed version:
 
@@ -158,7 +158,7 @@ This copies the current build to a disposable install directory, uses isolated a
 Create a same-install update dogfood report before touching a normal installed copy:
 
 ```powershell
-.\scripts\new-same-install-update-report.ps1 -SourceVersion 0.1.5 -TargetVersion 0.1.6
+.\scripts\new-same-install-update-report.ps1 -SourceVersion 0.1.6 -TargetVersion 0.1.7
 .\scripts\new-same-install-update-report.ps1 -Preflight
 ```
 
