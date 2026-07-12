@@ -159,9 +159,10 @@ Create a same-install update dogfood report before touching a normal installed c
 
 ```powershell
 .\scripts\new-same-install-update-report.ps1 -SourceVersion 0.1.5 -TargetVersion 0.1.6
+.\scripts\new-same-install-update-report.ps1 -Preflight
 ```
 
-Use [docs/same-install-update-dogfooding.md](docs/same-install-update-dogfooding.md) after disposable update helpers pass for the same target release. Keep automatic install disabled unless the run explicitly confirms startup-policy install launch. The checklist covers backup/rollback, process shutdown, restart, validation logs, and normal app-data assertions.
+Use [docs/same-install-update-dogfooding.md](docs/same-install-update-dogfooding.md) after disposable update helpers pass for the same target release. `-Preflight` only records non-secret local readiness metadata such as installed version, latest release asset names, normal app-data existence, updates item count, and running process count; it does not install or update anything. Keep automatic install disabled unless the run explicitly confirms startup-policy install launch. The checklist covers backup/rollback, process shutdown, restart, validation logs, and normal app-data assertions.
 
 Run the published-app smoke test without opening UI:
 

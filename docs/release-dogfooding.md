@@ -73,9 +73,10 @@ Use the same-install checklist only after disposable update helpers pass for the
 
 ```powershell
 .\scripts\new-same-install-update-report.ps1 -SourceVersion 0.1.5 -TargetVersion 0.1.6
+.\scripts\new-same-install-update-report.ps1 -Preflight
 ```
 
-Then follow `docs/same-install-update-dogfooding.md` against the normal installed app and normal `%AppData%\WinAiUsageBar` root. Keep automatic install disabled unless the run explicitly confirms startup-policy install launch. Same-install reports should cover backup/rollback, process shutdown, restart behavior, validation logs, install result reconciliation, and normal app-data assertions. Do not paste secrets or local account identifiers into the report.
+Then follow `docs/same-install-update-dogfooding.md` against the normal installed app and normal `%AppData%\WinAiUsageBar` root. Use `-Preflight` first when you only need non-secret readiness metadata; it does not install or update anything. Keep automatic install disabled unless the run explicitly confirms startup-policy install launch. Same-install reports should cover backup/rollback, process shutdown, restart behavior, validation logs, install result reconciliation, and normal app-data assertions. Do not paste secrets or local account identifiers into the report.
 
 ## 2026-07-09 - Published v0.1.4 Startup Policy Guard
 
